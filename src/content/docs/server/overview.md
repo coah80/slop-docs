@@ -20,7 +20,7 @@ FourKit is documented separately. This page covers the shared server lifecycle. 
 
 The most surprising architectural fact: **the dedicated server compiles the entire `Minecraft.Client/` renderer, UI, and entity renderers** — DirectX 11 and all. Host and world logic in this codebase are entangled with client code, so the server links the full render stack rather than trying to tease them apart.
 
-`ServerTarget.cmake` links `d3d11`, `dxgi`, `d3dcompiler`, `XInput9_1_0`, `wsock32`, and all four 4JLibs (`Input`/`Profile`/`Storage`/`Render`) plus the Iggy UI libs. `ServerMain.cpp` even sets a screen size (`g_iScreenWidth = 1280; g_iScreenHeight = 720`) and calls `CleanupDevice()` on exit. The practical consequence: under Docker the server needs a virtual X display (Xvfb) "because the client-side logic is being called for compatibility" — see [Deployment](/slop-docs/server/deployment/).
+`ServerTarget.cmake` links `d3d11`, `dxgi`, `d3dcompiler`, `XInput9_1_0`, `wsock32`, and all four 4JLibs (`Input`/`Profile`/`Storage`/`Render`) plus the Iggy UI libs. (**Changed in v1.1.0b:** build fix #44 adds `dbghelp` to this link list for crash-symbol tooling.) `ServerMain.cpp` even sets a screen size (`g_iScreenWidth = 1280; g_iScreenHeight = 720`) and calls `CleanupDevice()` on exit. The practical consequence: under Docker the server needs a virtual X display (Xvfb) "because the client-side logic is being called for compatibility" — see [Deployment](/slop-docs/server/deployment/).
 
 Files: `Minecraft.Server/cmake/sources/Common.cmake`, `cmake/ServerTarget.cmake`
 

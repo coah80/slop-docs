@@ -27,6 +27,8 @@ Files: `cmake/ServerTarget.cmake`, `Minecraft.Server/CMakeLists.txt`, `Minecraft
 - Defines `MINECRAFT_SERVER_BUILD` plus the shared defines; PCH is `stdafx.h`.
 - Include dirs: the generated dir (`BuildVer.h`), `Minecraft.Client/`, the Iggy include dir, `Minecraft.Server`, and `include/`.
 - Links `Minecraft.World`, `d3d11`, `dxgi`, `d3dcompiler`, `XInput9_1_0`, `wsock32`, `legacy_stdio_definitions`, the four 4JLibs (`Input`/`Profile`/`Storage`/`Render`), and each Iggy lib. Native builds link the 4JLibs debug targets; cross-clang builds link the prebuilt `4J_*.lib` files.
+
+> **Changed in v1.1.0b:** build fix #44 also links `dbghelp` (both the debug-4JLibs and prebuilt-`.lib` link paths) — part of the crash-symbol tooling added alongside the client's Release `/Zi /DEBUG` flags. At snapshot `47e5cba3` the list above is complete; v1.1.0b inserts `dbghelp` after `wsock32`.
 - Forces `OUTPUT_NAME "Minecraft.Server"` and per-target `RUNTIME_OUTPUT_DIRECTORY` (`build/<target>/<config>`) so ninja doesn't emit duplicate outputs for the two flavours.
 - Sets the VS debugger args:
 
