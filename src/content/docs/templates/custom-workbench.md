@@ -78,7 +78,7 @@ is small; most of the work is the console UI's fixed enum plumbing.
 
 The tile registry is a fixed array `Tile *tiles[TILE_NUM_COUNT]`
 (`Tile.h:210`, `TILE_NUM_COUNT = 4096`) indexed by the numeric block id. The
-highest id in use is `frosted_ice_Id = 212` (`Tile.h:453`); ids 218+ are free. Add
+highest id in use is `frosted_ice_Id = 212` (`Tile.h:450`); ids 218+ are free. Add
 to `Tile.h` after `frosted_ice_Id`:
 
 ```cpp
@@ -1103,8 +1103,9 @@ group that lists `UIScene_FurnaceMenu.cpp`):
    reopen — items persist (they live on the `FabricatorTileEntity`, synced via the
    menu's slot listeners).
 6. **Persistence:** save and reload the world. The block-entity serializes under
-   save-id `L"Fabricator"` (`TileEntity.cpp:34`); `ContainerHelper::saveAllItems`
-   writes the `"Items"` NBT list. Contents survive.
+   save-id `L"Fabricator"` (`TileEntity.cpp:34`); the inline `save()` you wrote in
+   Step 2.3 writes the `"Items"` NBT list (this codebase has no `ContainerHelper`).
+   Contents survive.
 7. **Break drops:** mine the block — `onRemove` scatters the stored items as
    `ItemEntity`s (the `noDrop` guard prevents double-drops during the
    `setTileAndUpdate` swap the way the furnace's `setLit` does).

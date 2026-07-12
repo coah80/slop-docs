@@ -44,13 +44,13 @@ classic Java-LCE way:
   Slots **24–31 are reserved and currently `nullptr`** (`MobEffect.cpp:73-80`,
   `reserved_24`…`reserved_31`) — we take slot 24. Boot: `MobEffect::staticCtor()`
   runs at `Minecraft.World.cpp:42`.
-- **Brewing:** `PotionBrewing::staticCtor()` (`PotionBrewing.cpp:110`) fills a
+- **Brewing:** `PotionBrewing::staticCtor()` (`PotionBrewing.cpp:105`) fills a
   `potionEffectDuration` map keyed by `MobEffect::<effect>->getId()` with a
   **bit-formula string**. `PotionBrewing::getEffects(brew)` (`PotionBrewing.cpp:558`)
   walks every registered `MobEffect`, looks up its formula, and includes the
   effect if the brew's bits satisfy it. This one function drives *both* what a
   brewing stand produces **and** what appears in the creative potion list
-  (`PotionItem::getUniquePotionValues()`, `PotionItem.cpp:376`).
+  (`PotionItem::getUniquePotionValues()`, `PotionItem.cpp:378`).
 - **Ingredients:** a brewing ingredient is just an `Item` with a formula set via
   `setPotionBrewingFormula(...)` (`Item.h:808`), read by the brewing stand at
   `BrewingStandTileEntity.cpp:298`.
@@ -454,7 +454,7 @@ array (`ColourTable.cpp:215`, after `L"Effect_Saturation",`):
 
 (`7cafc6` is Movement Speed's own value — `colours.xml:212` — a pale blue; pick
 your own hex if you want a distinct potion tint.) `PotionBrewing::getColorValue`
-(`PotionBrewing.cpp:194`) blends this into the rendered bottle color.
+(`PotionBrewing.cpp:188`) blends this into the rendered bottle color.
 
 ### Step B3 — the brewing recipe
 
@@ -465,21 +465,22 @@ an **ingredient** that lights those bits.
 mode neoLegacy ships — `PotionBrewing.h:16-18`), bits 0–3 pick the effect, bit 4
 is the "enabler" lit by nether wart, bits 5/6 are glowstone/redstone
 amplify/extend, bit 13 marks a functional potion, bit 14 marks splash
-(`PotionBrewing.cpp` header comment, lines 165-181). Each existing effect claims a
-0–3 pattern via its duration formula (`PotionBrewing.cpp:111-120`), e.g. Fire
+(`PotionBrewing.cpp` header comment, lines 44-61). Each existing effect claims a
+0–3 pattern via its duration formula (`PotionBrewing.cpp:108-120`), e.g. Fire
 Resistance is `"0 & 1 & !2 & !3 & 0+6"` (bits 0 and 1 on, 2 and 3 off).
 
-The 0–3 patterns `1011`, `1101`, `1110`, `1111` are unused in the ship set (see
-the effect-id comment block at `PotionBrewing.cpp:170-181`). We claim **`1011`**
-(bits 0,1,3 on; bit 2 off).
+Almost every 0–3 pattern is already taken by the ship set — note that `1011`
+(Leaping/`jump`) and `1111` (`waterBreathing`) are **used**, so do not reuse them.
+The only genuinely free effect patterns are **`1101`** and **`0111`** (plus the
+all-clear `0000`). We claim **`1101`** (bits 0,2,3 on; bit 1 off).
 
 **Add the duration entry** in `PotionBrewing::staticCtor()`, in the
 `_SIMPLIFIED_BREWING` block after the `waterBreathing` line (`PotionBrewing.cpp:120`):
 
 ```cpp
     potionEffectDuration.insert(intStringMap::value_type( MobEffect::waterBreathing->getId(), L"0 & 1 & 2 & 3 & 0+6" ));
-    // vvv add — pattern 1011 (bits 0,1,3 set, 2 clear); "0+6" = redstone (bit 6) extends duration
-    potionEffectDuration.insert(intStringMap::value_type( MobEffect::striding->getId(), L"0 & 1 & !2 & 3 & 0+6" ));
+    // vvv add — pattern 1101 (bits 0,2,3 set, 1 clear); "0+6" = redstone (bit 6) extends duration
+    potionEffectDuration.insert(intStringMap::value_type( MobEffect::striding->getId(), L"0 & !1 & 2 & 3 & 0+6" ));
 ```
 
 The `& 0+6` tail is the same "redstone extends me" suffix Fire Resistance uses; it
@@ -501,20 +502,21 @@ also add an amplifier entry next to the others at `PotionBrewing.cpp:123`:
 ```
 
 Source (`PotionBrewing.cpp`), in the `#if _SIMPLIFIED_BREWING` string block after
-`MOD_PUFFERFISH` (`PotionBrewing.cpp:100`):
+`MOD_PUFFERFISH` (`PotionBrewing.cpp:85`):
 
 ```cpp
 const wstring PotionBrewing::MOD_PUFFERFISH = L"+0+1+2+3&4-4+13";
-// vvv add — set bits 0,1,3, clear bit 2, require+consume enabler bit 4, mark functional bit 13
-const wstring PotionBrewing::MOD_MAGMA_CREAM_STRIDER = L"+0+1-2+3&4-4+13";
+// vvv add — set bits 0,2,3, clear bit 1, require+consume enabler bit 4, mark functional bit 13
+const wstring PotionBrewing::MOD_MAGMA_CREAM_STRIDER = L"+0-1+2+3&4-4+13";
 ```
 
-Compare the neighbors: Magma Cream is `"+0+1-2-3&4-4+13"` (`PotionBrewing.cpp:98`),
-Rabbit's Foot is `"+0+1-2+3&4-4+13"`. Ours sets the same enabler/functional
-handshake (`&4-4+13`) and picks the `1011` effect pattern.
+Compare the neighbors: Magma Cream is `"+0+1-2-3&4-4+13"` (`PotionBrewing.cpp:79`, pattern `0011`),
+Rabbit's Foot is `"+0+1-2+3&4-4+13"` (`PotionBrewing.cpp:84`, pattern `1011`). Ours sets the same
+enabler/functional handshake (`&4-4+13`) but picks the free `1101` effect pattern so it doesn't
+collide with either.
 
 > **`&4-4` is the nether-wart handshake.** It requires bit 4 (lit by nether wart,
-> `MOD_NETHERWART = "+4&!13"`, `PotionBrewing.cpp:76`) then clears it, exactly like
+> `MOD_NETHERWART = "+4&!13"`, `PotionBrewing.cpp:68`) then clears it, exactly like
 > every other real potion ingredient. Skip it and you brew a useless Mundane
 > potion.
 
@@ -543,7 +545,7 @@ the full item registration if you need a brand-new ingredient item.
 ### Step B4 — the creative form is automatic
 
 You do **not** touch the creative menu. `PotionItem::getUniquePotionValues()`
-(`PotionItem.cpp:376`) loops every brew value `0..BREW_MASK`, calls
+(`PotionItem.cpp:378`) loops every brew value `0..BREW_MASK`, calls
 `PotionBrewing::getEffects(brew)`, and keeps one entry per unique effect set. The
 moment your `striding` duration formula is satisfiable by some brew, that brew
 becomes a distinct creative potion. Drinking it applies the effect through
@@ -623,9 +625,9 @@ bottle ("Potion **of Striding**").
 | Effect registry | `MobEffect.cpp:47`, array `MobEffect.h:41` |
 | Reserved effect slots 24–31 | `MobEffect.cpp:73-80` |
 | Attribute-buff plumbing | `MobEffect.cpp:373`, ids `AttributeModifier.h:30-34` |
-| Brew formula map | `PotionBrewing.cpp:110`, `getEffects` `:558` |
+| Brew formula map | `PotionBrewing.cpp:105`, `getEffects` `:558` |
 | Ingredient formula hook | `Item.h:808`, read at `BrewingStandTileEntity.cpp:298` |
-| Creative potion enumeration | `PotionItem.cpp:376` |
+| Creative potion enumeration | `PotionItem.cpp:378` |
 | Drink → apply effect | `PotionItem.cpp:89` |
 | Effect colors | `App_enums.h:390`, `ColourTable.cpp:193`, `colours.xml:212` |
 | Loc generation | `cmake/GenerateStringIdLookup.cmake` |

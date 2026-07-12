@@ -276,7 +276,8 @@ direct `#include "Frostmite.h"` at the top of `EntityIO.cpp` next to the other e
   rename it once shipped.
 - **`69`** is the numeric network/save id.
 - The **two colours** are the spawn-egg base/spots colours (step 6). The single `spawn_egg` item
-  (id 127, `Item.cpp:462`) reads these per-mob, so you do **not** register a per-mob egg item.
+  (`spawn_egg_Id = 383`, constructed as `new SpawnEggItem(127)` at `Item.cpp:462`) reads these
+  per-mob, so you do **not** register a per-mob egg item.
 - **`IDS_FROSTMITE`** is the display-name string (step 7).
 
 ## Step 4 — spawn rules
