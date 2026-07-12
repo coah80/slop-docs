@@ -163,6 +163,18 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Mod Templates',
+					items: [
+						{ label: 'Random Wooden House', slug: 'templates/random-house' },
+						{ label: 'Purple Dimension', slug: 'templates/purple-dimension' },
+						{ label: 'Ruby Ore & Tools', slug: 'templates/ruby-tools' },
+						{ label: 'Custom Mob', slug: 'templates/custom-mob' },
+						{ label: 'Enchantment & Potion', slug: 'templates/enchantment-potion' },
+						{ label: 'Custom Workbench', slug: 'templates/custom-workbench' },
+						{ label: 'Textures from Scratch', slug: 'templates/texture-tutorial' },
+					],
+				},
+				{
 					label: 'Mods',
 					items: [
 						{ label: 'Mods & Distribution', slug: 'mods/overview' },
@@ -187,6 +199,9 @@ export default defineConfig({
 						{ label: 'Enchantment & Effect IDs', slug: 'reference/enchantment-effect-ids' },
 						{ label: 'server.properties Reference', slug: 'reference/server-properties' },
 						{ label: 'FourKit Event Reference', slug: 'reference/fourkit-events' },
+						{ label: 'Tile Class Index', slug: 'reference/tile-classes' },
+						{ label: 'Console Enums & Structs', slug: 'reference/console-enums' },
+						{ label: 'File & Directory Index', slug: 'reference/file-index' },
 					],
 				},
 			],
