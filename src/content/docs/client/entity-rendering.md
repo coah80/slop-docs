@@ -56,6 +56,11 @@ entity, textures, font and options, then `render(entity, x, y, z, rot, a)` draws
 The dispatcher also owns the `ItemInHandRenderer` and can
 `registerTerrainTextures(IconRegister*)`.
 
+> **Changed in v1.1.0b.** A **polar bear** renderer/model pair was added to the
+> dispatcher: `renderers[eTYPE_POLARBEAR] = new PolarBearRenderer(new PolarBearModel(), 0.7f);`
+> (right after the `eTYPE_RABBIT` registration), backed by new `PolarBearRenderer.*`
+> and `PolarBearModel.*` files. This bumps the concrete mob-renderer/model counts by one.
+
 ### TileEntityRenderDispatcher
 
 `TileEntityRenderDispatcher` (`TileEntityRenderDispatcher.h`) is the parallel

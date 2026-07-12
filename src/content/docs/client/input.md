@@ -225,8 +225,10 @@ Key behaviours:
 > edge-detect (`wasMiddleMouseDown`), and — only when `gameMode->hasInfiniteItems()`
 > (creative) and a `hitResult` exists — copies the looked-at tile (via
 > `mayPick`/`cloneTileId`/`cloneTileData`) or entity (mapped through
-> `EntityIO::eTypeToIoid`, with Elder-Guardian/horse-variant special cases) into the
-> hotbar. See the [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
+> `EntityIO::eTypeToIoid`, with Elder-Guardian, horse-variant and Ocelot-cat-type
+> special cases, falling back to the base spawn-egg aux via
+> `EntityIO::idsSpawnableInCreative`) into the hotbar. See the
+> [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
 
 ## Server-side command input
 
