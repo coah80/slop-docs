@@ -10,7 +10,7 @@ three under `Minecraft.Client/Common/Network/Sony/` and `Common/Leaderboards/`, 
 `__PS3__` / `__ORBIS__` / `__PSVITA__` defines.
 
 Like the [Xbox trees](/slop-docs/platforms/xbox/), all three Sony platforms are **catalogued but not
-buildable** in this repo — only `Windows64` builds (see [Windows / PC](/slop-docs/platforms/windows/)).
+buildable** in this repo — only `Windows64` builds (see [Windows / PC](/slop-docs/platforms/windows64/)).
 Treat the Sony code as historical / reference source.
 
 ## At a glance

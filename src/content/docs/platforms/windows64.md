@@ -247,4 +247,4 @@ backends. Iggy renders the `.gfx`/`.swf` menu UI. Other files: `Windows64_UICont
 ## Cross-links
 
 - [Platform Overview](/slop-docs/platforms/overview/) — the `PLATFORM_NAME` model and build reality.
-- [Build System](/slop-docs/build/overview/) — presets, cross-compile, FXC-via-Wine, codegen.
+- [Build System](/slop-docs/overview/building/) — presets, cross-compile, FXC-via-Wine, codegen.

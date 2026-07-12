@@ -65,7 +65,7 @@ Files: `CMakePresets.json:10-73`.
 
 Note the `xbox360` preset's `PLATFORM_NAME` is `Xbox` (not `Xbox360`) — that matches the directory
 `Minecraft.Client/Xbox/`. Only `windows64` omits a `toolchainFile` entirely; it builds natively with
-MSVC, or cross-compiles from Linux via clang-cl (see [Build System](/slop-docs/build/overview/)).
+MSVC, or cross-compiles from Linux via clang-cl (see [Build System](/slop-docs/overview/building/)).
 
 ## The build reality: only Windows64 works
 
@@ -171,4 +171,4 @@ scaffolding reused across ports — `Xbox_` does not mean Xbox-only.
 ## Cross-links
 
 - [Windows 64](/slop-docs/platforms/windows64/) — the one platform that builds, in depth.
-- [Build System](/slop-docs/build/overview/) — presets, cross-compile, codegen.
+- [Build System](/slop-docs/overview/building/) — presets, cross-compile, codegen.

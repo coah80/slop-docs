@@ -6,8 +6,8 @@ description: The Xbox/ (Xbox 360, XDK) and Durango/ (Xbox One) platform trees â€
 neoLegacy carries the original 4J Studios Xbox source for both console generations under
 `Minecraft.Client/Xbox/` (Xbox 360, XDK) and `Minecraft.Client/Durango/` (Xbox One, XDK-Durango).
 Both trees are **catalogued but not buildable** in this repo: only the `Windows64` platform has a
-working build path (see [Windows / PC](/slop-docs/platforms/windows/) and
-[Building neoLegacy](/slop-docs/client/building/) if present). The Xbox code is best treated as
+working build path (see [Windows / PC](/slop-docs/platforms/windows64/) and
+[Building neoLegacy](/slop-docs/overview/building/) if present). The Xbox code is best treated as
 historical / reference source â€” it is where much of the shared client scaffolding originated.
 
 ## At a glance
@@ -201,7 +201,7 @@ scene/control system that 4J carried forward to every port: main menu, HUD, cont
 
 On the buildable Windows64 platform the equivalent role is filled by the open D3D11 renderer plus the
 closed Iggy library; the XUI code remains shared scaffolding. See
-[Windows / PC](/slop-docs/platforms/windows/) for the live path.
+[Windows / PC](/slop-docs/platforms/windows64/) for the live path.
 
 ## Cross-platform naming gotcha
 

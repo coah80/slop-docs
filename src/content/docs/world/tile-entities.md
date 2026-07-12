@@ -146,7 +146,7 @@ its `items` array, and a custom `name` (`FurnaceTileEntity.h:58`).
 
 Not every tile entity ticks. The base `tick()` is empty (`TileEntity.cpp:94`);
 subclasses opt in by overriding it and are ticked by the level's tile-entity list
-(see [Level](/slop-docs/world/level/)). Ticking subclasses include:
+(see [Level](/slop-docs/world/storage/)). Ticking subclasses include:
 
 - **`FurnaceTileEntity`** — decrements `litTime`, advances `tickCount` toward
   `BURN_INTERVAL`, calls `burn()` when a smelt completes
@@ -242,9 +242,9 @@ arranged with soul sand.
 
 - [Container Menus](/slop-docs/world/containers/) — the GUI side of chests,
   furnaces, hoppers, beacons, brewing stands.
-- [Tiles / Blocks](/slop-docs/world/tiles/) — `BaseEntityTile` and how a block
+- [Tiles / Blocks](/slop-docs/world/blocks/) — `BaseEntityTile` and how a block
   spawns its tile entity via `newTileEntity()`.
-- [Networking / Packets](/slop-docs/world/packets/) — `TileEntityDataPacket` and
+- [Networking / Packets](/slop-docs/world/networking/) — `TileEntityDataPacket` and
   the container packet family.
 - [Redstone](/slop-docs/world/redstone/) — comparator, daylight detector,
   hopper, and piston-piece entities.

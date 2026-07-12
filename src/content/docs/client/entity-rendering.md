@@ -255,7 +255,7 @@ render surface.
 - **Wide/slim player models** — `PlayerRenderer` carries
   `humanoidModelWide` / `humanoidModelSlim` for Alex-style arms alongside the
   classic model (`PlayerRenderer.h:16-18`), backing the expanded skin selection
-  (see [Live Console UI](/slop-docs/client/console-ui/)).
+  (see [Live Console UI](/slop-docs/client/ui-system/)).
 - **4J render-parameter additions** thread `setColor`, `alpha` and `useCompiled`
   through `TileEntityRenderer::render` and the item-render overloads for the
   console's compiled-geometry and tinting needs.

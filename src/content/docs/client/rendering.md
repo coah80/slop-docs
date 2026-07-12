@@ -267,7 +267,7 @@ Supporting classes: `TextureManager`, `TextureAtlas`, `TextureMap`,
 `Textures::tick(bool updateTextures, bool tickDynamics)` (`Textures.h:353`).
 Custom player skins arrive over the network as `HttpTexture` / `MemTexture`
 entries (`httpTextures`, `memTextures` maps, `Textures.h:285-287`) — see
-[Texture Packs & Resources](/slop-docs/client/texture-packs/).
+[Texture Packs & Resources](/slop-docs/client/resources/).
 
 ## Deltas from vanilla LCE TU19
 

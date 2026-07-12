@@ -214,9 +214,9 @@ four armor slots (`ARMOR_SLOT_START..ARMOR_SLOT_END`, `InventoryMenu.h:15-23`).
 
 - [Block Entities (TileEntity)](/slop-docs/world/tile-entities/) — the storage
   behind chest/furnace/hopper/beacon/brewing-stand menus.
-- [Crafting / Recipes](/slop-docs/world/recipes/) — what `slotsChanged()` matches
+- [Crafting / Recipes](/slop-docs/world/crafting/) — what `slotsChanged()` matches
   against.
-- [Networking / Packets](/slop-docs/world/packets/) — the full 100-108 container
+- [Networking / Packets](/slop-docs/world/networking/) — the full 100-108 container
   packet family and `getId()` assignment.
 - [Items](/slop-docs/world/items/) — `ItemInstance` and the `matches()`/`copy()`
   calls the sync diff relies on.
