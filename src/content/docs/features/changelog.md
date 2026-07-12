@@ -91,6 +91,12 @@ rewritten for the release. Highlights, with source commits:
   txt logger (`a4c746be TU43 Structures, bug fixes & minor changes`; the earlier `558173cf`/
   `d1bf3952`/`be3bf0ae` TU43 Release 2–4 also merged in this range). TU43 work is now on `main`, not
   branch-only — see [the TU43 note in the Introduction](/slop-docs/overview/introduction/#roadmap).
+  The Fossil/Igloo structure **XML data files** they generate from
+  (`Common/Media/MediaWindows64/Structures/fossils/`, `.../igloo/`) landed in
+  `52138bfe feat: structure files, updated sounds, and village improvements (#33)`.
+- **Structure files, new mob sounds & village improvements** — `52138bfe (#33)` adds the
+  fossil/igloo structure XML set, new **polar bear** sound effects and re-cut **cow** milk/idle
+  sounds, `VillagePieces` generation tweaks, and the `tools/struct_parse.py` NBT→XML helper.
 - **Loot tables** — a data-driven drop system shipped as XML assets under
   `Common/Media/MediaWindows64/Structures/loot_tables/` (chest, entity, and gameplay/fishing tables),
   copied into the build by a new CMake `AssetLootTablesCopy` target
@@ -109,8 +115,11 @@ rewritten for the release. Highlights, with source commits:
   `245cbb18 fix(?): world save region stuff yay (#45)`). This is the "anyone can make a DLC world
   from their own saves" note in `NOTES.md`. See
   [Level Storage & IO](/slop-docs/world/storage/#the-console-save-file-format).
-- neoLegacy branding on the title screen; dedicated-server stability fixes; TU31 cow sounds;
-  animated-texture frame interpolation; Elytra accuracy improvements (`a4c746be`).
+- neoLegacy branding on the title screen; dedicated-server stability fixes; animated-texture
+  frame interpolation; Elytra accuracy improvements (`a4c746be`). The re-cut cow/polar-bear mob
+  sounds ship in `52138bfe (#33)`, not `a4c746be`.
+- **16×16 tutorial world** — the bundled `Tutorial.mcs` was rebuilt to the 16×16 size
+  (`91192b70 feat: 16x16 tutorial`).
 - DLC world updates (Greek Mythology, Halo, Mass Effect, etc.) — `079f0e02 feat: dlc worlds+`.
 - The bundled retail **DLC packs were deleted** from the tree
   (`8cfce8ee chore: delete dlcs`), with `.gitignore`/localization restored afterwards

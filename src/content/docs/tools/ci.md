@@ -129,6 +129,13 @@ done
 
 Only `exp/*`, `feat/*`, and `experimental` branches are synced; a merge conflict aborts cleanly (the branch is skipped, not force-pushed). Runs on `ubuntu-latest`.
 
+> **Changed in v1.1.0b:** `f32ce319 feat(ci/sync): support for TUXX branches` widened the branch
+> filter to also cover `origin/TU*` — so the condition is now
+> `origin/exp/* || origin/feat/* || origin/experimental || origin/TU*`. `TU31`, `TU43`, and any
+> future `TUxx` milestone branch are now auto-synced with `main` too. This is the **only** workflow
+> change between `47e5cba3` and `origin/main` (`v1.1.0b`); `nightly.yml`, `stable.yml`, and
+> `pull-request.yml` are byte-identical across the two refs.
+
 Files: `.github/workflows/sync.yml`
 
 ## GHCR dedicated-server image

@@ -116,7 +116,7 @@ done
 
 The takeaways for a mod branch:
 
-- **Name your branch to match a synced prefix** (`exp/*`, `feat/*`, or `experimental`) if you want upstream's own automation to keep it merged — those are the exact patterns `sync.yml` targets. Branches like `origin/TU43`, `origin/guardians`, and `origin/commands` exist but are *not* auto-synced.
+- **Name your branch to match a synced prefix** (`exp/*`, `feat/*`, or `experimental`) if you want upstream's own automation to keep it merged — those are the exact patterns `sync.yml` targets. Branches like `origin/guardians` and `origin/commands` exist but are *not* auto-synced. (**Changed in v1.1.0b:** `f32ce319` added `origin/TU*` to the filter, so `TU31`/`TU43`/any `TUxx` branch **is** now auto-synced — see [CI § sync.yml](/slop-docs/tools/ci/#syncyml--branch-sync).)
 - **Conflicts are yours to resolve.** The workflow deliberately `--abort`s on conflict rather than committing a mangled merge; a conflicting mod branch just stops receiving syncs until a human fixes it.
 - **Rebuild after every sync.** A merged-in change to a shared renderer or `Tile.h` can silently change codegen (`ItemNameMap.h` is generated from `Item.h`/`Tile.h`) — always rebuild the affected target, don't trust a stale exe.
 

@@ -171,6 +171,46 @@ The format uses a parameter lookup table (`PATH`/`TYPE`/`XMLVERSION`) and UTF-16
 
 Files: `tools/pck_extract.py`, `tools/pck_pack.py`
 
+### `wiiU2Windows.py` — Wii U → Windows save converter (v1.1.0b)
+
+:::note[Added in v1.1.0b]
+This tool did not exist at the `47e5cba3` snapshot; it was added on top of it in v1.1.0b
+(`042ee0a2 feat: super mario world support (#37)` / `929b32ff feat: mario world`, later tidied by
+`1c936577 fix: python toolset`). It is the save-side plumbing behind the Super Mario World DLC and
+the "anyone can make a DLC world from their own saves" universal save format.
+:::
+
+Converts a Wii U `.mcs` save into a **Windows + Xbox One-compatible `.mcs`** — its own argparse
+description reads *"Converts Wii U .mcs saves to Windows + Xbox One-compatible .mcs files."* It walks
+the 144-byte `.mcs` file-entry table (`FILE_ENTRY_SIZE = 144`), rewrites the save header to the
+Windows save version (`WINDOWS_SAVE_VERSION = 9`), and re-lays out the region files: it handles the
+`region_format_16` marker and the 1024-entry / 4096-byte-sector `.mcr` region layout
+(`REGION_TABLE_COUNT = 1024`, `REGION_SECTOR_BYTES = 4096`), zlib-recompressing chunk data as needed.
+
+- Main flags: `--dlc` selects the Xbox One split-save preset (for the current DLC system);
+  `--no-split` disables split-save logic when `--dlc` is set; without either it emits a regular,
+  non-split Windows save. `--endianness-in` / `--endianness-out` override source/target byte order and
+  `--save-version` overrides the header version.
+- Usage: `python3 wiiU2Windows.py <input.mcs> [-o out.mcs] [--dlc [--no-split]]`.
+
+Files: `tools/wiiU2Windows.py`
+
+### `struct_parse.py` — NBT structure → XML (v1.1.0b)
+
+:::note[Added in v1.1.0b]
+Also new since the snapshot — added in `52138bfe feat: structure files, updated sounds, and village
+improvements (#33)` alongside the fossil/igloo structure XML set.
+:::
+
+A minimal NBT reader (`argparse` description *"Convert NBT structure files to XML"*) that decodes the
+standard tag types (`TAG_COMPOUND`, `TAG_LIST`, `TAG_INT_ARRAY`, …) and emits an XML tree — the
+inverse of the checked-in `Structures/**/*.xml` assets the game generates fossils and igloos from.
+
+- `-l`/`--little` assumes little-endian NBT; `-o`/`--output` sets the output XML file or directory.
+- Usage: `python3 struct_parse.py <input.nbt ...> [-l] [-o out.xml]`.
+
+Files: `tools/struct_parse.py`
+
 ## `tools/ghidra/` — 4JLibs binary diffing
 
 The `4JLibs` platform libraries are a git submodule (see [Building neoLegacy](/slop-docs/overview/building/)) shipped as prebuilt COFF `.lib` files. When the submodule bumps, there is no source to diff — so neoLegacy diffs the **compiled symbols** using Ghidra headless analysis. This harness extracts the `.lib` files from two git refs, imports each into Ghidra, exports functions/symbols/externals to JSON, and diffs them.
