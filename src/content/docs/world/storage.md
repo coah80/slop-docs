@@ -256,13 +256,22 @@ Windows/`WIN64` build treats `'WIN_'` as native.
 > `245cbb18 fix(?): world save region stuff yay (#45)`): the split-vs-legacy region
 > layout is no longer decided by the save platform. `RegionFileCache::_getRegionFile`
 > now keys entirely off the presence of a `region_format_16` marker file inside the
-> container, so DLC worlds (and any world) can load either format. `WIN64` was added
-> to `RegionFileCache::useSplitSaves` (Windows64 saves now opt into split saves), the
-> `region_format_16` stamp that `LevelGenerationOptions::loadBaseSaveData` used to add
-> to base-gen saves was removed, and `MinecraftServer::loadLevel` now runs
-> `ConsoleSaveFileOriginal::ConvertToLocalPlatform()` on load. This is the "universal
-> DLC-capable save format" line in `NOTES.md`. The header/`ESaveVersions`/platform-FourCC
-> layout described above is unchanged.
+> container — the old `if (useSplitSaves(saveFile->getSavePlatform()))` gate around
+> the split-vs-`.mcr` filename choice is gone, so DLC worlds (and any world) can load
+> either format. The same simplification is applied in `_getChunkDataInputStream` /
+> `_getChunkDataOutputStream`, where the guard dropped from
+> `useSplitSaves(...) && isNew` to just `isNew`. And in `ConsoleSaveFileOriginal`'s
+> constructor the `if (bLevelGenBaseSave) header.AddFile(L"region_format_16")` stamp
+> (added when re-reading an existing base-gen header) was removed — a fresh save's
+> `else` branch still stamps `region_format_16`. This is the "universal DLC-capable
+> save format" line in `NOTES.md`. The header/`ESaveVersions`/platform-FourCC layout
+> described above is unchanged.
+>
+> Note that `RegionFileCache::useSplitSaves` (which already lists `XBONE`/`PS4`/`WIN64`)
+> and `MinecraftServer::loadLevel`'s `ConvertToLocalPlatform()` call are **already
+> present at this snapshot** — the pre-squash `48b80ba8` introduced them relative to
+> its own parent, but they predate `47e5cba3`, so they are not part of the
+> snapshot→v1.1.0b delta.
 
 ## World metadata
 
