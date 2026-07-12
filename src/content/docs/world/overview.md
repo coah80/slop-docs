@@ -163,6 +163,16 @@ platform runs `Stats::staticCtor()` at line 50, which in turn calls
 `Achievements::staticCtor()` internally (a 4J change noted at
 `Minecraft.World.cpp:52`).
 
+> **Changed in v1.1.0b** (`54528fac feat: loot tables (#43)`): the bootstrap now
+> opens with a **loot-table preload** — `LootTableManager::Get().LoadFromDisk("")`
+> is called at the very top of `MinecraftWorld_RunStaticCtors()`, *before*
+> `Packet::staticCtor()`, so bonus chests are populated before world generation
+> (`app.DebugPrintf("FATAL: ...")` on failure). This inserts ~8 lines ahead of the
+> registry calls, so in v1.1.0b every line number in the call-sequence table above
+> shifts up by 8 (`Packet::staticCtor()` moves from line 31 to 39, and so on). The
+> `#include "LootTableManager.h"` is added at line 20. See the
+> [loot-table system](/slop-docs/world/entities/#see-also) wired into the mob classes.
+
 ## How the client and server link this
 
 `Minecraft.World` builds as a static library, but the client and the server

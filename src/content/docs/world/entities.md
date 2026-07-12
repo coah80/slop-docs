@@ -375,10 +375,20 @@ The rabbit/mutton/prismarine/beetroot **items** that pair with these mobs live o
 > driven by a data-driven **loot-table system** (`LootTableManager`, wired into
 > `Mob.cpp` and the individual mob classes — Cow, Chicken, Sheep, Guardian, Blaze,
 > Ghast, PigZombie, etc.), sourced from XML tables under
-> `Common/Media/MediaWindows64/Structures/loot_tables/entities/`. The same commit
-> renamed the `Ozelot` C++ class to **`Ocelot`** (`Ozelot.cpp`/`.h` deleted,
-> `Ocelot.cpp`/`.h` added); the numeric id **98** and the on-disk save-id string
-> `Ozelot` in the table above are **unchanged**. See the
+> `Common/Media/MediaWindows64/Structures/loot_tables/entities/`.
+>
+> The same commit **deletes the dead `Ozelot.cpp`/`.h` files**. Note that at the
+> documented snapshot the *active* ocelot class is already `Ocelot`
+> (`EntityIO.cpp:114` registers `Ocelot::create` with `eTYPE_OCELOT`); the leftover
+> `Ozelot.*` files still sit on disk but are unreferenced. v1.1.0b simply removes
+> that dead pair (along with `OzelotAttackGoal.*`). The numeric id **98** and the
+> on-disk save-id string `Ozelot` in the table above are **unchanged**.
+>
+> A **new mob is also added**: `PolarBear` — numeric id **107**, save-id
+> `L"PolarBear"`, type `eTYPE_POLARBEAR = eTYPE_ANIMAL |
+> eTYPE_ANIMALS_SPAWN_LIMIT_CHECK | 0x6` (`Class.h`), registered right after
+> `Rabbit` in `EntityIO::staticCtor()`. It is not present at the documented
+> snapshot. See the
 > [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
 
 ## See also

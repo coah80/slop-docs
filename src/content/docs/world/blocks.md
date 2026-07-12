@@ -105,6 +105,17 @@ IDs 176/177 (banners) and 198–206, 209 (End-update blocks: end rod, chorus,
 purpur, end bricks) are reserved as comments in `Tile.h` but **not registered**
 in this build.
 
+> **Changed in v1.1.0b**: several of these reserved slots are now registered. The
+> banners **176** (`standing_banner_Id`) / **177** (`wall_banner_Id`) become live
+> `BannerTile`s (with a `BannerItem` and a `BannerTileEntity` — see
+> [Block Entities](/slop-docs/world/tile-entities/)), and the following blocks are
+> added: **206** `end_bricks_Id` (`Tile`, stone), **213** `magma_Id` (`MagmaTile`),
+> **214** `nether_wart_block_Id` (`Tile`, grass material), **215**
+> `red_nether_brick_Id` (`Tile`, stone), **216** `bone_block_Id` (`BoneBlockTile`).
+> Their `*_Id` constants change from comments to real `static const int` members in
+> `Tile.h`, and each gets a registration line in `Tile::staticCtor()`. The
+> remaining End-update slots (198–205, 209, 217) stay commented out.
+
 ### Sizing constants
 
 | Constant | Value | Meaning |

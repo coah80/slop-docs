@@ -150,7 +150,7 @@ priority.
 | `MeleeAttackGoal` | approach + hit |
 | `ArrowAttackGoal` / `RangedAttackGoal` | skeleton/etc. shooting |
 | `SwellGoal` | creeper fuse (see below) |
-| `OcelotAttackGoal` / `OzelotAttackGoal` | ocelot pounce on chickens |
+| `OcelotAttackGoal` / `OzelotAttackGoal` | ocelot pounce on chickens (the dead `OzelotAttackGoal.*` pair is deleted in **v1.1.0b**; the active goal is `OcelotAttackGoal`) |
 | `LeapAtTargetGoal` | |
 
 ### Target selection (derive from `TargetGoal`)

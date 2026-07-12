@@ -116,6 +116,15 @@ counted once). The `Cauldron`/`Airportal`/`Control`/`Trap` mismatches are
 original LCE names kept for **save compatibility** — renaming them would silently
 drop existing tile entities on load.
 
+> **Changed in v1.1.0b**: two more tile entities are registered at the end of
+> `TileEntity::staticCtor()`, taking the count to **21** `setId` calls:
+> `BannerTileEntity` (`eTYPE_BANNERTILEENTITY = eTYPE_TILEENTITY | 0x12`, save-id
+> `L"Banner"`) and `FlowerPotTileEntity` (`eTYPE_FLOWERPOTTILEENTITY =
+> eTYPE_TILEENTITY | 0x13`, save-id `L"FlowerPot"`). Both classes
+> (`BannerTileEntity.{h,cpp}`, `FlowerPotTileEntity.{h,cpp}`) are new in v1.1.0b —
+> at the documented snapshot only the `FlowerPotTile` block existed, with no
+> backing tile entity.
+
 ## NBT save / load
 
 `TileEntity::save()` (`TileEntity.cpp:79`) writes the save-id string looked up
