@@ -7,7 +7,7 @@ export default defineConfig({
 	base: '/slop-docs',
 	integrations: [
 		starlight({
-			title: 'LCE Docs',
+			title: 'Slop Docs',
 			components: {
 				Banner: './src/components/Banner.astro',
 			},
