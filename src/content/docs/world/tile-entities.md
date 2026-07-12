@@ -228,8 +228,8 @@ side supports this: `SkullTile : public BaseEntityTile` (`SkullTile.h:6`) uses a
 non-cube render shape (`getRenderShape()`, `isCubeShaped()` return the
 tile-entity render path) and a custom `getAABB()` so the model isn't a full block.
 Placement packs the facing into the data byte via `PLACEMENT_MASK = 0x7`, with
-`NO_DROP_BIT = 0x8` (`SkullTile.h:12-13`); `MAX_SKULL_TILES = 40` caps how many
-skull tile entities render per chunk region (`SkullTile.h:10`). `setPlacedBy()`
+`NO_DROP_BIT = 0x8` (`SkullTile.h:13-14`); `MAX_SKULL_TILES = 40` caps how many
+skull tile entities render per chunk region (`SkullTile.h:11`). `setPlacedBy()`
 seeds the `SkullTileEntity` rotation from the placing entity's yaw, and
 `checkMobSpawn()` handles the wither-summon check when three wither skulls are
 arranged with soul sand.

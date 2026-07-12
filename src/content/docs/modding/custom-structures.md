@@ -115,8 +115,12 @@ Inside `postProcess`, the `StructurePiece` base gives you (from
 | `generateAirBox(...)` | hollow out a cuboid |
 | `fillColumnDown(level, tile, data, x, startY, z, chunkBB)` | extend a pillar down to solid ground |
 | `getOrientationData(tile, data)` | rotate stair/directional data by piece orientation |
-| `updateAverageGroundHeight(level, chunkBB, offset)` | anchor the piece to terrain height |
 | `getBlock(level, x, y, z, chunkBB)` | safe read (returns 0 out of chunk) |
+
+The ground-anchoring helper `updateAverageGroundHeight(level, chunkBB, offset)` is
+**not** on the `StructurePiece` base — it lives on `ScatteredFeaturePiece`
+(`ScatteredFeaturePieces.h:25`), which is why the swamp hut (and any piece that
+wants it) derives from that subclass rather than `StructurePiece` directly.
 
 Coordinates are **piece-local**; the base translates them to world space via the
 piece's `boundingBox` + `orientation`. The swamp hut's `postProcess`

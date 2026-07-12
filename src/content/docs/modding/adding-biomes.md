@@ -148,7 +148,7 @@ The ocean monument does exactly this for guardians
 (`OceanMonumentFeature.cpp:14`):
 
 ```cpp
-enemies.push_back(new Biome::MobSpawnerData(eTYPE_ZOMBIE, 100, 4, 4));
+monumentEnemies.push_back(new Biome::MobSpawnerData(eTYPE_GUARDIAN, 1, 2, 4));
 ```
 
 Our Ashland constructor:

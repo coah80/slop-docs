@@ -237,7 +237,7 @@ light rig `-30°`/`165°` so inventory items catch a consistent highlight.
 ## Minimap
 
 `Minimap` (`Minimap.cpp`) renders the console minimap. It is owned by
-`ItemInHandRenderer` (`ItemInHandRenderer.h:34`, "made public so we can use it
+`ItemInHandRenderer` (`ItemInHandRenderer.h:28`, "made public so we can use it
 from ItemFrameRenderer") — the minimap texture doubles as the in-hand map item
 surface. The `ItemInHandRenderer(Minecraft *mc, bool optimisedMinimap = true)`
 constructor toggles the optimised minimap path (`ItemInHandRenderer.h`, "4J Added

@@ -161,7 +161,7 @@ completeness-bar requirement. Simple ore-block-style recipes go in
 ```cpp
 // OreRecipies::_init()
 ADD_OBJECT(map[8], Tile::slimeBlock);
-ADD_OBJECT(map[8], new ItemInstance(Item::slimeBall, 9));
+ADD_OBJECT(map[8], new ItemInstance(Item::slime_ball, 9));
 ```
 
 The andesite/diorite/granite backport (`dc5ad7aa`) added its recipes in

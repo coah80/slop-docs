@@ -329,8 +329,8 @@ bool Termite::canSpawn()
 For a mob to appear during natural world-gen it must be in a biome's spawn list.
 Biomes hold typed `MobSpawnerData` vectors (`Biome.h:138`): `enemies`,
 `friendlies`, `waterFriendlies`, `friendlies_chicken`, `ambientFriendlies`, etc.
-The base biome fills them in `Biome::_init` — hostile entries look like
-(`Biome.cpp:193`):
+The base biome fills them in the `Biome(int id)` constructor — hostile entries
+look like (`Biome.cpp:193`):
 
 ```cpp
 enemies.push_back(new MobSpawnerData(eTYPE_SPIDER,   10, 4, 4));

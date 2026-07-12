@@ -38,11 +38,11 @@ per-biome state (`Biome.h:100`+):
 | `GRASS_COLOR_NOISE` | per-biome `PerlinNoise` for grass-color jitter |
 | `DOUBLE_PLANT_GENERATOR` | a shared `DoublePlantFeature` (sunflowers / tall flowers) |
 
-The constructor (`Biome.cpp:127`) registers `this` into `biomes[id]`, builds a
+The constructor (`Biome.cpp:158`) registers `this` into `biomes[id]`, builds a
 `BiomeDecorator`, and seeds a **default mob spawn table** every biome inherits:
 sheep/pig/cow/chicken as friendlies; spider/zombie/skeleton/creeper/slime plus a
 rare enderman and witch as enemies; squid as a water friendly; bat as ambient
-(`Biome.cpp:157-176`). Subclasses append or override these.
+(`Biome.cpp:188-203`). Subclasses append or override these.
 
 ### Fluent setup
 
@@ -220,7 +220,7 @@ diorite / andesite ore features** (`graniteOreFeature`, `dioriteOreFeature`,
 Counts (`flowerCount`, `grassCount`, `treeCount`, `doublePlantCount`,
 `waterlilyCount`, `reedsCount`, `cactusCount`, etc.) are tuned per biome. The base
 `Biome` constructor sets `flowerCount = 2`, `grassCount = 1` as defaults
-(`Biome.cpp:151-152`). The `TheEndBiomeDecorator` variant handles the featureless
+(`Biome.cpp:185-186`). The `TheEndBiomeDecorator` variant handles the featureless
 End.
 
 ## BiomeSource & FixedBiomeSource

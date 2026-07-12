@@ -27,8 +27,8 @@ marshals arguments (wide→UTF-8, coords, ids) and calls the matching managed
 calls `FourKit.FireEvent(evt)`. `FourKit.FireEvent` forwards to `EventDispatcher.Fire`, which:
 
 - reads a lock-free `volatile Dictionary<Type, RegisteredHandler[]>` snapshot (`EventDispatcher.cs:26,88-91`),
-- runs handlers sorted by `EventPriority` (`Lowest=0 → Monitor=5`, `EventHandlerAttribute.cs:39-56`),
-- skips a handler when the event is already cancelled and the handler did **not** set `IgnoreCancelled = true` (`EventDispatcher.cs:99`).
+- runs handlers sorted by `EventPriority` (`Lowest=0 → Monitor=5`, `EventHandlerAttribute.cs:27-40`),
+- skips a handler when the event is already cancelled and the handler **did** set `IgnoreCancelled = true` (`EventDispatcher.cs:99`).
 
 For a **cancellable** event, after the managed handlers run, the `Fire*` C++ function reads back
 `isCancelled()` (returned to native as `cancelled != 0`) plus any mutated out-params (chat text,

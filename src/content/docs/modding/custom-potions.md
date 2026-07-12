@@ -34,7 +34,7 @@ Effects live on the `MobEffect` base class (`MobEffect.h`): a
 `static MobEffect *effects[NUM_EFFECTS]` array (`NUM_EFFECTS = 32`) plus 23 named
 statics (`movementSpeed`…`saturation`) and 8 `reserved_24..31` free slots.
 Registration is one fluent line per effect in `MobEffect::staticCtor()`. Water
-Breathing (id 13) is a clean template (`MobEffect.cpp:60`):
+Breathing (id 13) is a clean template (`MobEffect.cpp:62`):
 
 ```cpp
 waterBreathing = (new MobEffect(13, false, eMinecraftColour_Effect_WaterBreathing))
@@ -54,7 +54,7 @@ methods:
 | `setDurationModifier(d)` | scales default duration (harmful effects default to 0.5) |
 | `addAttributeModifier(attr, modifierId, amount, op)` | attach a `SharedMonsterAttributes` modifier (e.g. Jump/Speed/Strength) |
 
-Jump Boost (id 8) is registered at `MobEffect.cpp:55`:
+Jump Boost (id 8) is registered at `MobEffect.cpp:57`:
 
 ```cpp
 jump = (new MobEffect(8, false, eMinecraftColour_Effect_Jump))
@@ -98,12 +98,12 @@ brew so netherwart can't "reset" it). Modifier masks: `MASK_SPLASH` (`0x4000`),
 `MACRO_MAKEPOTION_AUXVAL(type, strength, effect)`.
 
 :::caution[The mask values are fragile]
-The TU31 author left a warning in `Potion_Macros.h:18` when adding Jump Boost /
+The TU31 author left a warning in `Potion_Macros.h:20-24` when adding Jump Boost /
 Water Breathing:
 
 > *"if youre adding a new potion, i genuinely hope you know what youre doing … i
 > legit had to guess for both waterbreathing and jump boost. dont do 0x2007 or
-> 0x200D btw, they show up as 'artless potion' and 'clear potion' respectively."*
+> 0x200D btw, they show up as 'artless potion' and 'clear potion' resectively."*
 
 The low nibble is an effect discriminator that the brewing math also reads.
 **Don't invent a new mask value out of thin air** — pick one whose bits round-trip
@@ -114,7 +114,9 @@ For Potion of Haste you'd add, alongside the others:
 
 ```cpp
 // Potion_Macros.h
-#define MASK_HASTE  0x200D   // <-- example only; verify it round-trips (see caution)
+#define MASK_HASTE  0x200?   // <-- pick a free low nibble; NOT 0x2007 or 0x200D
+                             //     (both are called out in the caution above), and
+                             //     verify it round-trips through the brewing formula
 
 #define MACRO_POTION_IS_HASTE(aux)  ((aux & 0x200F) == MASK_HASTE)
 ```

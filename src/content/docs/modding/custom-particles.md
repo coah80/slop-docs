@@ -45,7 +45,7 @@ returns `nullptr`. Do **not** try to register through it; the live path is the
 ## Step 1 — add the shared enum value
 
 In `Minecraft.World/ParticleTypes.h`, add your type to the `ePARTICLE_TYPE`
-enum, next to the other 4J-added ones (barrier is at `ParticleTypes.h:38`):
+enum, next to the other 4J-added ones (barrier is at `ParticleTypes.h:40`):
 
 ```cpp
 enum ePARTICLE_TYPE

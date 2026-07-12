@@ -42,12 +42,13 @@ switch statements that pack/unpack the right field per `eGameSetting`. Two
 examples from the source:
 
 ```cpp
-// scalar byte — Consoles_App.cpp:2076 (Gamma)
+// scalar byte — Consoles_App.cpp:2079 (Gamma)
 GameSettingsA[iPad]->ucGamma = ucVal;
 
 // bitfield slice — Consoles_App.cpp:2065 (RenderDistance, 8 bits at <<16)
+unsigned int val = ucVal & 0xFF;
 GameSettingsA[iPad]->uiBitmaskValues &= ~(0xFF << 16);
-GameSettingsA[iPad]->uiBitmaskValues |= (ucVal & 0xFF) << 16;
+GameSettingsA[iPad]->uiBitmaskValues |= val << 16;
 ```
 
 `GetGameSettings` returns `0` for an out-of-range pad or a null struct

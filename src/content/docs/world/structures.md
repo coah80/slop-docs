@@ -1,6 +1,6 @@
 ---
 title: Structures & Features
-description: The Feature and StructureFeature systems — ~40 vegetation/terrain features, the six registered structure sets, and the new Ocean Monument (1660-line OceanMonumentPieces) plus the spruce swamp hut and melon/double-plant features.
+description: The Feature and StructureFeature systems — ~40 vegetation/terrain features, the six registered structure sets, and the new Ocean Monument (1657-line OceanMonumentPieces) plus the spruce swamp hut and melon/double-plant features.
 ---
 
 neoLegacy splits world decoration into two layers:
@@ -151,12 +151,12 @@ the `OceanMonumentPieces::loadStatic()` call) is new in commit `720e1a77`.
 ## Ocean Monument (new)
 
 The Ocean Monument is the flagship neoLegacy structure addition
-(`OceanMonumentFeature.*`, `OceanMonumentPieces.*`; the piece file is **1660
+(`OceanMonumentFeature.*`, `OceanMonumentPieces.*`; the piece file is **1657
 lines**). It is a direct port of Java's `StructureOceanMonument`.
 
 ### Placement
 
-`OceanMonumentFeature::_init()` (`OceanMonumentFeature.cpp:11`):
+`OceanMonumentFeature::_init()` (`OceanMonumentFeature.cpp:10`):
 
 ```cpp
 spacing   = 32;
@@ -175,7 +175,7 @@ returns it for spawning when a position is inside the monument
 ### Pieces
 
 `OceanMonumentPieces` (`OceanMonumentPieces.h:6`) builds the monument from a graph
-of room definitions. The `RoomDefinition` struct (`OceanMonumentPieces.h:22`)
+of room definitions. The `RoomDefinition` struct (`OceanMonumentPieces.h:19`)
 models each cell's six neighbours, openings, and reachability — the same
 `func_175957_a`-style connectivity solve as Java (the original obfuscated field
 names are preserved in comments). The piece classes, all `: public Piece`:

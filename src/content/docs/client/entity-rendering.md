@@ -43,9 +43,9 @@ renderers[eTYPE_GIANT]   = new GiantMobRenderer(new ZombieModel(), 0.5f, 6);
 renderers[eTYPE_ENTITY]  = new DefaultRenderer();   // fallback
 ```
 
-Some keys deliberately share a renderer instance — `eTYPE_PIGZOMBIE` reuses
-`ZombieRenderer`, `eTYPE_ELDER_GUARDIAN` reuses `GuardianRenderer`, and every
-minecart variant (`eTYPE_MINECART_RIDEABLE`/`_FURNACE`/`_CHEST`/`_HOPPER`) maps
+Some keys deliberately reuse the same renderer *class* — `eTYPE_PIGZOMBIE`
+gets its own `ZombieRenderer`, `eTYPE_ELDER_GUARDIAN` its own `GuardianRenderer`,
+and every minecart variant (`eTYPE_MINECART_RIDEABLE`/`_FURNACE`/`_CHEST`/`_HOPPER`) maps
 to one `MinecartRenderer`. Thrown items are all `ItemSpriteRenderer` bound to a
 source `Item` (snowball, ender pearl, egg, potion, firework…),
 `EntityRenderDispatcher.cpp:152-158`.
@@ -81,7 +81,7 @@ registrations (`TileEntityRenderDispatcher.cpp:40-49`):
 ## The EntityRenderer hierarchy
 
 `EntityRenderer` (`EntityRenderer.h:22`) is the abstract root. It holds up to
-three model slots (`model`, `modelWide`, `modelSlim`, `EntityRenderer.h:34-35`)
+three model slots (`model`, `modelWide`, `modelSlim`, `EntityRenderer.h:33-35`)
 and a `TileRenderer* tileRenderer`, and declares the shadow/flame/texture
 plumbing shared by every renderer:
 
@@ -147,7 +147,7 @@ with rotation and offset and child parts. Two bases cover almost everything:
 - `QuadrupedModel` (`QuadrupedModel.cpp`) — the four-legged base for cow, pig,
   sheep, wolf, etc.
 
-There are ~47 `*Model` source files — a model per mob (`ZombieModel`,
+There are ~45 `*Model` source files — a model per mob (`ZombieModel`,
 `CreeperModel`, `SpiderModel`, `EndermanModel`, `GhastModel`, `DragonModel`,
 `WitherBossModel`, `CowModel`, `SheepModel` + `SheepFurModel`, `ModelHorse`,
 `SquidModel`, `SnowManModel`, `VillagerModel`, `ArmorStandModel`, `BoatModel`,

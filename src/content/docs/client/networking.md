@@ -51,7 +51,7 @@ stores them as a `vector<ClientConnection*> connections`
 
 With multiple local connections into the same world, shared entity/chunk state
 would be applied several times. neoLegacy adds a **primary-connection** filter
-(`ClientConnection.cpp:176-214`):
+(`ClientConnection.cpp:196-204`):
 
 ```cpp
 bool ClientConnection::shouldProcessForEntity(int entityId) const
@@ -73,14 +73,14 @@ does the same for chunk coordinates via a packed `chunkKey(x, z)`
 
 #### neoLegacy: fork-server protocol & custom encryption
 
-The custom-payload handler recognises two neoLegacy control channels
-(`ClientConnection.cpp:3958-3966`):
+The custom-payload handler recognises three neoLegacy control channels
+(`ClientConnection.cpp:3937-3966`):
 
 - **`MC|ForkHello`** — sets `m_isForkServer = true`, enabling a
   "render-distance-independent player list" (a fork/dedicated server can report
   players the client hasn't loaded chunks for). Without it, the player list falls
   back to the old behaviour (`ClientConnection.cpp:1178-1180`).
-- **`MC|PlayerLeave`** — cleans up an `IQNet` slot when a fork-server player
+- **`MC|ForkPLeave`** — cleans up an `IQNet` slot when a fork-server player
   leaves, so they disappear from the Tab list.
 - **`MC|CKey`** — a client cipher-key ack (`SendAckAndActivateClientSendCipher`),
   part of a neoLegacy encrypted-channel handshake not present in vanilla TU19.

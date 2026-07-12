@@ -16,7 +16,7 @@ Files: `Packet.h`, `Packet.cpp`, `PacketListener.h`, `PacketListener.cpp`,
 ## The Packet base class
 
 `class Packet` (`Packet.h:15`) is abstract. Every concrete packet must implement
-four pure-virtual methods (`Packet.h:73`, `:94-97`):
+five pure-virtual methods (`Packet.h:73`, `:94-97`):
 
 | Method | Purpose |
 |--------|---------|
@@ -71,8 +71,10 @@ The five booleans/flags after the ID control routing:
 
 `map()` inserts the factory into `idToCreateMap` and, per flag, into the three
 `unordered_set<int>` accept-lists (`Packet.cpp:203-214`). IDs are **hard-coded and
-non-sequential** — there is no auto-increment. The registry currently holds **97
-mappings**.
+non-sequential** — there is no auto-increment. `staticCtor()` has **97 `map()`
+calls**, but ID `103` is registered in both arms of an `#ifndef _CONTENT_PACKAGE`
+conditional (`Packet.cpp:95-101`), so only **96 distinct IDs** are mapped in any
+one build.
 
 Note that in neoLegacy `map()` does **not** enforce uniqueness: the duplicate-ID /
 duplicate-class checks are compiled out under `#if 0` (`Packet.cpp:184-187`), and
@@ -81,7 +83,7 @@ dead code in normal builds.
 
 ### ID ranges (summary)
 
-The full 97-entry table lives in the reference section — see
+The full ID table lives in the reference section — see
 [Packet IDs](/slop-docs/reference/packet-ids/). The IDs cluster into blocks
 (`Packet.cpp:22-152`):
 
@@ -235,4 +237,4 @@ frozen deliberately until a proper versioning scheme exists.
 - [Commands](/slop-docs/world/commands/) — how `GameCommandPacket` (167) drives the dispatcher.
 - [Container Menus](/slop-docs/world/containers/) — the 100–108 container packet family.
 - [Game Rules](/slop-docs/world/gamerules/) — `UpdateGameRuleProgressPacket` (158).
-- [Packet IDs](/slop-docs/reference/packet-ids/) — the full 97-entry table.
+- [Packet IDs](/slop-docs/reference/packet-ids/) — the full packet ID table.

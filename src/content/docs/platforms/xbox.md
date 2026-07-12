@@ -7,7 +7,7 @@ neoLegacy carries the original 4J Studios Xbox source for both console generatio
 `Minecraft.Client/Xbox/` (Xbox 360, XDK) and `Minecraft.Client/Durango/` (Xbox One, XDK-Durango).
 Both trees are **catalogued but not buildable** in this repo: only the `Windows64` platform has a
 working build path (see [Windows / PC](/slop-docs/platforms/windows64/) and
-[Building neoLegacy](/slop-docs/overview/building/) if present). The Xbox code is best treated as
+[Building neoLegacy](/slop-docs/overview/building/)). The Xbox code is best treated as
 historical / reference source — it is where much of the shared client scaffolding originated.
 
 ## At a glance

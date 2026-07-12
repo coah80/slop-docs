@@ -189,7 +189,7 @@ Goals are added in the mob's constructor via its two selectors. Every mob has:
 - **`targetSelector`** — target-acquisition goals (`HurtByTargetGoal`,
   `NearestAttackableTargetGoal`, …). These set the value `getTarget()` returns.
 
-`addGoal(int prio, Goal *goal)` (`GoalSelector.h:32`) takes an integer priority
+`addGoal(int prio, Goal *goal)` (`GoalSelector.h:31`) takes an integer priority
 where **lower means more important**. Here is the real Endermite constructor
 (`Endermite.cpp:48`) — a textbook layout:
 
@@ -238,7 +238,7 @@ model becomes clear:
      **cannot coexist**.
    - Against a **more important** running goal (lower prio number): the new goal
      is blocked unless that goal `canInterrupt()`.
-4. **"Cannot coexist" = they share a control-flag bit** (`GoalSelector.cpp:146`):
+4. **"Cannot coexist" = they share a control-flag bit** (`canCoExist`, `GoalSelector.cpp:148`):
 
    ```cpp
    return (goalA->getRequiredControlFlags() & goalB->getRequiredControlFlags()) == 0;

@@ -17,7 +17,7 @@ Files: `Common/Audio/Consoles_SoundEngine.h`/`.cpp`,
 
 ## ConsoleSoundEngine — the abstract interface
 
-`ConsoleSoundEngine` (`Consoles_SoundEngine.h:40`) is the pure-virtual base every
+`ConsoleSoundEngine` (`Consoles_SoundEngine.h:42`) is the pure-virtual base every
 platform satisfies. Its virtuals:
 
 | Method | Purpose |
@@ -107,7 +107,7 @@ Because the shipped `.msscmp` banks are opaque, `play()` resolves a sound name t
 a loose file on disk instead. It builds `Windows64Media/Sound/Minecraft/<name>`
 and probes extensions in order **`.ogg`, `.wav`, `.mp3`** (`SoundEngine.cpp:509`).
 If no bare file exists it looks for **numbered variants** (`<name>1.ogg`,
-`<name>2.ogg`, … up to 32) and picks one at random — this is how multi-variant
+`<name>2.ogg`, … up to 31) and picks one at random — this is how multi-variant
 sounds like footsteps and dig sounds are chosen (`SoundEngine.cpp:527-551`).
 
 Base search paths are per-platform statics; on Windows64 they are

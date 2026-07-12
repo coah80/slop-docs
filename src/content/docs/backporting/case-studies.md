@@ -93,7 +93,7 @@ requirement) is one `ADD_OBJECT` pair in `OreRecipies::_init()`:
 
 ```cpp
 ADD_OBJECT(map[8], Tile::slimeBlock);
-ADD_OBJECT(map[8], new ItemInstance(Item::slimeBall, 9));
+ADD_OBJECT(map[8], new ItemInstance(Item::slime_ball, 9));
 ```
 
 **Lesson:** the `feat` commit establishes the block and its riskiest system

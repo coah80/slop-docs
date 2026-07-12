@@ -74,7 +74,7 @@ The codes (documented in-source at `Recipes.cpp:1298-1305`):
 
 So the type string is a compact schema. For example `L"sczg"` means: one pattern
 row (`s`), one key char (`c`), one item instance bound to it (`z`), and a group
-(`g`). The plank recipe at `Recipes.cpp:50` reads:
+(`g`). The plank recipe at `Recipes.cpp:51` reads:
 
 ```cpp
 addShapedRecipy(new ItemInstance(Tile::wood, 4, 0), // result: 4 planks

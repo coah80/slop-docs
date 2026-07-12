@@ -255,7 +255,7 @@ code uses it:
           Mth::floor(x), Mth::floor(y), Mth::floor(z), frostWalkerLevel);
   ```
 
-  `FrostWalkerEnchantment::freezeNearby` (`FrostWalkerEnchantment.cpp:31`) scans
+  `FrostWalkerEnchantment::freezeNearby` (`FrostWalkerEnchantment.cpp:29`) scans
   a `2 + level` radius under the entity and converts source-water blocks to
   `Tile::frosted_ice` — a concrete example of an enchant driving a
   [block](/slop-docs/world/blocks/) placement.

@@ -317,8 +317,9 @@ flag byte carrying small/no-gravity/show-arms/no-baseplate/marker bits
 One `Guardian` class (`Guardian.cpp`) covers both; the elder flag is stored in
 synched data and read via `isElder()` (`Guardian.cpp:90`), persisted as the
 `L"Elder"` boolean tag (`:85`). Elder vs normal changes size (1.9975 vs 0.85,
-`Guardian.cpp:44`), health, extra attack damage (`+2`, `:329`), and the mining-
-fatigue curse it applies (`:259`, sound `eSoundType_MOB_ELDER_GUARDIAN_CURSE`).
+`Guardian.cpp:44`), health, extra attack damage (elder base 8.0 vs 6.0, `:105`),
+and the mining-fatigue curse it applies (`digSlowdown`, `:281`, sound
+`eSoundType_MOB_ELDER_GUARDIAN_CURSE` at `:616`).
 It registers under `eTYPE_GUARDIAN` (id 68) and `eTYPE_ELDER_GUARDIAN` (id 4),
 both pointing at `Guardian::create`. **Caveat:** the constructor
 (`Guardian.cpp:37`) wires attributes and size but installs **no goals** — the

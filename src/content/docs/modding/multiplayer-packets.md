@@ -103,7 +103,7 @@ public:
 
 public:
     static shared_ptr<Packet> create() { return std::make_shared<PlayerPingPacket>(); }
-    virtual int getId() { return 42; }   // <-- see Step 3 for id choice
+    virtual int getId() { return 45; }   // <-- see Step 3 for id choice
 };
 ```
 
@@ -178,13 +178,13 @@ static void map(int id, bool receiveOnClient, bool receiveOnServer,
 ```
 
 Add a line alongside the existing mappings. **Pick a free id** — the map is
-hard-coded and sparse (gaps exist, e.g. 42–43 and 45–49 are unused near the
-entity-sync block, `Packet.cpp:71-76`). Do **not** reuse an assigned id. For a
-server→client entity packet, register it like the other entity-sync packets
-(client-received, not server-received):
+hard-coded and sparse (gaps exist, e.g. 45–49 are unused after the
+entity-sync block that ends at id 44, `Packet.cpp:72-74`). Do **not** reuse an
+assigned id. For a server→client entity packet, register it like the other
+entity-sync packets (client-received, not server-received):
 
 ```cpp
-map(42, true, false, false, true, typeid(PlayerPingPacket), PlayerPingPacket::create);
+map(45, true, false, false, true, typeid(PlayerPingPacket), PlayerPingPacket::create);
 ```
 
 The five booleans/flags:

@@ -105,7 +105,7 @@ library subtree has no build script. And the server targets are gated behind
 `PLATFORM_NAME STREQUAL "Windows64"` anyway (`CMakeLists.txt:160`).
 
 **Aspirational vs functional.** The console C++ is real and complete — the per-platform source
-*manifests* under `Minecraft.Client/cmake/sources/` are full file lists (503-663 lines each), and the
+*manifests* under `Minecraft.Client/cmake/sources/` are full file lists (489-663 lines each), and the
 console directories contain genuine Sony NP / Xbox LIVE / XDK stacks. But they are **catalogued, not
 buildable**: no toolchain, no platform-lib CMake, and `COMPILE.md` documents only the Windows x64
 path. Treat the console trees as historical/reference source, not as shippable targets.

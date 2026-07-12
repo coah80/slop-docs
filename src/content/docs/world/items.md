@@ -215,11 +215,11 @@ Each digger family owns a **static diggable-block table** filled by its own
 `PickaxeItem::canDestroySpecial(tile)` layers the harvest-level gate on top:
 obsidian needs level 3 (diamond); diamond/emerald/gold ore and lit redstone ore
 need level ≥ 2; iron/lapis ore need level ≥ 1
-([`PickaxeItem.cpp:41`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/PickaxeItem.cpp#L41)).
+([`PickaxeItem.cpp:39`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/PickaxeItem.cpp#L39)).
 
 The `ShovelItem` also carries the **grass-path** interaction (TU31): right-clicking
 grass or dirt with a shovel converts it to `Tile::grass_path`
-([`ShovelItem.cpp:37`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ShovelItem.cpp#L37)).
+([`ShovelItem.cpp:30`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ShovelItem.cpp#L30)).
 
 Other tool-like items: **`BowItem`**, **`FishingRodItem`**, **`ShearsItem`**,
 **`FlintAndSteelItem`**, **`CarrotOnAStickItem`**, **`LeashItem`** (lead),

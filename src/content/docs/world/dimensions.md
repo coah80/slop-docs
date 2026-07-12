@@ -65,7 +65,7 @@ subclass** — it inherits every default from `Dimension`. That means:
 
 - `createRandomLevelSource()` (base, `Dimension.cpp:77`) returns a
   `FlatLevelSource` for `LevelType::lvl_flat`, otherwise a `RandomLevelSource`.
-- `Dimension::init()` (`Dimension.cpp:135`) builds a full **`BiomeSource`** (the
+- `Dimension::init()` (`Dimension.cpp:38`) builds a full **`BiomeSource`** (the
   GenLayer chain) — unless the world is flat, in which case it uses a
   `FixedBiomeSource` seeded from the flat generator's biome.
 - `isValidSpawn` requires the top block to be grass (`Dimension.cpp:107`).
@@ -138,7 +138,7 @@ creation, orthogonal to the dimension. `LevelType::staticCtor()`
 | `lvl_normal_1_1` | 8 | `default_1_1` | legacy generator; `setSelectableByUser(false)` |
 
 A dimension reads its `LevelType` from the level data in `Dimension::init(level)`
-(`Dimension.cpp:127`) and branches on it in `createRandomLevelSource()` and when
+(`Dimension.cpp:19`) and branches on it in `createRandomLevelSource()` and when
 building the biome source. `lvl_largeBiomes` and `lvl_customized` change the
 `zoomLevel` inside the GenLayer stack (see
 [World Generation](/slop-docs/world/worldgen/)).

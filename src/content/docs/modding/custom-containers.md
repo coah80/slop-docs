@@ -31,7 +31,7 @@ base. The members and methods you actually use:
 | `virtual void removed(shared_ptr<Player>)` | `:81` | on close (call base, then release container) |
 | `bool moveItemStackTo(stack, startSlot, endSlot, backwards)` | `:103` | helper for quickMove |
 | `virtual void addSlotListener(ContainerListener*)` | `:63` | server attaches its sync listener |
-| `virtual void broadcastChanges()` | `:65` | push slot changes to listeners |
+| `virtual void broadcastChanges()` | `:67` | push slot changes to listeners |
 
 Every container defines its slot layout with `static const int` slot-range
 constants so both the menu and the client scene agree on indices.

@@ -251,10 +251,10 @@ If you genuinely need a new mini-game verb:
    `eGameRuleType_Count` in `ConsoleGameRulesConstants.h` (same append rule as
    everywhere else — the enum is serialized by
    `ConsoleGameRules::write(dos, EGameRuleType)`, which just does
-   `dos->writeInt(eType)`, `ConsoleGameRulesConstants.h:109`).
+   `dos->writeInt(eType)`, `ConsoleGameRulesConstants.h:110`).
 2. Add any new attribute keys to `enum EGameRuleAttr` (again before
    `eGameRuleAttr_Count`); attributes are written offset past the type count
-   (`ConsoleGameRulesConstants.h:114-117`), so type and attribute ids must stay
+   (`ConsoleGameRulesConstants.h:113-116`), so type and attribute ids must stay
    stable.
 3. Create `YourRuleDefinition.h/.cpp` under `Common/GameRules/`, following an
    existing one like `CollectItemRuleDefinition.cpp` as the template.

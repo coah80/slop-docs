@@ -306,6 +306,6 @@ registration, texture/icon wiring, and localization), then reference its
 ## Could not verify
 
 - `MelonFeature`/`DoublePlantFeature` and `Feature`/`BiomeDecorator` are all
-  read directly from source. The `Tile::maxBuildHeight`/`genDepth`/`UPDATE_CLIENTS`
-  constants are used as the code uses them; their exact numeric values were not
-  re-read for this page (they're the standard 128-height LCE constants).
+  read directly from source. The constants are used exactly as the code uses
+  them: `Level::maxBuildHeight = 256` and `Level::genDepth = 128`
+  (`Level.h:75`/`:78`), and `Tile::UPDATE_CLIENTS` is the worldgen write flag.

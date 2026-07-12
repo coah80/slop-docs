@@ -38,7 +38,7 @@ neoLegacy stands on a chain of prior LCE reconstruction and backport projects. T
 
 | Project | Role in the lineage |
 |---|---|
-| **itsRevela / LCE-Revelations** | The stable base neoLegacy continues from. The internal CMake project name is still `LCE-Revelations`; `itsRevela`/`Revela` are the #2 committers. |
+| **itsRevela / LCE-Revelations** | The stable base neoLegacy continues from. The internal CMake project name is still `LCE-Revelations`; `itsRevela`/`Revela` are among the top committers (126 + 86 commits). |
 | **Patoke / LCERenewed** | Patches that required deep decompilation. |
 | **GabsPuNs / Project-Zenith** | Donated the **Classic Crafting** implementation (`IUIScene_ClassicCraftingMenu.cpp/.h`, added in `05d7ccb6 feat(TU31): classic crafting (#48)`). |
 | **rdust_dusted** (Discord) | The redesigned logo currently in use. |
@@ -87,4 +87,4 @@ Nightlies are produced by CI on every push to `main`; stable `v1.0.x` tags are c
 
 `git log --reverse` shows the repository's earliest commit is `def8cb41 "first commit"` by `daoge_cmd` on **2026-03-01**. This is a **squashed / re-rooted history**, not the genuine start of LCE reconstruction. neoLegacy's *tracked git history* begins 2026-03, but its *code lineage* is inherited from LCE-Revelations → LCERenewed and predates that date. Treat 2026-03-01 as the history-root date, not "the day the project was created."
 
-As of the snapshot these docs were written from, the tree had **1645 commits** with automated `github-actions` nightly commits as the single largest author, followed by the LCE-Revelations maintainer `itsRevela`/`Revela` and release owner `pieeebot`.
+As of the snapshot these docs were written from, the tree had **1645 commits**. By author count the largest is release owner `piebot`, followed closely by the automated `github-actions` nightly-commit bot, then `Fireblade` and the LCE-Revelations maintainer `itsRevela`/`Revela`.
