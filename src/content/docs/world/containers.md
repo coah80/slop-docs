@@ -1,250 +1,222 @@
 ---
 title: Container Menus
-description: Inventory management and container menu system in LCE.
+description: AbstractContainerMenu and the 14 menu classes in neoLegacy — slots, click handling, client/server sync, and the crafting-table menu.
 ---
 
-LCE uses a two-layer container system: **Container** objects hold the raw item data, and **AbstractContainerMenu** subclasses manage the GUI logic, slot layout, click handling, and sync between server and client.
+A **container menu** is the server-authoritative model behind every inventory GUI:
+chest, furnace, anvil, beacon, brewing stand, hopper, dispenser, villager trade,
+horse inventory, enchantment table, fireworks table, crafting table, and the
+player inventory itself. It owns the list of `Slot`s, validates clicks, and keeps
+client and server in sync. neoLegacy keeps the decompiled Java name
+`AbstractContainerMenu` (the old LCE `Container` name is used for the *storage*
+interface instead).
 
-## Container (data layer)
+Files: `AbstractContainerMenu.h`, `AbstractContainerMenu.cpp` (~23 KB), plus one
+`*Menu.{h,cpp}` per menu. Storage-side interfaces: `Container.h`,
+`WorldlyContainer.h`, `Hopper.h`, `CompoundContainer.h`.
 
-`Container` is the pure-virtual interface that every item-holding object implements. It defines the basic storage contract.
+## Base class — AbstractContainerMenu
 
-**Key constants and methods:**
+`class AbstractContainerMenu` (`AbstractContainerMenu.h:14`). It is abstract:
+`virtual bool stillValid(shared_ptr<Player>) = 0` (`:95`) forces every subclass to
+say when the menu should auto-close (player walked away, block broken).
 
-| Method | Purpose |
-|---|---|
-| `getContainerSize()` | Number of item slots |
-| `getItem(slot)` | Read an item from a slot |
-| `removeItem(slot, count)` | Split `count` items off a slot. Returns the removed items, or null if the slot is empty. All implementations include 4J's duplication fix: if the resulting count is 0 or less, returns null. |
-| `removeItemNoUpdate(slot)` | Remove the entire stack without triggering listeners |
-| `setItem(slot, item)` | Write an item into a slot. Clamps count to `getMaxStackSize()` if it exceeds it. |
-| `getMaxStackSize()` | Default is `LARGE_MAX_STACK_SIZE` (64) |
-| `getName()` | Returns a localization string ID for the container name |
-| `setChanged()` | Mark the container as dirty for saving |
-| `stillValid(player)` | Whether the player can still interact (usually a 64-block distance check: `distanceToSqr() > 8 * 8`) |
-| `startOpen()` / `stopOpen()` | Lifecycle hooks (used by chests for animation, empty in most other containers) |
+### Core state
 
-### Container implementations
+| Member | Type | Notes |
+|--------|------|-------|
+| `slots` | `vector<Slot *>` | the menu's slots, in order; owned/deleted by the menu |
+| `lastSlots` | `vector<shared_ptr<ItemInstance>>` | last-broadcast snapshot per slot |
+| `containerId` | `int` | window id for the network protocol |
+| `containerListeners` | `vector<ContainerListener*>` | who to notify on change |
+| `changeUid` | `short` | rolling transaction id for click acks |
+| `quickcraftSlots` | `unordered_set<Slot*>` | slots painted during a drag |
 
-| Class | Purpose | Notes |
-|---|---|---|
-| `SimpleContainer` | General-purpose fixed-size storage | Supports `ContainerListener` callbacks via `addListener()` / `removeListener()`. Has a `name` (localization ID), `size`, `items` array, and a `listeners` vector. |
-| `CraftingContainer` | 2D crafting grid | Wraps a width/height grid. Notifies its parent `AbstractContainerMenu` on changes via `slotsChanged()`. |
-| `ResultContainer` | Single-slot output | Used for crafting and repair results. |
-| `CompoundContainer` | Merges two containers | Delegates to `c1` and `c2` based on slot index. Used for double chests. If the slot index is less than `c1`'s size, reads from `c1`; otherwise reads from `c2` with an offset. |
-| `MerchantContainer` | Villager trade slots | 3 slots: two payment, one result. Calls `updateSellItem()` on changes. Tracks `activeRecipe` and `selectionHint`. |
-| `EnchantmentContainer` | Enchanting table input | Extends `SimpleContainer` with a max stack size of 1 and menu callbacks. |
-| `RepairContainer` | Anvil input slots | Extends `SimpleContainer`. Triggers `RepairMenu::createResult()` on changes via `enable_shared_from_this<RepairContainer>`. |
-| `PlayerEnderChestContainer` | Per-player ender chest | Extends `SimpleContainer`. Persists through NBT with `setItemsByTag()` / `createTag()`. Tracks the currently active `EnderChestTileEntity`. |
+### Click constants
 
-## AbstractContainerMenu (GUI layer)
-
-`AbstractContainerMenu` is the base class for all inventory screens. It owns a list of `Slot` objects, tracks last-known slot contents for change detection, and manages a list of `ContainerListener` observers.
-
-### Fields
-
-| Field | Type | Purpose |
-|---|---|---|
-| `slots` | `vector<Slot*>*` | All slots in the menu |
-| `lastSlots` | `vector<shared_ptr<ItemInstance>>*` | Snapshot of each slot's contents for change detection |
-| `containerId` | `int` | Menu ID for network sync |
-| `changeUid` | `short` | Backup/rollback version number (private) |
-| `m_bNeedsRendered` | `bool` | 4J addition: whether the UI needs a render update |
-| `containerListeners` | `vector<ContainerListener*>*` | Observers that get notified on changes |
-| `unSynchedPlayers` | `unordered_set<shared_ptr<Player>>` | Players whose client state is out of date |
-
-### Container ID constants
+Click behaviour is driven by a `clickType` enum baked into the base
+(`AbstractContainerMenu.h:19-25`):
 
 | Constant | Value | Meaning |
-|---|---|---|
-| `CONTAINER_ID_CARRIED` | -1 | The item on the cursor |
-| `CONTAINER_ID_INVENTORY` | 0 | The player's own inventory |
-| `CONTAINER_ID_CREATIVE` | -2 | Creative mode virtual inventory |
-| `CLICKED_OUTSIDE` | -999 | Click was outside the GUI window |
+|----------|-------|---------|
+| `CLICK_PICKUP` | 0 | normal pick-up / place |
+| `CLICK_QUICK_MOVE` | 1 | shift-click transfer |
+| `CLICK_SWAP` | 2 | hotbar swap |
+| `CLICK_CLONE` | 3 | middle-click clone (creative) |
+| `CLICK_THROW` | 4 | drop |
+| `CLICK_QUICK_CRAFT` | 5 | drag-distribute |
+| `CLICK_PICKUP_ALL` | 6 | double-click gather |
 
-### Click types
+Drag ("quick craft") state uses `QUICKCRAFT_TYPE_CHARITABLE`/`_GREEDY` and the
+`QUICKCRAFT_HEADER_START`/`_CONTINUE`/`_END` phase constants (`:27-31`). Clicking
+empty space uses the sentinel `SLOT_CLICKED_OUTSIDE = -999` (`:17`).
 
-| Constant | Value | Behavior |
-|---|---|---|
-| `CLICK_PICKUP` | 0 | Normal left/right click to pick up or place items |
-| `CLICK_QUICK_MOVE` | 1 | Shift-click to transfer between sections |
-| `CLICK_SWAP` | 2 | Number-key swap with hotbar |
-| `CLICK_CLONE` | 3 | Middle-click clone (creative mode only) |
+The three `CONTAINER_ID_*` constants are a **4J addition** (`:34-36`):
+`CONTAINER_ID_CARRIED = -1`, `CONTAINER_ID_INVENTORY = 0`, `CONTAINER_ID_CREATIVE
+= -2` — added by "4J Stu" to fix a bug where items picked up while the creative
+menu was open would overwrite creative-menu slots.
 
-### Core methods
-
-| Method | Purpose |
-|---|---|
-| `addSlot(Slot*)` | Registers a slot, giving it a sequential `index`. Returns the slot pointer. |
-| `addSlotListener(ContainerListener*)` | Adds a listener and immediately sends it the current state of all slots |
-| `getItems()` | Returns the `lastSlots` vector |
-| `sendData(id, value)` | Sends a data value to all listeners via `ContainerListener::dataChanged()` |
-| `broadcastChanges()` | Compares each slot against `lastSlots` using `ItemInstance::matches()`. For any changed slot, fires `ContainerListener::slotChanged()` and updates the snapshot. Resets `m_bNeedsRendered`. |
-| `needsRendered()` | Returns `m_bNeedsRendered` (4J addition) |
-| `clickMenuButton(player, buttonId)` | Virtual. Used by enchanting and beacon menus for button-based interactions. Returns false by default. |
-| `getSlotFor(container, index)` | Finds a slot by its backing container and index using `Slot::isAt()` |
-| `getSlot(index)` | Direct slot access by menu index |
-| `quickMoveStack(player, slotIndex)` | Virtual. Subclasses override this to define shift-click transfer rules between slot regions. |
-| `clicked(slotIndex, buttonNum, clickType, player)` | The main click dispatcher. Handles pickup, quick-move, swap, and clone logic. Manages carried items through the player's `Inventory`. Returns the item that was in the slot before the click. |
-| `mayCombine(slot, item)` | Hook for dyeable armor and damaged item combination (4J addition). Returns false by default. |
-| `loopClick(slotIndex, buttonNum, quickKeyHeld, player)` | Virtual. For iterating click behavior (protected). |
-| `removed(player)` | Drops any carried item when the menu closes |
-| `slotsChanged()` | Virtual. Called when a backing container changes. 4J simplified this to take no arguments (used to take a `Container*`). |
-| `setItem(slot, item)` | Sets a specific slot's contents |
-| `setAll(items)` | Sets all slot contents from an array |
-| `setData(id, value)` | Virtual. Sets a data value and notifies listeners. |
-| `backup(inventory)` | Creates a `MenuBackup` snapshot and returns the `changeUid` |
-| `isSynched(player)` / `setSynched(player, bool)` | Manage the `unSynchedPlayers` set |
-| `stillValid(player)` | Pure virtual. Each subclass defines the distance/validity check. |
-| `moveItemStackTo(itemStack, start, end, backwards)` | Helper that moves items into a slot range, first trying to stack with existing items, then filling empty slots. The `backwards` flag reverses the scan order. Returns true if any items were moved. |
-| `isOverrideResultClick(slotNum, buttonNum)` | Virtual. Returns false by default. |
-| `getSize()` | 4J addition: returns the slot count as `unsigned int` |
-
-### Synchronization
-
-The menu tracks `unSynchedPlayers`, a set of players whose client state is out of date. `isSynched()` and `setSynched()` control this flag. Change detection uses `ItemInstance::matches()` to compare current slot contents against `lastSlots` snapshots.
-
-`MenuBackup` provides transactional rollback support, storing snapshots keyed by `changeUid`. It supports `save()`, `rollback()`, and `deleteBackup()`.
-
-## Slot
-
-`Slot` connects a `Container` position to a screen coordinate. Each slot holds a reference to its parent container, a slot index, and an `(x, y)` position for rendering.
-
-**Fields:**
-
-| Field | Type | Purpose |
-|---|---|---|
-| `container` | `shared_ptr<Container>` | The backing container |
-| `slot` | `int` | The slot index within the container (private) |
-| `index` | `int` | The slot's position in the menu's slot list |
-| `x`, `y` | `int` | Screen position for rendering |
-
-**Key methods:**
+### Key methods
 
 | Method | Purpose |
-|---|---|
-| `mayPlace(item)` | Whether the item can go here (returns true by default, overridden for type-restricted slots) |
-| `mayPickup(player)` | Whether the player can take the item out (returns true by default) |
-| `getMaxStackSize()` | Stack limit for this slot (delegates to container by default) |
-| `set(item)` / `getItem()` | Read/write the slot contents through the backing container |
-| `hasItem()` | Whether the slot is non-empty |
-| `remove(count)` | Split items off the slot via `container->removeItem()` |
-| `onTake(player, item)` | Callback after a player takes items (used for achievements, XP drops) |
-| `onQuickCraft(picked, original)` | Called during quick-craft to track amounts |
-| `checkTakeAchievements(picked)` | Protected. Fires achievement checks after taking items. |
-| `swap(other)` | Swap contents with another slot |
-| `mayCombine(item)` | 4J addition for item combination support (returns false by default) |
-| `combine(item)` | 4J addition that does the combination (returns the item unchanged by default) |
-| `isAt(container, index)` | Identity check: returns true if this slot's backing container and slot index match |
-| `setChanged()` | Calls `container->setChanged()` |
-| `getNoItemIcon()` | Returns the icon to show in an empty slot (null by default) |
+|--------|---------|
+| `addSlot(Slot*)` | append a slot, assign its `index`, grow `lastSlots` |
+| `clicked(slot,button,clickType,player,looped)` | the master click dispatcher (4J added the `looped` param) |
+| `quickMoveStack(player,slot)` | shift-click transfer logic (per-menu override) |
+| `broadcastChanges()` | diff slots vs `lastSlots`, notify listeners |
+| `sendData(id,value)` | push a scalar (e.g. furnace burn time) to listeners |
+| `moveItemStackTo(stack,start,end,backwards)` | helper for quick-move |
+| `stillValid(player)` | **pure virtual** — close condition |
+| `isValidIngredient(item,slotId)` | 4J-added crafting-input predicate |
 
-Specialized slot subclasses exist within menus. For example, `BrewingStandMenu::PotionSlot` only allows bottles and caps stack size at 1, while `BrewingStandMenu::IngredientsSlot` only accepts valid brewing ingredients.
+`clicked()` gained a `looped` parameter in neoLegacy (`:73`) and a protected
+`loopClick()` helper (`:78`) to support holding a button to repeat a click — a
+console-controller affordance absent from the PC Java original.
 
-## Menu subclasses
+## Client / server sync
 
-### InventoryMenu
+Menus are server-authoritative. A `ContainerListener` (the connected player's
+server handler) is registered via `addSlotListener()`, which immediately pushes
+the full contents and then calls `broadcastChanges()`
+(`AbstractContainerMenu.cpp:43-51`).
 
-The player's own inventory screen. Has a 2x2 crafting grid, 4 armor slots, 27 main inventory slots, and 9 hotbar slots.
+`broadcastChanges()` (`AbstractContainerMenu.cpp:77`) diffs every slot against its
+`lastSlots` snapshot and only emits changed slots:
 
-| Region | Constant | Range |
-|---|---|---|
-| Result | `RESULT_SLOT` | 0 |
-| Crafting grid | `CRAFT_SLOT_START` .. `CRAFT_SLOT_END` | 1-4 |
-| Armor | `ARMOR_SLOT_START` .. `ARMOR_SLOT_END` | 5-8 |
-| Main inventory | `INV_SLOT_START` .. `INV_SLOT_END` | 9-35 |
-| Hotbar | `USE_ROW_SLOT_START` .. `USE_ROW_SLOT_END` | 36-44 |
+```cpp
+if (!ItemInstance::matches(expected, current))
+{
+    expected = (current == nullptr || current->count == 0) ? nullptr : current->copy();
+    lastSlots[i] = expected;
+    m_bNeedsRendered = true;
+    for (auto& it : containerListeners)
+        it->slotChanged(this, i, expected);
+}
+```
 
-Overrides `slotsChanged()` to re-check crafting recipes. Supports `mayCombine` for dyeable armor.
+The `count == 0` guard is a **4J fix** (comment at `:85`) for an anvil bug where a
+broadcast fires mid-quick-move before a slot is nulled. `sendData()` broadcasts
+scalar fields (`:69`) — furnace lit time, anvil cost, beacon levels — separately
+from item contents. `needsRendered()` (`:99`) is a 4J-added client-side dirty-flag
+poll used by the XUI renderer.
 
-### CraftingMenu
+### Container packet family
 
-The 3x3 crafting table screen. Tied to a world position for the `stillValid()` distance check. Drops crafting grid contents on close through `removed()`.
+Sync rides on a fixed set of packets (`getId()` values read from each header):
 
-### FurnaceMenu
+| Packet | ID | Direction / purpose |
+|--------|----|--------------------|
+| `ContainerOpenPacket` | 100 | server → client: open GUI (`containerId`, `type`, title, size) |
+| `ContainerClosePacket` | 101 | close the window |
+| `ContainerClickPacket` | 102 | client → server: `slotNum`, `buttonNum`, `clickType`, carried item, `uid` |
+| `ContainerSetSlotPacket` | 103 | server → client: one slot changed |
+| `ContainerSetContentPacket` | 104 | server → client: full contents |
+| `ContainerSetDataPacket` | 105 | server → client: scalar `(id, value)` |
+| `ContainerAckPacket` | 106 | server → client: accept/reject a click `uid` |
+| `ContainerButtonClickPacket` | 108 | client → server: a menu button (enchant slot, etc.) |
 
-Wraps a `FurnaceTileEntity`. Three data values are tracked and broadcast to listeners:
+`ContainerOpenPacket` carries a `type` discriminator selecting which GUI to build
+(`ContainerOpenPacket.h:9-26`):
 
-| Data ID | Meaning |
-|---|---|
-| 0 | `tickCount` (cook progress) |
-| 1 | `litDuration` (total fuel time) |
-| 2 | `litTime` (remaining fuel time) |
+| Type | Value | | Type | Value |
+|------|-------|---|------|-------|
+| `CONTAINER` | 0 | | `REPAIR_TABLE` | 8 |
+| `WORKBENCH` | 1 | | `HOPPER` | 9 |
+| `FURNACE` | 2 | | `DROPPER` | 10 |
+| `TRAP` | 3 | | `HORSE` | 11 |
+| `ENCHANTMENT` | 4 | | `FIREWORKS` | 12 *(4J)* |
+| `BREWING_STAND` | 5 | | `BONUS_CHEST` | 13 *(4J)* |
+| `TRADER_NPC` | 6 | | `LARGE_CHEST` | 14 *(4J)* |
+| `BEACON` | 7 | | `ENDER_CHEST` | 15 *(4J)* |
 
-Shift-click logic routes fuel items to the fuel slot, smeltable items to the ingredient slot, and results to the player inventory.
+Plus `MINECART_CHEST = 16` and `MINECART_HOPPER = 17`, all marked "4J Added"
+(`ContainerOpenPacket.h:21-26`) — these open-types don't exist in the PC Java
+protocol and were added for LCE's minecart and fireworks containers.
 
-### BrewingStandMenu
+## Slots
 
-Wraps a `BrewingStandTileEntity`. Uses custom slot classes:
+Each menu builds its layout by `addSlot()`-ing `Slot` objects in a fixed order,
+then exposing named **slot-range constants** so the renderer and quick-move logic
+can reason about regions. The universal convention across menus: content/result
+slots first, then the 27-slot inventory (`INV_SLOT_START..INV_SLOT_END`), then the
+9-slot hotbar (`USE_ROW_SLOT_START..USE_ROW_SLOT_END`).
 
-- **`PotionSlot`**: Only takes potion bottles, max stack 1. Fires an achievement on take.
-- **`IngredientsSlot`**: Only takes valid brewing ingredients, max stack 1.
+Menus frequently define **custom Slot subclasses** with placement rules:
+`BeaconMenu::PaymentSlot` (only accepts emerald/diamond/gold/iron),
+`BrewingStandMenu::PotionSlot` / `IngredientsSlot`,
+`HorseSaddleSlot` / `HorseArmorSlot`, and the anvil/repair `RepairResultSlot`.
 
-Broadcasts `brewTime` as data ID 0.
+## The 14 menus
 
-### EnchantmentMenu
+All derive from `AbstractContainerMenu`. Slot-range constants are read directly
+from each header.
 
-Single input slot (`INGREDIENT_SLOT` = 0, max stack 1). Followed by player inventory slots starting at `INV_SLOT_START` (1) through hotbar ending at `USE_ROW_SLOT_END`.
+| Menu | Opens from | Content slots |
+|------|-----------|---------------|
+| `InventoryMenu` | player inventory | result 0, craft 1-4 (2×2), armor, inv, hotbar |
+| `ContainerMenu` | chest / large chest | N rows of container + inv + hotbar |
+| `CraftingMenu` | crafting table | result 0, craft 1-9 (3×3) |
+| `FurnaceMenu` | furnace | ingredient 0, fuel 1, result 2 |
+| `AnvilMenu` | anvil | input 0, additional 1, result 2 |
+| `RepairMenu` | (repair table) | input 0, additional 1, result 2 |
+| `EnchantmentMenu` | enchantment table | ingredient 0, lapis 1 |
+| `BeaconMenu` | beacon | payment 0 |
+| `BrewingStandMenu` | brewing stand | bottles 0-2, ingredient 3 |
+| `HopperMenu` | hopper | contents 0-4 |
+| `TrapMenu` | dispenser / dropper | 3×3 (slots 0-8) |
+| `MerchantMenu` | villager trade | payment 0, payment 1, result 2 |
+| `HorseInventoryMenu` | horse / donkey | saddle + armor + chest |
+| `FireworksMenu` | (fireworks crafting) | result 0, craft 1-9 (3×3) |
 
-Generates three random enchantment `costs[]` based on nearby bookshelves when `slotsChanged()` is called. The `m_costsChanged` flag (4J addition) tracks whether costs need to be re-broadcast.
+`AnvilMenu` and `RepairMenu` are near-identical twins (input/additional/result
+0-1-2, `DATA_TOTAL_COST = 0` scalar sync), differing only in how the result is
+computed. `FireworksMenu` mirrors `CraftingMenu`'s 3×3 layout but overrides
+`isValidIngredient()` (`FireworksMenu.h:42`) and tracks
+`m_canMakeFireworks`/`m_canMakeCharge`/`m_canMakeFade` — it is a **neoLegacy/newer-TU
+addition** paired with the fireworks item set.
 
-`clickMenuButton()` applies the chosen enchantment at index `i` (0-2), spending player XP. Uses a `Random` seeded by `nameSeed`.
+### Crafting menu
 
-### MerchantMenu
+Files: `CraftingMenu.h`, `CraftingMenu.cpp`.
 
-Three slots: two payment inputs (`PAYMENT1_SLOT` = 0, `PAYMENT2_SLOT` = 1) and one result output (`RESULT_SLOT` = 2). Wraps a `Merchant` (villager) and a `MerchantContainer`.
+The crafting-table menu is a **separate class** from the 2×2 grid built into
+`InventoryMenu`. `CraftingMenu` (`CraftingMenu.h:8`) is a full 3×3 grid opened
+against a workbench block, holding a `CraftingContainer craftSlots` and a
+one-slot `resultSlots`. Slot ranges (`CraftingMenu.h:12-18`):
 
-Screen coordinates for the trade slots:
-- `SELLSLOT1_X` = 36, `SELLSLOT2_X` = 62, `BUYSLOT_X` = 120
-- `ROW1_Y` = 24, `ROW2_Y` = 53
+| Constant | Value | Region |
+|----------|-------|--------|
+| `RESULT_SLOT` | 0 | crafted output |
+| `CRAFT_SLOT_START` | 1 | 3×3 grid start |
+| `CRAFT_SLOT_END` | 10 | grid end (`START + 9`) |
+| `INV_SLOT_START` | 10 | inventory start |
+| `INV_SLOT_END` | 37 | inventory end (`+ 9*3`) |
+| `USE_ROW_SLOT_START` | 37 | hotbar start |
+| `USE_ROW_SLOT_END` | 46 | hotbar end (`+ 9`) |
 
-The `setSelectionHint()` method syncs the selected trade recipe from the trade list GUI. `getMerchant()` is a 4J addition.
+It stores its owning block position (`x, y, z` + `Level*`) so `stillValid()` can
+re-check the workbench is still there and `removed()` can dump the grid back to
+the player on close. `slotsChanged()` re-runs the recipe match to populate the
+result slot; `canTakeItemForPickAll()` is overridden so double-click doesn't
+vacuum the result slot.
 
-### RepairMenu (Anvil)
+> This full-grid `CraftingMenu` and its workbench GUI are attributed to a
+> community contribution to neoLegacy. The class itself, its slot ranges, and its
+> recipe-driven `slotsChanged()` are verifiable in `CraftingMenu.{h,cpp}`; the
+> attribution/provenance is not recorded in the source and is noted here only as
+> context.
 
-Two input slots (`INPUT_SLOT` = 0, `ADDITIONAL_SLOT` = 1) and one result slot (`RESULT_SLOT` = 2).
+By contrast the **player inventory** grid (`InventoryMenu`) is always a 2×2:
+`CRAFT_SLOT_START..CRAFT_SLOT_END` spans four slots, and it additionally owns the
+four armor slots (`ARMOR_SLOT_START..ARMOR_SLOT_END`, `InventoryMenu.h:15-23`).
 
-Computes `cost` (XP levels) through `createResult()`. Supports item renaming with `setItemName()`. The `DATA_TOTAL_COST` (0) data ID broadcasts the repair cost to listeners. Tracks `repairItemCountCost` for the number of items consumed in the repair.
+## Related
 
-`slotsChanged()` is overloaded: one version takes a `Container*` and triggers `createResult()`, the other uses the base class's no-arg version.
-
-### TrapMenu (Dispenser/Dropper)
-
-Simple 9-slot grid wrapping a `DispenserTileEntity`. No special slot logic beyond standard quick-move between dispenser and inventory.
-
-### ContainerMenu (Generic chest)
-
-Used for single and double chests. Calculates `containerRows` from the container size and creates the right slot grid. Calls `startOpen()` / `stopOpen()` for chest animations.
-
-## MinecraftConsoles differences
-
-MC adds several new container menus that LCEMP doesn't have:
-
-### New menu types
-
-| Menu | Purpose | Notes |
-|---|---|---|
-| `BeaconMenu` | Beacon block UI | Has a `PaymentSlot` that only accepts emeralds, diamonds, gold ingots, and iron ingots with max stack size 1. Tracks `levels`, `primaryPower`, and `secondaryPower` as copied values for client-side display. |
-| `HopperMenu` | Hopper inventory | 5-slot container starting at `CONTENTS_SLOT_START` (0). Wraps a `Container` (the hopper). |
-| `HorseInventoryMenu` | Horse/donkey inventory | Manages a `HorseSaddleSlot` (only accepts saddles), a `HorseArmorSlot` (only accepts horse armor, with an `isActive()` check), and optional chest inventory for horses. |
-| `FireworksMenu` | Fireworks crafting | 1 result slot + 9 crafting slots + player inventory. Tracks `m_canMakeFireworks`, `m_canMakeCharge`, and `m_canMakeFade` to validate ingredient placement via `isValidIngredient()`. Has `canTakeItemForPickAll()` to control pick-all behavior. |
-| `AnvilMenu` | Anvil (separate file) | In LCEMP, the anvil logic lives inside `RepairMenu`. MC extracts it into its own `AnvilMenu` class file. |
-
-### New container types
-
-- **`AnimalChest`**: Extends `SimpleContainer`. Used by horses and donkeys. Takes a name and size in the constructor. Has a second constructor with an explicit `iTitle` param and `hasCustomName` flag (4J addition).
-- **`WorldlyContainer`**: An interface extending `Container` that adds sided inventory access. Defines three pure virtual methods:
-  - `getSlotsForFace(face)`: returns which slot indices are accessible from a given block face
-  - `canPlaceItemThroughFace(slot, item, face)`: whether an item can be inserted from that face
-  - `canTakeItemThroughFace(slot, item, face)`: whether an item can be extracted from that face
-
-  Used by hoppers and droppers for sided inventory access. LCEMP doesn't have this concept.
-- **`Hopper`** (interface): Extends `Container` (with virtual inheritance). Defines `getLevel()`, `getLevelX/Y/Z()` for position. `HopperTileEntity` and `MinecartHopper` both implement this.
-
-### Existing menu changes
-
-The `TrapMenu` in LCEMP only handles dispensers. In MC, it also covers droppers through the new `DropperTileEntity`. The menu logic is the same since droppers use the same 9-slot layout.
-
-In MC, `FurnaceTileEntity` and `BrewingStandTileEntity` change from inheriting `Container` to inheriting `WorldlyContainer`, adding face-based slot access for hopper integration.
-
-The core `AbstractContainerMenu`, `Container`, `Slot`, and synchronization systems are the same across both codebases.
+- [Block Entities (TileEntity)](/slop-docs/world/tile-entities/) — the storage
+  behind chest/furnace/hopper/beacon/brewing-stand menus.
+- [Crafting / Recipes](/slop-docs/world/recipes/) — what `slotsChanged()` matches
+  against.
+- [Networking / Packets](/slop-docs/world/packets/) — the full 100-108 container
+  packet family and `getId()` assignment.
+- [Items](/slop-docs/world/items/) — `ItemInstance` and the `matches()`/`copy()`
+  calls the sync diff relies on.

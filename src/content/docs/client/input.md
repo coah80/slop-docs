@@ -1,204 +1,31 @@
 ---
-title: "Input System"
-description: "How LCE handles keyboard, mouse, and controller input."
+title: Input
+description: How input reaches the game — the vestigial Input/KeyMapping classes, UIController::tickInput menu routing down to each UIScene::handleInput, the neoLegacy keyboard/mouse-to-ACTION mapping, and Windows64 per-frame mouse look.
 ---
 
-LCE supports three input methods: gamepad controllers (the main one for all console platforms), keyboard/mouse (Windows 64-bit port), and touch (PS Vita). The input system is spread across several classes that abstract platform differences and feed into the game's action system.
+Input on console splits cleanly along the [two-GUI-stacks](/slop-docs/client/overview/#read-this-first-two-gui-stacks)
+line. **Menu input** flows through the live `UIController` and lands in each
+`UIScene::handleInput`. **In-world look/movement** is applied to the
+`MultiplayerLocalPlayer` — on Windows64 there is an extra per-frame mouse-look
+path that bypasses the 20 Hz tick. The classic Java `Input`/`KeyMapping` classes
+still compile but are essentially dead.
 
-## Input class hierarchy
+Files: `Input.h`/`.cpp`, `KeyMapping.h`/`.cpp`, `Common/UI/UIController.cpp`,
+`Common/UI/UIScene.h`, `Common/UI/UIGroup.cpp`, `Minecraft.cpp`
+(`applyFrameMouseLook`).
 
-### Input (base)
+## The vestigial classic classes: Input and KeyMapping
 
-`Input` is the abstract base for movement input processing:
-
-```cpp
-class Input {
-public:
-    float xa;          // horizontal movement axis (-1 to 1)
-    float ya;          // vertical movement axis (-1 to 1)
-    bool wasJumping;
-    bool jumping;
-    bool sneaking;
-    bool sprinting;
-
-    virtual void tick(LocalPlayer* player);
-};
-```
-
-This is the minimal interface that `LocalPlayer` uses each tick to figure out movement intent. The `xa`/`ya` values drive horizontal movement, while `jumping`, `sneaking`, and `sprinting` flags trigger their respective behaviors.
-
-`wasJumping` tracks the previous tick's jump state so the player movement code can detect jump edges (pressed vs held).
-
-### KeyboardMouseInput
-
-The `KeyboardMouseInput` class handles keyboard and mouse input for the Windows 64-bit build. It's set up as a global (`g_KBMInput`):
+`class Input` (`Input.h`) is the Mojang movement-intent object — `xa`, `ya`,
+`jumping`, `sneaking`, `sprinting`, and `virtual void tick(LocalPlayer *player)`.
+`class KeyMapping` (`KeyMapping.h`) is the name/key binding record. The header is
+blunt about its status:
 
 ```cpp
-extern KeyboardMouseInput g_KBMInput;
-```
-
-#### Key constants
-
-| Constant | Key | Value | Mutable? |
-|---|---|---|---|
-| `KEY_FORWARD` | W | `'W'` | Yes |
-| `KEY_BACKWARD` | S | `'S'` | Yes |
-| `KEY_LEFT` | A | `'A'` | Yes |
-| `KEY_RIGHT` | D | `'D'` | Yes |
-| `KEY_JUMP` | Space | `VK_SPACE` | Yes |
-| `KEY_SNEAK` | Left Shift | `VK_LSHIFT` | Yes |
-| `KEY_SPRINT` | Left Ctrl | `VK_LCONTROL` | Yes |
-| `KEY_INVENTORY` | E | `'E'` | Yes |
-| `KEY_DROP` | Q | `'Q'` | Yes |
-| `KEY_CRAFTING` | Tab | `VK_TAB` | Yes |
-| `KEY_CRAFTING_ALT` | R | `'R'` | No (const) |
-| `KEY_CONFIRM` | Enter | `VK_RETURN` | Yes |
-| `KEY_CANCEL` | Backspace | `VK_BACK` | No (const) |
-| `KEY_PAUSE` | Escape | `VK_ESCAPE` | Yes |
-| `KEY_THIRD_PERSON` | F5 | `VK_F5` | Yes |
-| `KEY_DEBUG_INFO` | F3 | `VK_F3` | Yes |
-| `KEY_VOICE` | (varies) | (varies) | Yes |
-
-Most of these are `static int` (not const), so they can be remapped at runtime. Only `KEY_CRAFTING_ALT` and `KEY_CANCEL` are `static const int`. The `Options` class has a separate `KeyMapping` system for the Java-style key bindings (see below).
-
-`MAX_KEYS` = 256 covers all Windows virtual key codes.
-
-#### Mouse constants
-
-| Constant | Value |
-|---|---|
-| `MOUSE_LEFT` | 0 |
-| `MOUSE_RIGHT` | 1 |
-| `MOUSE_MIDDLE` | 2 |
-| `MAX_MOUSE_BUTTONS` | 3 |
-
-#### State tracking
-
-The class tracks three states per key and mouse button:
-
-- **Down**: currently held (`m_keyDown[MAX_KEYS]`, `m_mouseButtonDown[MAX_MOUSE_BUTTONS]`)
-- **Pressed**: went from up to down this tick (`m_keyPressed[MAX_KEYS]`, `m_mouseBtnPressed[MAX_MOUSE_BUTTONS]`)
-- **Released**: went from down to up this tick (`m_keyReleased[MAX_KEYS]`, `m_mouseBtnReleased[MAX_MOUSE_BUTTONS]`)
-
-State is double-buffered with accumulators (`m_keyPressedAccum`, `m_keyReleasedAccum`, `m_mouseBtnPressedAccum`, `m_mouseBtnReleasedAccum`) that collect events between ticks, then get transferred to the readable state arrays during `Tick()`. There's also a `m_keyDownPrev[]` and `m_mouseButtonDownPrev[]` for the previous frame.
-
-Mouse position is tracked separately:
-- `m_mouseX`, `m_mouseY`: current cursor position
-- `m_mouseDeltaX`, `m_mouseDeltaY`: per-tick delta
-- `m_mouseDeltaAccumX`, `m_mouseDeltaAccumY`: raw delta accumulators (for look input)
-- `m_mouseWheel`, `m_mouseWheelAccum`: scroll wheel delta
-
-#### Key methods
-
-| Method | Purpose |
-|---|---|
-| `Init()` | Zero all state arrays |
-| `Tick()` | Transfer accumulated events to readable state. Copies accumulators to the readable arrays, then clears the accumulators. Also transfers raw mouse delta. |
-| `ClearAllState()` | Reset everything (all arrays, all accumulators, all deltas) |
-| `OnKeyDown(int vkCode)` / `OnKeyUp(int vkCode)` | Keyboard event handlers. Sets `m_keyDown` and adds to the pressed/released accumulators. |
-| `OnMouseButtonDown(int)` / `OnMouseButtonUp(int)` | Mouse button events. Same accumulator pattern. |
-| `OnMouseMove(int x, int y)` | Cursor position update. Sets `m_mouseX`/`m_mouseY`. |
-| `OnMouseWheel(int delta)` | Scroll wheel. Adds to `m_mouseWheelAccum`. |
-| `OnRawMouseDelta(int dx, int dy)` | Raw mouse movement for look. Adds to `m_mouseDeltaAccumX`/`Y`. |
-| `IsKeyDown(int)` / `IsKeyPressed(int)` / `IsKeyReleased(int)` | Key state queries |
-| `IsMouseButtonDown(int)` / `IsMouseButtonPressed(int)` / `IsMouseButtonReleased(int)` | Mouse state queries |
-| `GetMouseX()` / `GetMouseY()` | Cursor position |
-| `GetMouseDeltaX()` / `GetMouseDeltaY()` | Per-tick mouse delta |
-| `GetMoveX()` / `GetMoveY()` | Movement axis from WASD. Returns -1, 0, or 1 based on which movement keys are held. |
-| `GetLookX(float sensitivity)` / `GetLookY(float sensitivity)` | Look axis from raw mouse delta, scaled by sensitivity |
-| `GetRawDeltaX()` / `GetRawDeltaY()` | Direct access to raw delta accumulators |
-| `ConsumeMouseDelta()` | Clears `m_mouseDeltaAccumX` and `m_mouseDeltaAccumY` to 0 after reading |
-| `SetMouseGrabbed(bool)` | Lock cursor for gameplay. `IsMouseGrabbed()` queries the state. |
-| `SetCursorHiddenForUI(bool)` | Hide cursor when using UI. `IsCursorHiddenForUI()` queries. |
-| `SetWindowFocused(bool)` | Track window focus state. `IsWindowFocused()` queries. |
-| `SetKBMActive(bool)` | Mark keyboard/mouse as the active input device. `IsKBMActive()` queries. |
-| `SetScreenCursorHidden(bool)` | Screen-level cursor hide request. `IsScreenCursorHidden()` queries. |
-| `HadRawMouseInput()` | Returns `m_hadRawMouseInput`, true when raw mouse delta was received this tick. Useful for detecting mouse activity independently of keyboard. |
-| `HasAnyInput()` | Returns `m_hasInput`, which is true when any key or mouse event has happened. Used for auto-detecting whether to switch between controller and keyboard/mouse input modes. |
-
-## Controller input (EControllerActions)
-
-Controller input is mapped through the `EControllerActions` enum defined in `Common/App_enums.h`. This gives you a unified action system across all console platforms (Xbox 360, Xbox One, PS3, PS4, PS Vita).
-
-### Menu actions
-
-| Action | Description |
-|---|---|
-| `ACTION_MENU_A` | Confirm / select |
-| `ACTION_MENU_B` | Cancel / back |
-| `ACTION_MENU_X` | Secondary action |
-| `ACTION_MENU_Y` | Tertiary action |
-| `ACTION_MENU_UP` / `DOWN` / `LEFT` / `RIGHT` | D-pad navigation |
-| `ACTION_MENU_PAGEUP` / `PAGEDOWN` | Shoulder button page scroll |
-| `ACTION_MENU_LEFT_SCROLL` / `RIGHT_SCROLL` | Trigger scroll |
-| `ACTION_MENU_STICK_PRESS` | Left stick click |
-| `ACTION_MENU_OTHER_STICK_PRESS` | Right stick click |
-| `ACTION_MENU_OTHER_STICK_UP` / `DOWN` / `LEFT` / `RIGHT` | Right stick directions (for menu navigation) |
-| `ACTION_MENU_PAUSEMENU` | Start / Options button |
-| `ACTION_MENU_OK` / `ACTION_MENU_CANCEL` | Confirm / cancel aliases (separate from A/B) |
-
-The enum ends with `ACTION_MAX_MENU = ACTION_MENU_CANCEL` to mark the boundary between menu and gameplay actions.
-
-Platform-specific menu actions:
-- **Xbox One**: `ACTION_MENU_GTC_PAUSE`, `ACTION_MENU_GTC_RESUME` (Game Time Controller for snapped mode)
-- **PS4**: `ACTION_MENU_TOUCHPAD_PRESS` (touchpad click)
-
-### Gameplay actions
-
-| Action | Description |
-|---|---|
-| `MINECRAFT_ACTION_JUMP` | Jump |
-| `MINECRAFT_ACTION_FORWARD` / `BACKWARD` / `LEFT` / `RIGHT` | Movement (from left stick) |
-| `MINECRAFT_ACTION_LOOK_LEFT` / `RIGHT` / `UP` / `DOWN` | Camera rotation (from right stick) |
-| `MINECRAFT_ACTION_USE` | Use item / place block (left trigger) |
-| `MINECRAFT_ACTION_ACTION` | Attack / break block (right trigger) |
-| `MINECRAFT_ACTION_LEFT_SCROLL` / `RIGHT_SCROLL` | Hotbar scroll (shoulder buttons) |
-| `MINECRAFT_ACTION_INVENTORY` | Open inventory (Y button) |
-| `MINECRAFT_ACTION_PAUSEMENU` | Open pause menu (Start) |
-| `MINECRAFT_ACTION_DROP` | Drop item (B button) |
-| `MINECRAFT_ACTION_SNEAK_TOGGLE` | Toggle sneak (right stick click) |
-| `MINECRAFT_ACTION_CRAFTING` | Open crafting (X button) |
-| `MINECRAFT_ACTION_RENDER_THIRD_PERSON` | Toggle third-person camera |
-| `MINECRAFT_ACTION_GAME_INFO` | Toggle debug info |
-| `MINECRAFT_ACTION_DPAD_LEFT` / `RIGHT` / `UP` / `DOWN` | D-pad in gameplay (used for debug actions and hotbar shortcuts) |
-
-The gameplay actions end with `MINECRAFT_ACTION_MAX`.
-
-### Debug actions (derived from D-pad)
-
-These aren't separate entries in the `EControllerActions` enum but are derived from D-pad presses in `Minecraft::run_middle()`:
-
-| Action | Description |
-|---|---|
-| `MINECRAFT_ACTION_SPAWN_CREEPER` | Debug: spawn creeper |
-| `MINECRAFT_ACTION_CHANGE_SKIN` | Debug: change player skin |
-| `MINECRAFT_ACTION_FLY_TOGGLE` | Debug: toggle flight |
-| `MINECRAFT_ACTION_RENDER_DEBUG` | Debug: toggle debug rendering |
-
-These come after `MINECRAFT_ACTION_MAX` in the enum, so they're outside the normal gameplay action range.
-
-## HandleButtonPresses
-
-`CMinecraftApp::HandleButtonPresses()` is called once per frame from the platform-specific main loop (Xbox, PS3, PS4, PS Vita, Durango, Windows64). It loops through all pads:
-
-```cpp
-void CMinecraftApp::HandleButtonPresses()
+// KeyMapping.h
+// 4J Stu - Not updated to 1.8.2 as we don't use this
+class KeyMapping
 {
-    for each pad:
-        HandleButtonPresses(iPad);
-}
-```
-
-The per-pad version reads the controller state from the platform's input API and translates physical button/stick states into `EControllerActions`. This is where the abstraction happens: each platform has its own implementation of reading controller hardware, but they all feed into the same action enum.
-
-The Windows 64-bit build also calls `HandleButtonPresses()` but routes through `KeyboardMouseInput` for keyboard/mouse events.
-
-## KeyMapping
-
-`KeyMapping` stores a named key binding:
-
-```cpp
-class KeyMapping {
 public:
     wstring name;
     int key;
@@ -206,78 +33,200 @@ public:
 };
 ```
 
-The `Options` class holds 14 key mappings in a fixed-size array:
+`Options` still holds a `KeyMapping *keyMappings[14]` table
+(`Options.h:74-90`) — `keyUp`, `keyJump`, `keyAttack`, `keyUse`, etc. — because
+it is a straight port of the Java options file, but the console build does not
+route input through it. Real binding lives in the platform `InputManager` and the
+`ACTION_*` enum below. Do not document `Input`/`KeyMapping` as the live input
+path; they are kept for source parity with the Java codebase.
+
+## Menu input: UIController::tickInput → UIScene::handleInput
+
+The global `ui` (a per-platform `ConsoleUIController : UIController`) owns all
+menu input. Every frame `ui.tick()` (`UIController.cpp:559`) calls
+`tickInput()` once per accumulated tick:
 
 ```cpp
-static const int keyMappings_length = 14;
-KeyMapping *keyMappings[keyMappings_length];
+// UIController::tick(), UIController.cpp:592
+if(m_accumulatedTicks == 0) tickInput();
 ```
 
-| Field | Default purpose |
-|---|---|
-| `keyUp` | Move forward |
-| `keyDown` | Move backward |
-| `keyLeft` | Strafe left |
-| `keyRight` | Strafe right |
-| `keyJump` | Jump |
-| `keyBuild` | Place block / use item |
-| `keyDrop` | Drop item |
-| `keyChat` | Open chat |
-| `keySneak` | Sneak |
-| `keyAttack` | Attack / break |
-| `keyUse` | Use item |
-| `keyPlayerList` | Show player list |
-| `keyPickItem` | Pick block |
-| `keyToggleFog` | Toggle fog distance |
+`tickInput()` (`UIController.cpp:990`) does two jobs:
 
-These are mainly used by the Windows 64-bit build. Console builds use the `EControllerActions` system instead. The Options class methods `getKeyDescription(int)`, `getKeyMessage(int)`, and `setKey(int, int)` provide access to these bindings.
+1. **(Windows64 only)** mouse hover / click hit-testing against the top scene's
+   controls — see [Mouse in menus](#mouse-in-menus-windows64) below.
+2. Calls `handleInput()` (`UIController.cpp:1410`), the controller/keyboard path.
 
-## ConsoleInput / ConsoleInputSource
-
-`ConsoleInput` represents a server console command:
+`handleInput()` loops every pad and every menu action key, calling
+`handleKeyPress(iPad, key)`:
 
 ```cpp
-class ConsoleInput {
-    wstring msg;
-    ConsoleInputSource* source;
+// UIController.cpp:1410
+void UIController::handleInput()
+{
+    for(unsigned int iPad = 0; iPad < XUSER_MAX_COUNT; ++iPad)
+    {
+        for(unsigned int key = 0; key <= ACTION_MAX_MENU; ++key)
+        {
+            handleKeyPress(iPad, key);
+        }
+    }
+}
+```
+
+`handleKeyPress` reads edge state from the platform `InputManager`
+(`InputManager.ButtonPressed(iPad, key)` / `ButtonReleased(...)`), then dispatches
+the event to the UI groups. The fullscreen group is offered the key first, then
+the pad's own player group (`UIController.cpp:1833-1837`):
+
+```cpp
+m_groups[static_cast<int>(eUIGroup_Fullscreen)]->handleInput(iPad, key, repeat, pressed, released, handled);
+...
+m_groups[(iPad+1)]->handleInput(iPad, key, repeat, pressed, released, handled);
+```
+
+`UIGroup::handleInput` (`UIGroup.cpp:227`) forwards to the top scene of the group,
+whose `handleInput` is the per-scene virtual:
+
+```cpp
+// UIScene.h:243
+virtual void handleInput(int iPad, int key, bool repeat,
+                         bool pressed, bool released, bool &handled) {}
+```
+
+The `handled` out-parameter is a bool passed by reference through the whole chain,
+so a scene that consumes an event stops it from bubbling further. Concrete scenes
+override `handleInput` plus, for their widgets, `handleSliderMove`,
+`handleCheckboxToggled`, and `handlePress` (e.g.
+`UIScene_SettingsUIMenu.h:58-62`; see [Settings](/slop-docs/client/settings/)).
+
+### The ACTION_* menu keys
+
+Menu input is expressed in abstract action codes, not raw buttons, so the same
+scene code works on every controller. The set runs `0 .. ACTION_MAX_MENU`; the
+ones the controller/KBM code maps include:
+
+| Action | Meaning |
+|--------|---------|
+| `ACTION_MENU_OK` / `ACTION_MENU_A` | confirm / A |
+| `ACTION_MENU_CANCEL` / `ACTION_MENU_B` | back / B |
+| `ACTION_MENU_UP` / `_DOWN` / `_LEFT` / `_RIGHT` | d-pad navigation |
+| `ACTION_MENU_X` / `ACTION_MENU_Y` | X / Y face buttons |
+| `ACTION_MENU_LEFT_SCROLL` / `_RIGHT_SCROLL` | shoulder tab-left / tab-right |
+| `ACTION_MENU_PAGEUP` / `_PAGEDOWN` | trigger paging |
+| `ACTION_MENU_OTHER_STICK_UP` / `_DOWN` | right-stick scroll |
+| `ACTION_MENU_STICK_PRESS` | stick click |
+
+## Keyboard & mouse to ACTION mapping (neoLegacy)
+
+Windows64 support is a neoLegacy addition, so `handleKeyPress` contains a
+KBM-specific layer that translates keyboard and mouse events into the abstract
+menu actions above. When the mouse is *not* grabbed (i.e. a menu is up), each
+`ACTION_*` key is given a virtual-key equivalent (`UIController.cpp:1643-1654`):
+
+| Menu action | Keyboard |
+|-------------|----------|
+| `ACTION_MENU_OK` / `_A` | `VK_RETURN` |
+| `ACTION_MENU_CANCEL` / `_B` | `VK_ESCAPE` |
+| `ACTION_MENU_UP/DOWN/LEFT/RIGHT` | arrow keys |
+| `ACTION_MENU_X` | `R` |
+| `ACTION_MENU_Y` | `VK_TAB` |
+| `ACTION_MENU_LEFT_SCROLL` / `_RIGHT_SCROLL` | `Q` / `E` |
+| `ACTION_MENU_PAGEUP` / `_PAGEDOWN` | `VK_PRIOR` / `VK_NEXT` |
+
+Mouse buttons are folded into the same actions when the cursor is free
+(`UIController.cpp:1663-1683`):
+
+- **Left click** → `ACTION_MENU_OK` / `ACTION_MENU_A` (confirm / select).
+- **Right click** → `ACTION_MENU_X` (e.g. pick up half a stack in inventory).
+- **Mouse wheel** → `ACTION_MENU_OTHER_STICK_UP` / `_DOWN`, further remapped to
+  `LEFT`/`RIGHT` or `UP`/`DOWN` depending on the top scene (`UIController.cpp:1683-1711`).
+
+### Mouse in menus (Windows64)
+
+The Windows64 half of `tickInput()` (`UIController.cpp:1004+`) does real cursor
+hit-testing that the console builds never needed. When the mouse is active and
+not grabbed, it walks the menu layers by priority —
+
+```cpp
+static const EUILayer mouseLayers[] = {
+    eUILayer_Debug,   // (skipped for _CONTENT_PACKAGE)
+    eUILayer_Error, eUILayer_Alert, eUILayer_Popup,
+    eUILayer_Fullscreen, eUILayer_Scene,
 };
 ```
 
-`ConsoleInputSource` is an interface for console command providers:
+— finds the top scene, scales the raw window mouse position into the scene's
+1280×720 space using the real `GetClientRect(g_hWnd, ...)` size, then hit-tests
+each `UIControl`. Buttons, `UIControl_ButtonList`/`UIControl_MultiList`,
+`UIControl_TexturePackList`, achievement lists and sliders each get their own
+`SetTouchFocus(...)` handling so hover, click, and slider-drag all work with a
+mouse. The smallest-area control under the cursor wins focus
+(`UIController.cpp:1231-1239`), and slider drags are tracked across frames via
+`m_mouseDraggingSliderScene` / `m_mouseDraggingSliderId`. The tooltip layer is
+deliberately excluded from mouse hit-testing so non-interactive button hints
+never steal focus.
+
+## In-world look: applyFrameMouseLook (Windows64)
+
+Because gameplay ticks at 20 Hz, applying mouse look only in the tick would make
+the camera feel laggy at high frame rates. neoLegacy adds
+`Minecraft::applyFrameMouseLook()` (`Minecraft.h:223`, guarded by `#ifdef
+_WINDOWS64`; implementation at `Minecraft.cpp:1224`), called **every frame before
+`run_middle()`** (see the [frame order](/slop-docs/client/overview/#one-frame-in-order-windows64)).
+
+It consumes accumulated mouse deltas and applies them directly to the local
+player's rotation:
 
 ```cpp
-class ConsoleInputSource {
-    virtual void info(const wstring& string) = 0;
-    virtual void warn(const wstring& string) = 0;
-    virtual wstring getConsoleName() = 0;
-};
+// Minecraft.cpp:1224
+void Minecraft::applyFrameMouseLook()
+{
+    if (level == nullptr) return;
+    for (int i = 0; i < XUSER_MAX_COUNT; i++)
+    {
+        if (localplayers[i] == nullptr) continue;
+        int iPad = localplayers[i]->GetXboxPad();
+        if (iPad != 0) continue;              // mouse only applies to pad 0
+        if (!g_KBMInput.IsMouseGrabbed()) continue;
+
+        float rawDx, rawDy;
+        g_KBMInput.ConsumeMouseDelta(rawDx, rawDy);
+        ...
+        float mouseSensitivity = app.GetGameSettings(iPad, eGameSetting_Sensitivity_InGame) / 100.0f;
+        float dyaw   =  (rawDx * mouseSensitivity) * 0.15f;
+        float dpitch = -(-rawDy * mouseSensitivity) * 0.15f;
+        localplayers[i]->yRot += dyaw;  localplayers[i]->yRotO += dyaw;
+        localplayers[i]->xRot += dpitch; localplayers[i]->xRotO += dpitch;
+        // clamp pitch to ±90°
+    }
+}
 ```
 
-These are used for the integrated server console, not player gameplay input.
+Key behaviours:
 
-## Input flow summary
+- **Pad 0 only** — the keyboard/mouse always drives pad 0; other splitscreen
+  players use controllers.
+- Sensitivity comes from the authoritative per-pad
+  `eGameSetting_Sensitivity_InGame` (0–100, divided by 100), and invert is
+  `eGameSetting_ControlInvertLook` — the same store the menu writes (see
+  [Settings](/slop-docs/client/settings/)).
+- The `0.15f` factor matches `Entity::turn` so per-frame look and tick-based look
+  agree.
+- The delta is applied to **both** the current rotation (`xRot`/`yRot`) **and**
+  the previous-tick rotation (`xRotO`/`yRotO`), so the render interpolation
+  reflects the movement immediately instead of waiting up to 50 ms for the next
+  tick. Pitch is clamped to ±90° on both.
 
-1. **Platform layer** captures raw events (button presses, stick positions, key events, mouse movement). Each platform has its own main loop file (e.g., `Xbox_Minecraft.cpp`, `Orbis_Minecraft.cpp`, `Durango_Minecraft.cpp`, `PSVita_Minecraft.cpp`, `Windows64_Minecraft.cpp`).
-2. **Input abstraction** (`KeyboardMouseInput` for Win64, or the platform's controller API via `4J_Input.h`) processes raw events into state. `KeyboardMouseInput` double-buffers with accumulators so events between ticks aren't lost.
-3. **`CMinecraftApp::HandleButtonPresses()`** reads controller state per player and translates physical inputs to `EControllerActions`. Called once per frame from the platform main loop.
-4. **`Input::tick()`** converts action state into movement axes (`xa`/`ya`) and action flags (`jumping`, `sneaking`, `sprinting`)
-5. **`LocalPlayer`** reads the `Input` object each tick to update player movement and trigger actions
-6. **`Screen` / `UIScene`** intercepts input when menus are active, grabbing events before they reach gameplay. Menu screens consume `ACTION_MENU_*` actions and prevent them from reaching the gameplay layer.
+## Server-side command input
 
-## Controller schemes
+Distinct from player/menu input: `ConsoleInput.cpp` +
+`ConsoleInputSource.h` provide a console-command input stream on the server side.
+`PlayerConnection` derives from both `PacketListener` and `ConsoleInputSource`,
+feeding chat/commands into the embedded server's command dispatcher. This is not
+part of the client input loop above.
 
-The `eGameSetting_ControlScheme` setting (see [Settings](/client/settings/)) controls which controller layout is active. The `eGameSetting_ControlSouthPaw` setting swaps the sticks for left-handed play.
+## See also
 
-The `eGameSetting_ControlInvertLook` setting inverts the Y-axis for the look stick.
-
-## Split-screen input
-
-LCE supports up to 4 local players via split-screen. Each player has their own pad index (`iPad`), and `HandleButtonPresses(iPad)` processes each pad independently. The `XUSER_MAX_COUNT` constant defines the maximum number of local players.
-
-## MinecraftConsoles differences
-
-MinecraftConsoles has a small addition to the controller input system:
-
-- **`ACTION_MENU_QUICK_MOVE`** is added to the `EControllerActions` enum at position 834 (between the other menu actions). This provides a dedicated controller action for quick-moving items between inventories (like shift-clicking on PC). LCEMP doesn't have this as a separate action; players had to use a different button combination.
-
-The `4J_Input.h` abstraction layer exists in both codebases as platform-specific headers under each platform's `4JLibs/inc/` directory (Orbis, Xbox, Durango, PS3, PSVita). The input architecture is otherwise the same between the two versions.
+- [Overview](/slop-docs/client/overview/) — where `ui.tick()` sits in the frame.
+- [Settings & Options](/slop-docs/client/settings/) — the `eGameSetting` store the input paths read.
