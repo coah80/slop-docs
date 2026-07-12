@@ -241,6 +241,16 @@ Stained-glass dyeing is present but **commented out**
 fireworks menu, `:1218-1240`), and the sticky piston from slime ball + piston
 (`:1208`).
 
+> **Changed in v1.1.0b:** commit `a4c746be TU43 Structures, bug fixes & minor
+> changes` inserts six more shaped recipes into `_compileRecipes()` (around
+> `Recipes.cpp:517` in the snapshot, which shifts the later line numbers on this
+> page down by ~52 in the v1.1.0b tree): **red nether brick** (nether-wart seeds +
+> nether brick), **end bricks** (4× from end stone), **nether wart block** (9×
+> nether-wart seeds), **magma block** (4× magma cream), **slime block** (9× slime
+> ball), and the reverse **slime ball ×9** (from a slime block). No recipe was
+> removed and the va_list idiom is unchanged. See the
+> [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
+
 ## neoLegacy / 4J delta vs vanilla TU19
 
 - **Recipes are a compiled `vector`, rebuildable at runtime** — `loadFromLocal`,

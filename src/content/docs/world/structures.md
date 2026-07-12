@@ -153,11 +153,18 @@ the `OceanMonumentPieces::loadStatic()` call) is new in commit `720e1a77`.
 > structure pieces above — `MineShaftPieces`, `NetherBridgePieces`, `StrongholdPieces`,
 > `ScatteredFeaturePieces` (temples), `MonsterRoomFeature` (dungeons), and
 > `BonusChestFeature` now fill their chests from the data-driven `LootTableManager`
-> (XML tables under `Common/Media/MediaWindows64/Structures/loot_tables/chests/`)
-> rather than the hard-coded `WeighedTreasure` lists, so the piece geometry described
-> here is unchanged but what lands in the chests is now table-driven. (2)
+> (XML tables under
+> `Minecraft.Client/Common/Media/MediaWindows64/Structures/loot_tables/chests/`,
+> e.g. `abandoned_mineshaft.xml`, `nether_bridge.xml`, `simple_dungeon.xml`) rather
+> than the hard-coded `WeighedTreasure` lists. `createChest`-style helpers were
+> resignatured to take a `LootTableDropResult` vector from
+> `LootTableManager::Get().ResolveDrops(...)`, so the piece geometry described here
+> is unchanged but what lands in the chests is now table-driven. (2)
 > `a4c746be TU43 Structures, bug fixes & minor changes` adds **Igloo and Fossil**
-> generation. See the [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
+> generation — both are `Feature` subclasses (`IglooFeature`, `FossilFeature`, each
+> `: public Feature`) run from biome decorators, **not** new `StructureFeature`
+> starts, so the six-entry `StructureFeatureIO` registry above is unchanged. See the
+> [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
 
 ## Ocean Monument (new)
 
