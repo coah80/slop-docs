@@ -40,7 +40,7 @@ if (packet->clientVersion != SharedConstants::NETWORK_PROTOCOL_VERSION)
 packet layout, a reordered enum that is serialized (`EGameCommand`,
 `eGameHostOption`, `EGameRuleType`) — makes your build **incompatible with every
 unmodified peer**. If your mod is meant to interoperate with stock neoLegacy
-clients/servers (e.g. joining public 4Kit servers), it **must not** change the
+clients/servers (e.g. joining public FourKit servers), it **must not** change the
 protocol: no new packet ids, no altered `read`/`write`, no shifted enums.
 
 If your mod is self-contained (both ends run your build), you are free to change

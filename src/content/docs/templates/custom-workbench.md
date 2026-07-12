@@ -697,9 +697,9 @@ bool ServerPlayer::openFabricator(shared_ptr<FabricatorTileEntity> fabricator)
 
 Add the `override` declaration to `ServerPlayer.h` next to its `openFurnace`
 declaration, and `#include "FabricatorMenu.h"` / `FabricatorTileEntity.h`. The
-`FourKitBridge::FireInventoryOpen` block is the 4Kit server hook the other
-containers have — see [4Kit ecosystem](/slop-docs/mods/fourkit-ecosystem/) and
-[4Kit events](/slop-docs/reference/fourkit-events/) if you're targeting the
+`FourKitBridge::FireInventoryOpen` block is the FourKit server hook the other
+containers have — see [FourKit ecosystem](/slop-docs/mods/fourkit-ecosystem/) and
+[FourKit events](/slop-docs/reference/fourkit-events/) if you're targeting the
 dedicated-server build; it's compiled out otherwise.
 
 ### Step 4.3 — the client handles the packet
