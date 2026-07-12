@@ -1,6 +1,6 @@
 ---
 title: Particles
-description: The ParticleEngine, the Particle : Entity base, the world-side ParticleTypes enum, the LevelRenderer particle factory, all ~32 particle subclasses, the menu-background GuiParticles, and the neoLegacy BarrierParticle.
+description: "The ParticleEngine, the Particle : Entity base, the world-side ParticleTypes enum, the LevelRenderer particle factory, all ~32 particle subclasses, the menu-background GuiParticles, and the neoLegacy BarrierParticle."
 ---
 
 Particles are `Entity` subclasses that live in a dimension-partitioned pool

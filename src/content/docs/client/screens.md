@@ -1,6 +1,6 @@
 ---
 title: Classic Screens & HUD
-description: The vestigial Screen : GuiComponent hierarchy ported from Java, the one live class from it (the Gui HUD), and the text/widget primitives — Font, StringTable, Button, EditBox, ScrolledSelectionList.
+description: "The vestigial Screen : GuiComponent hierarchy ported from Java, the one live class from it (the Gui HUD), and the text/widget primitives — Font, StringTable, Button, EditBox, ScrolledSelectionList."
 ---
 
 The client ships **two** UI stacks. The console front-end you actually see —
