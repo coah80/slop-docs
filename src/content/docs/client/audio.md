@@ -217,6 +217,16 @@ Using `steady_clock` deltas (rather than counting ticks) makes the 4-second fade
 frame-rate-independent. This is the "music fade on world enter/leave" fix noted
 in the project changelog for v1.0.9b.
 
+> **Changed in v1.1.0b:** the jukebox fix extends the fade to record playback.
+> `playStreaming` now enters the `Fading` state whenever a jukebox track starts
+> while a stream is `Playing`/`Opening` (or `m_musicStreamActive` is set), so the
+> in-game soundtrack fades out before a record plays (`SoundEngine.cpp:921-935`).
+> A new `stopStreamingNow()` method (`SoundEngine.h:138`) tears the stream down
+> immediately — `ma_sound_stop`/`ma_sound_uninit`, clears the CD/game-music flags,
+> and resets `m_StreamState` to `Idle` — for the hard-stop path. NOTES.md v1.1.0b:
+> "Jukeboxes now play audio correctly, causing the in-game soundtrack to fade out
+> before playing any music."
+
 ## Related pages
 
 - [Texture Packs & Resources](/slop-docs/client/resources/) — Mash-Up pack sound banks and the `isUsingDefaultSkin()` coupling

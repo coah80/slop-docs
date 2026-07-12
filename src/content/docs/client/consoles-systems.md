@@ -39,6 +39,11 @@ else
 > (NOTES.md v1.0.9b). The state machine below is the mechanism; the map it plays
 > out on is the newer TU31 tutorial level.
 
+> **Changed in v1.1.0b:** the bundled `Windows64Media/Tutorial/Tutorial.mcs` was
+> re-exported for the "16x16 tutorial" (commit `91192b70`) — an asset-only change
+> to the tutorial map, not a TU-version bump. The tutorial code below (state
+> machine, `TutorialEnum` budget, game-mode hierarchy) is unchanged.
+
 ### Game-mode hierarchy
 
 ```
@@ -201,6 +206,15 @@ Because console DLC archives are big-endian, `DLCManager` provides the
 > TU36+ parity (NOTES.md), and along with it the skin-pack pipeline — including
 > the TU25-era skin packs — was fixed so packs show the correct icons. See the
 > `UIScene_SkinSelectMenu` notes in [Settings & Skin Select](/slop-docs/client/settings/).
+
+> **Changed in v1.1.0b:** the bundled **retail DLC assets** under
+> `Minecraft.Client/Windows64Media/DLC/` (Mash-Up packs, skin packs, texture
+> packs — 511 binary files) were deleted (commit `8cfce8ee`, "chore: delete
+> dlcs"). This is an asset-only removal: the `DLCManager` / `DLCPack` code, the
+> `EDLCType` set, and the built-in resource-tree packs under
+> `Common/res/TitleUpdate/DLC/` (182 `.pck` files, unchanged) all remain. The
+> pipeline documented here is intact; only the shipped downloadable payloads are
+> gone.
 
 ### DLC scenes
 

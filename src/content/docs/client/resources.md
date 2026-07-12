@@ -280,6 +280,13 @@ are silently skipped; out-of-range ids return `0` (black).
 > the project notes, server-side `colours.xml` handling was fixed so custom
 > biome colours propagate correctly rather than falling back to black.
 
+> **Changed in v1.1.0b:** two entries were appended to the `Mob_*_Colour1/2`
+> category — `Mob_PolarBear_Colour1` / `Mob_PolarBear_Colour2` (`ColourTable.cpp:347-348`,
+> TU43 polar-bear support), so `eMinecraftColour_COUNT` grew by two. Separately,
+> NOTES.md v1.1.0b lists a fix so "neoLegacy dedicated servers no longer crash due
+> to missing color files" — the crash path is on the server bootstrap, not the
+> `colours.xml` fallback in `AbstractTexturePack` (which is unchanged).
+
 ## Related pages
 
 - [Rendering](/slop-docs/client/rendering/) — how bound textures reach the atlas
