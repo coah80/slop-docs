@@ -1,9 +1,9 @@
 ---
 title: Slop Docs
-description: Complete documentation for the Minecraft Legacy Console Edition source code.
+description: Community documentation for neoLegacy, the C++ continuation of Minecraft Legacy Console Edition.
 template: splash
 hero:
-  tagline: Community-driven docs for the Minecraft LCE C++ codebase, built from 40 systematic analysis passes. the slop docs basically, so if you need anything changed, go to the github.
+  tagline: Community-driven docs for neoLegacy — the C++ continuation of Minecraft Legacy Console Edition (TU19 base, TU25 done, TU31 ~97%). the slop docs basically, so if you need anything changed, go to the github.
   actions:
     - text: Get Started
       link: /slop-docs/overview/introduction/
@@ -21,15 +21,21 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid stagger>
 	<Card title="Architecture" icon="setting">
-		Learn how the two-module setup works: `Minecraft.World` handles game logic while `Minecraft.Client` takes care of rendering, UI, and platform code.
+		Four CMake targets — `Minecraft.World` (shared gameplay static lib), `Minecraft.Client` (the game), and two dedicated servers — plus the bootstrap chain and the three GUI stacks. [Read the architecture overview](/slop-docs/overview/architecture/).
+	</Card>
+	<Card title="Building & Compiling" icon="laptop">
+		Windows via Visual Studio 2022, Linux cross-compile via `build-linux.sh` (clang-cl + xwin + Wine), or the Nix flake. [Build it yourself](/slop-docs/overview/building/).
 	</Card>
 	<Card title="Blocks, Items & Entities" icon="puzzle">
-		Full documentation of every tile (block), item, and entity class, including how they get registered.
+		Every tile (block), item, and entity class in `Minecraft.World/`, how they register, and the TU25/TU31 content backported on top of TU19. [Browse Minecraft.World](/slop-docs/world/overview/).
 	</Card>
-	<Card title="Modding Guide" icon="rocket">
-		Step-by-step guides for adding blocks, items, entities, dimensions, structures, enchantments, potions, custom AI, recipes, textures, sounds, particles, and way more.
+	<Card title="Dedicated Server" icon="seti:powershell">
+		The vanilla `Minecraft.Server` and the FourKit variant with its C# (.NET 10) plugin host. Configuration, CLI, Docker, and writing plugins. [Run a server](/slop-docs/server/overview/).
 	</Card>
-	<Card title="Platform Code" icon="laptop">
-		Docs covering all platform targets: Xbox 360, Xbox One, PS3, PS4, PS Vita, and Windows 64.
+	<Card title="Backporting Guide" icon="rocket">
+		How neoLegacy ports Title Updates onto a TU19 engine in milestone order — the workflow, the parity rules, and real case studies. [Learn the backport process](/slop-docs/backporting/overview/).
+	</Card>
+	<Card title="Modding Guide" icon="pencil">
+		Step-by-step guides for adding blocks, items, entities, worldgen, recipes, textures, and more to the source tree. [Start modding](/slop-docs/modding/getting-started/).
 	</Card>
 </CardGrid>
