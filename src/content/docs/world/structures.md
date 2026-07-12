@@ -148,6 +148,17 @@ After the start table, each piece set loads its pieces:
 also run a nested `Smithy::staticCtor()`. The `Monument` entry (both the start and
 the `OceanMonumentPieces::loadStatic()` call) is new in commit `720e1a77`.
 
+> **Changed in v1.1.0b:** two commits move past the `47e5cba3` snapshot documented
+> here. (1) `54528fac feat: loot tables (#43)` reworks **chest population** for the
+> structure pieces above — `MineShaftPieces`, `NetherBridgePieces`, `StrongholdPieces`,
+> `ScatteredFeaturePieces` (temples), `MonsterRoomFeature` (dungeons), and
+> `BonusChestFeature` now fill their chests from the data-driven `LootTableManager`
+> (XML tables under `Common/Media/MediaWindows64/Structures/loot_tables/chests/`)
+> rather than the hard-coded `WeighedTreasure` lists, so the piece geometry described
+> here is unchanged but what lands in the chests is now table-driven. (2)
+> `a4c746be TU43 Structures, bug fixes & minor changes` adds **Igloo and Fossil**
+> generation. See the [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
+
 ## Ocean Monument (new)
 
 The Ocean Monument is the flagship neoLegacy structure addition

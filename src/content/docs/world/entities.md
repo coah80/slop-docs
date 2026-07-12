@@ -371,6 +371,16 @@ the `FireworksRocketEntity` (id 22) and `DragonFireball` (id 1000) projectiles.
 The rabbit/mutton/prismarine/beetroot **items** that pair with these mobs live on
 [Items](/slop-docs/world/items/).
 
+> **Changed in v1.1.0b** (`54528fac feat: loot tables (#43)`): mob drops are now
+> driven by a data-driven **loot-table system** (`LootTableManager`, wired into
+> `Mob.cpp` and the individual mob classes — Cow, Chicken, Sheep, Guardian, Blaze,
+> Ghast, PigZombie, etc.), sourced from XML tables under
+> `Common/Media/MediaWindows64/Structures/loot_tables/entities/`. The same commit
+> renamed the `Ozelot` C++ class to **`Ocelot`** (`Ozelot.cpp`/`.h` deleted,
+> `Ocelot.cpp`/`.h` added); the numeric id **98** and the on-disk save-id string
+> `Ozelot` in the table above are **unchanged**. See the
+> [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
+
 ## See also
 
 - [AI & Goals](/slop-docs/world/ai-goals/) — the goal selector and per-mob goal wiring

@@ -252,6 +252,18 @@ Windows/`WIN64` build treats `'WIN_'` as native.
 [Networking](/slop-docs/world/networking/)) is also stamped into save filenames
 (`ConsoleSaveFileOriginal.cpp:1033`), tying the save tag to the network build.
 
+> **Changed in v1.1.0b** (`48b80ba8 fix: world format discrepancies`, merged as
+> `245cbb18 fix(?): world save region stuff yay (#45)`): the split-vs-legacy region
+> layout is no longer decided by the save platform. `RegionFileCache::_getRegionFile`
+> now keys entirely off the presence of a `region_format_16` marker file inside the
+> container, so DLC worlds (and any world) can load either format. `WIN64` was added
+> to `RegionFileCache::useSplitSaves` (Windows64 saves now opt into split saves), the
+> `region_format_16` stamp that `LevelGenerationOptions::loadBaseSaveData` used to add
+> to base-gen saves was removed, and `MinecraftServer::loadLevel` now runs
+> `ConsoleSaveFileOriginal::ConvertToLocalPlatform()` on load. This is the "universal
+> DLC-capable save format" line in `NOTES.md`. The header/`ESaveVersions`/platform-FourCC
+> layout described above is unchanged.
+
 ## World metadata
 
 `LevelData` / `DerivedLevelData` (`LevelData.h`) hold the per-world header:

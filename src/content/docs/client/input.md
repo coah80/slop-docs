@@ -218,6 +218,16 @@ Key behaviours:
   reflects the movement immediately instead of waiting up to 50 ms for the next
   tick. Pitch is clamped to ±90° on both.
 
+> **Changed in v1.1.0b** (`a59d441a feat: pick block (#40)` / `6e59e404 feat: pick
+> block + jukebox fixes`): a **middle-mouse pick block** was added to the Windows64
+> input path in `Minecraft::tick` (`Minecraft.cpp`, `#ifdef _WINDOWS64`). It watches
+> `g_KBMInput.IsMouseButtonDown(KeyboardMouseInput::MOUSE_MIDDLE)` on pad 0 with an
+> edge-detect (`wasMiddleMouseDown`), and — only when `gameMode->hasInfiniteItems()`
+> (creative) and a `hitResult` exists — copies the looked-at tile (via
+> `mayPick`/`cloneTileId`/`cloneTileData`) or entity (mapped through
+> `EntityIO::eTypeToIoid`, with Elder-Guardian/horse-variant special cases) into the
+> hotbar. See the [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
+
 ## Server-side command input
 
 Distinct from player/menu input: `ConsoleInput.cpp` +

@@ -14,7 +14,7 @@ neoLegacy is **not** vanilla LCE. It is a fork lineage descendant that adds game
 | | |
 |---|---|
 | Base version | TU19 (`CONTRIBUTING.md:2`) |
-| Current version | **1.0.9b** (`BUMP`) |
+| Current version | **1.1.0b** (`BUMP`) — these docs were audited at `47e5cba3` / v1.0.9b; see the [Changelog](/slop-docs/features/changelog/#v110b-current) for the v1.1.0b delta |
 | Language | C++17 engine (CMake) + C# plugin layer (FourKit, .NET 10) |
 | Primary forge | `https://git.neolegacy.dev/coah80/neoLegacy` (self-hosted Gitea/Forgejo) |
 | Public mirror | `github.com/pieeebot/neoLegacy` (Nightly release for end users) |
@@ -29,6 +29,8 @@ Per `README.md:8-12`:
 | **TU25** | 100% complete 🎉 |
 | **TU31** | 97.01% complete |
 | TU43 | Work started on the `TU43` branch (commit `37cd6215 TU43 Release 1`), ahead of the README's stated 97% TU31 milestone |
+
+> **Changed in v1.1.0b:** TU43 structures & blocks (Igloos, Fossils, magma/real-prismarine textures) have since **merged to `main`** in `a4c746be TU43 Structures, bug fixes & minor changes` (they are no longer branch-only). The README roadmap percentages are unchanged (TU25 100%, TU31 97.01%). See the [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
 
 The overall goal (`CONTRIBUTING.md:26`) is bluntly "Implementing all title updates LCE had." Content is added **in original LCE release order**, one Title Update milestone at a time, starting from TU19 — see [Contributing & Releases](/slop-docs/overview/contributing/) for the parity rules.
 
