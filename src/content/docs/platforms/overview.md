@@ -144,16 +144,16 @@ PS Vita also bundles: libdivide integer division optimization (`PSVitaExtras/lib
 
 In addition to the platform-specific client code, LCEMP includes a `Minecraft.Server/` module for running a standalone dedicated server. This module has its own text-based command system (27 commands), a `server.properties` configuration file, and a console input thread for accepting commands. It also has a `Linux/` subdirectory with a Linux entry point, suggesting cross-platform server support was planned.
 
-See the [Dedicated Server](/lce-docs/platforms/dedicated-server/) page for full details.
+See the [Dedicated Server](/slop-docs/platforms/dedicated-server/) page for full details.
 
 ## Shared Common/ Systems
 
 The `Common/` directory inside `Minecraft.Client` holds cross-platform systems shared by all platforms. Several of these systems have their own documentation pages:
 
-- [DLC Pipeline](/lce-docs/platforms/dlc-pipeline/) -- DLC pack management, file types, and content loading
-- [Telemetry](/lce-docs/platforms/telemetry/) -- Gameplay event tracking via CTelemetryManager
-- [Leaderboards](/lce-docs/platforms/leaderboards/) -- Platform-specific leaderboard integration
-- [Tutorial System](/lce-docs/platforms/tutorial-system/) -- In-game tutorial with states, tasks, hints, and constraints
+- [DLC Pipeline](/slop-docs/platforms/dlc-pipeline/) -- DLC pack management, file types, and content loading
+- [Telemetry](/slop-docs/platforms/telemetry/) -- Gameplay event tracking via CTelemetryManager
+- [Leaderboards](/slop-docs/platforms/leaderboards/) -- Platform-specific leaderboard integration
+- [Tutorial System](/slop-docs/platforms/tutorial-system/) -- In-game tutorial with states, tasks, hints, and constraints
 
 ## File Naming Conventions
 

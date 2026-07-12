@@ -5,7 +5,7 @@ description: A complete starter mod that adds a custom 4x4 crafting workbench wi
 
 This template walks you through building a fully working custom workbench block with a 4x4 crafting grid, a container menu, a SWF-based UI screen, multiplayer sync, and a custom recipe. By the end you will have a new block that players can place, right-click to open a 4x4 crafting interface, and use to craft items that the normal 3x3 table cannot.
 
-If you have not set up your build environment yet, start with [Getting Started](/lce-docs/modding/getting-started/) first.
+If you have not set up your build environment yet, start with [Getting Started](/slop-docs/modding/getting-started/) first.
 
 ## What we are building
 
@@ -198,7 +198,7 @@ Tile::megaWorkbench = (MegaWorkbenchTile *)(new MegaWorkbenchTile(200))
     ->setBaseItemTypeAndMaterial(Item::eBaseItemType_device, Item::eMaterial_wood);
 ```
 
-See [Adding Blocks](/lce-docs/modding/adding-blocks/) for the full breakdown of the registration system and available properties.
+See [Adding Blocks](/slop-docs/modding/adding-blocks/) for the full breakdown of the registration system and available properties.
 
 ---
 
@@ -411,7 +411,7 @@ The pixel positions (`x`, `y` passed to each `Slot` constructor) are used by the
 
 `ResultSlot` is a special slot subclass that the base game provides. It blocks `mayPlace()` (so you cannot put items into the output) and fires crafting events when you take items out. It also calls `slotsChanged()` after each take so the menu can check for a new recipe match.
 
-For the full details on slots, shift-clicking, and the container lifecycle, see [Custom Container Menus](/lce-docs/modding/custom-containers/).
+For the full details on slots, shift-clicking, and the container lifecycle, see [Custom Container Menus](/slop-docs/modding/custom-containers/).
 
 ---
 
@@ -665,7 +665,7 @@ You need a `MegaCrafting720.swf` (and ideally 1080p/480p variants) authored in A
 
 Place the SWF in your game archive alongside the other UI movies. The resolution suffix is appended automatically by `getMoviePath()`.
 
-For the full details on SWF authoring, element mapping, and Iggy integration, see [Custom GUI Screens](/lce-docs/modding/custom-screens/).
+For the full details on SWF authoring, element mapping, and Iggy integration, see [Custom GUI Screens](/slop-docs/modding/custom-screens/).
 
 ### Register the scene in navigation
 
@@ -702,7 +702,7 @@ Nothing extra, as long as you follow these rules:
 
 If you need to send custom data (like a progress bar or status value), use `sendData(id, value)` in your menu and override `setData(id, value)` on the client side. The container system routes these through `ContainerSetDataPacket` automatically.
 
-For custom packet types beyond what the container system provides, see [Multiplayer & Packets](/lce-docs/modding/multiplayer/).
+For custom packet types beyond what the container system provides, see [Multiplayer & Packets](/slop-docs/modding/multiplayer/).
 
 ---
 
@@ -876,7 +876,7 @@ void MegaRecipes::registerRecipes()
 
 The matching logic works the same way the vanilla `ShapedRecipy` does: it slides the recipe pattern around within the grid to find a match at any offset. Smaller recipes (like a 2x4) will match if placed anywhere in the grid with the remaining slots empty.
 
-To add more recipes, just add more calls to `addRecipy()` inside `registerRecipes()`. For the type string encoding used by the vanilla recipe system, see [Adding Recipes](/lce-docs/modding/adding-recipes/).
+To add more recipes, just add more calls to `addRecipy()` inside `registerRecipes()`. For the type string encoding used by the vanilla recipe system, see [Adding Recipes](/slop-docs/modding/adding-recipes/).
 
 ---
 
@@ -924,7 +924,7 @@ Icon *MegaWorkbenchTile::getTexture(int face)
 
 Then register all three texture names in `loadUVs()` at different atlas positions.
 
-For the full guide on the terrain atlas system and UV mapping, see [Block Textures](/lce-docs/modding/block-textures/).
+For the full guide on the terrain atlas system and UV mapping, see [Block Textures](/slop-docs/modding/block-textures/).
 
 ---
 
@@ -950,9 +950,9 @@ If the block does not open the UI, double-check that `eUIScene_MegaCrafting` is 
 
 ## Related guides
 
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) for the tile registration system
-- [Custom Container Menus](/lce-docs/modding/custom-containers/) for the full container menu reference
-- [Custom GUI Screens](/lce-docs/modding/custom-screens/) for SWF authoring and UIScene details
-- [Adding Recipes](/lce-docs/modding/adding-recipes/) for the vanilla recipe system
-- [Block Textures](/lce-docs/modding/block-textures/) for the terrain atlas
-- [Multiplayer & Packets](/lce-docs/modding/multiplayer/) for custom networking
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) for the tile registration system
+- [Custom Container Menus](/slop-docs/modding/custom-containers/) for the full container menu reference
+- [Custom GUI Screens](/slop-docs/modding/custom-screens/) for SWF authoring and UIScene details
+- [Adding Recipes](/slop-docs/modding/adding-recipes/) for the vanilla recipe system
+- [Block Textures](/slop-docs/modding/block-textures/) for the terrain atlas
+- [Multiplayer & Packets](/slop-docs/modding/multiplayer/) for custom networking

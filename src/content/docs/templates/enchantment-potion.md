@@ -7,7 +7,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 This template walks you through adding two new gameplay features from scratch: a **Vampiric** sword enchantment that heals you when you hit something, and a **Levitation** potion effect that makes entities float upward. By the end, both will be fully registered, brewable, and showing up on the enchanting table.
 
-If you haven't set up your build environment yet, start with [Getting Started](/lce-docs/modding/getting-started/) first. This tutorial assumes you can already compile and run the game.
+If you haven't set up your build environment yet, start with [Getting Started](/slop-docs/modding/getting-started/) first. This tutorial assumes you can already compile and run the game.
 
 ## Files you will create
 
@@ -83,7 +83,7 @@ Add the new enchantment file to `MINECRAFT_WORLD_SOURCES` in `cmake/Sources.cmak
 
 ### 1.1 Pick an ID and plan the enchantment
 
-We need an unused enchantment ID. Vanilla weapon enchantments use IDs 16-21, so we'll grab **22** (the first open slot after Looting). For a refresher on the full ID map, see [Custom Enchantments](/lce-docs/modding/custom-enchantments/).
+We need an unused enchantment ID. Vanilla weapon enchantments use IDs 16-21, so we'll grab **22** (the first open slot after Looting). For a refresher on the full ID map, see [Custom Enchantments](/slop-docs/modding/custom-enchantments/).
 
 Here's what we want:
 
@@ -155,7 +155,7 @@ bool VampiricEnchantment::isCompatibleWith(Enchantment *other) const
 }
 ```
 
-Let's talk about the cost curve. With 15 bookshelves, the enchanting table's bottom slot generates values roughly between 9 and 31 (plus the item's enchantment value bonus). Our level 1 range of 15-45 means it starts showing up at mid-level enchantment power. Level 3 needs a value of at least 35, so you'll mostly see that from high-bookshelf rolls. For more on how cost curves interact with the table, see [Adding Enchantments](/lce-docs/modding/adding-enchantments/).
+Let's talk about the cost curve. With 15 bookshelves, the enchanting table's bottom slot generates values roughly between 9 and 31 (plus the item's enchantment value bonus). Our level 1 range of 15-45 means it starts showing up at mid-level enchantment power. Level 3 needs a value of at least 35, so you'll mostly see that from high-bookshelf rolls. For more on how cost curves interact with the table, see [Adding Enchantments](/slop-docs/modding/adding-enchantments/).
 
 <Aside type="tip">
 If you want Vampiric to also conflict with the damage enchantments (Sharpness, Smite, Bane), add a `dynamic_cast` check: `if (dynamic_cast<DamageEnchantment *>(other) != NULL) return false;`. That would make it a standalone weapon enchantment that doesn't stack with damage boosters.
@@ -233,7 +233,7 @@ int EnchantmentHelper::getVampiricLevel(
 }
 ```
 
-This follows the same pattern as `getKnockbackBonus()`, `getFireAspect()`, and the other weapon enchantment helpers. For background on how `getEnchantmentLevel` reads the NBT tags, see [Custom Enchantments](/lce-docs/modding/custom-enchantments/).
+This follows the same pattern as `getKnockbackBonus()`, `getFireAspect()`, and the other weapon enchantment helpers. For background on how `getEnchantmentLevel` reads the NBT tags, see [Custom Enchantments](/slop-docs/modding/custom-enchantments/).
 
 ### 1.7 Hook into the damage pipeline
 
@@ -294,7 +294,7 @@ At this point, Vampiric is fully functional. You can test it with:
 
 The `MobEffect` registry has 32 slots. Vanilla LCEMP uses IDs 1-19, and slots 20-31 are reserved and set to NULL. We'll use **ID 25** (IDs 20-23 are taken in the MC build, so picking 25 keeps us safe if you ever want MC compatibility).
 
-For a full breakdown of the effect registry, see [Custom Potions & Brewing](/lce-docs/modding/custom-potions/).
+For a full breakdown of the effect registry, see [Custom Potions & Brewing](/slop-docs/modding/custom-potions/).
 
 Our Levitation effect:
 
@@ -419,7 +419,7 @@ These show up in the potion tooltip and inventory name.
 
 ### 3.1 How brewing works (quick version)
 
-LCE uses a bitfield system for potions. Every potion is a 15-bit integer where specific bits encode which effect is active, whether it's extended, amplified, or throwable. Ingredients have formula strings that flip bits. For the full explanation, see [Custom Potions & Brewing](/lce-docs/modding/custom-potions/).
+LCE uses a bitfield system for potions. Every potion is a 15-bit integer where specific bits encode which effect is active, whether it's extended, amplified, or throwable. Ingredients have formula strings that flip bits. For the full explanation, see [Custom Potions & Brewing](/slop-docs/modding/custom-potions/).
 
 The key bits:
 
@@ -458,10 +458,10 @@ const wstring PotionBrewing::MOD_PHANTOMMEMBRANE =
     L"+0-1+2+3&4-4+13";
 ```
 
-This sets bits 0, 2, 3 (giving our `1101` pattern), clears bit 1, requires the Awkward Potion enabler bit (4), consumes it, and marks it as functional (bit 13). For a full explanation of the formula syntax, see [Custom Potions & Brewing](/lce-docs/modding/custom-potions/).
+This sets bits 0, 2, 3 (giving our `1101` pattern), clears bit 1, requires the Awkward Potion enabler bit (4), consumes it, and marks it as functional (bit 13). For a full explanation of the formula syntax, see [Custom Potions & Brewing](/slop-docs/modding/custom-potions/).
 
 <Aside type="note">
-We're using Phantom Membrane as the ingredient because it fits thematically (phantoms float). You can use any item you want. If you're adding a brand new item, see [Adding Items](/lce-docs/modding/adding-items/). If you want to reuse an existing item, just assign this formula to it instead.
+We're using Phantom Membrane as the ingredient because it fits thematically (phantoms float). You can use any item you want. If you're adding a brand new item, see [Adding Items](/slop-docs/modding/adding-items/). If you want to reuse an existing item, just assign this formula to it instead.
 </Aside>
 
 ### 3.3 Assign the formula to an item
@@ -502,7 +502,7 @@ potionEffectAmplifier.insert(intStringMap::value_type(
 ));
 ```
 
-The duration formula checks that our bit pattern (`1101`) is present, then uses `0+6` for the duration value. Without Redstone (bit 6 clear), duration is short. With Redstone (bit 6 set), it's longer. For the full formula syntax breakdown, see [Custom Potions & Brewing](/lce-docs/modding/custom-potions/).
+The duration formula checks that our bit pattern (`1101`) is present, then uses `0+6` for the duration value. Without Redstone (bit 6 clear), duration is short. With Redstone (bit 6 set), it's longer. For the full formula syntax breakdown, see [Custom Potions & Brewing](/slop-docs/modding/custom-potions/).
 
 ### 3.5 The full brewing chain
 
@@ -594,9 +594,9 @@ Launch the game and run through this test checklist:
 
 ## Related guides
 
-- [Getting Started](/lce-docs/modding/getting-started/) for build setup
-- [Adding Enchantments](/lce-docs/modding/adding-enchantments/) for enchantment system basics
-- [Custom Enchantments](/lce-docs/modding/custom-enchantments/) for advanced enchantment techniques
-- [Custom Potions & Brewing](/lce-docs/modding/custom-potions/) for the full brewing system reference
-- [Adding Items](/lce-docs/modding/adding-items/) if you need to create a new ingredient item
-- [Adding Recipes](/lce-docs/modding/adding-recipes/) for crafting recipe setup
+- [Getting Started](/slop-docs/modding/getting-started/) for build setup
+- [Adding Enchantments](/slop-docs/modding/adding-enchantments/) for enchantment system basics
+- [Custom Enchantments](/slop-docs/modding/custom-enchantments/) for advanced enchantment techniques
+- [Custom Potions & Brewing](/slop-docs/modding/custom-potions/) for the full brewing system reference
+- [Adding Items](/slop-docs/modding/adding-items/) if you need to create a new ingredient item
+- [Adding Recipes](/slop-docs/modding/adding-recipes/) for crafting recipe setup

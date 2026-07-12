@@ -86,7 +86,7 @@ Seeds are plantable items that place crop tiles on farmland. The constructor tak
 | ID | 262 |
 | Class | `Item` |
 
-A simple item with no special behavior. Gets consumed by `BowItem` when firing. See [Combat Items](/lce-docs/world/items/combat/) for bow mechanics.
+A simple item with no special behavior. Gets consumed by `BowItem` when firing. See [Combat Items](/slop-docs/world/items/combat/) for bow mechanics.
 
 ## Potion Brewing Ingredients
 
@@ -107,7 +107,7 @@ Several material items are tagged with potion brewing formulas through `setPotio
 | Glistering Melon | 382 | `MOD_SPECKLEDMELON` |
 | Golden Carrot | 396 | `MOD_GOLDENCARROT` |
 
-See [Effects (Potions)](/lce-docs/world/effects/) for the full potion system.
+See [Effects (Potions)](/slop-docs/world/effects/) for the full potion system.
 
 ## MinecraftConsoles differences
 

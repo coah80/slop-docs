@@ -15,7 +15,7 @@ Here is what we will cover:
 6. How the texture pack system works
 7. Common pitfalls and how to fix them
 
-If you have not set up a build environment yet, start with [Getting Started](/lce-docs/modding/getting-started/) first. This tutorial assumes you can build and run the game.
+If you have not set up a build environment yet, start with [Getting Started](/slop-docs/modding/getting-started/) first. This tutorial assumes you can build and run the game.
 
 ## Files you will create or modify
 
@@ -143,7 +143,7 @@ void Tile::registerIcons(IconRegister *iconRegister)
 
 The `registerIcon()` call looks up the name in the `texturesByName` map and returns the matching `Icon*` with its UV coordinates. Then `getTexture()` returns that icon for every face.
 
-For blocks with different textures per face, you override `registerIcons()` and `getTexture()`. See [Block Textures](/lce-docs/modding/block-textures/) for the full breakdown of multi-face patterns.
+For blocks with different textures per face, you override `registerIcons()` and `getTexture()`. See [Block Textures](/slop-docs/modding/block-textures/) for the full breakdown of multi-face patterns.
 
 ---
 
@@ -333,7 +333,7 @@ void MyFancyItem::registerIcons(IconRegister *iconRegister)
 }
 ```
 
-See [Adding Items](/lce-docs/modding/adding-items/) for the full item creation process.
+See [Adding Items](/slop-docs/modding/adding-items/) for the full item creation process.
 
 ---
 
@@ -409,7 +409,7 @@ textures->bindTexture(Textures::TN_MOB_SHEEP_FUR);
 woolModel->render(entity, ...);
 ```
 
-See [Adding Entities](/lce-docs/modding/adding-entities/) for the full entity creation and rendering pipeline.
+See [Adding Entities](/slop-docs/modding/adding-entities/) for the full entity creation and rendering pipeline.
 
 ---
 
@@ -592,7 +592,7 @@ Texture packs can include custom colour tables that change biome tinting across 
 
 If you want to change biome colors in your pack, create a `colours.col` binary file with one RGBA value per colour ID and include it in your pack.
 
-See [Texture Packs](/lce-docs/modding/texture-packs/) for the full deep-dive on every pack type and the reload pipeline.
+See [Texture Packs](/slop-docs/modding/texture-packs/) for the full deep-dive on every pack type and the reload pipeline.
 
 ---
 
@@ -710,9 +710,9 @@ Once in-game, check for these common problems:
 
 Now that you understand how textures work in LCE, here are some good next steps:
 
-- **Add a full block with texture.** Follow [Adding Blocks](/lce-docs/modding/adding-blocks/) and use what you learned here for the texture side. Try a multi-face block like a furnace or log.
-- **Add a custom item with an icon.** Follow [Adding Items](/lce-docs/modding/adding-items/) and register your own item texture on the items atlas.
-- **Add a custom mob with its own skin.** Follow [Adding Entities](/lce-docs/modding/adding-entities/) and set up the texture pipeline for a new entity.
+- **Add a full block with texture.** Follow [Adding Blocks](/slop-docs/modding/adding-blocks/) and use what you learned here for the texture side. Try a multi-face block like a furnace or log.
+- **Add a custom item with an icon.** Follow [Adding Items](/slop-docs/modding/adding-items/) and register your own item texture on the items atlas.
+- **Add a custom mob with its own skin.** Follow [Adding Entities](/slop-docs/modding/adding-entities/) and set up the texture pipeline for a new entity.
 - **Make an animated block texture.** Try creating a glowing ore that pulses, using the animation strip system.
-- **Build a texture pack.** Set up a `FolderTexturePack` and replace a handful of vanilla textures to see the fallback system in action. Then read [Texture Packs](/lce-docs/modding/texture-packs/) for the full DLC pack format.
+- **Build a texture pack.** Set up a `FolderTexturePack` and replace a handful of vanilla textures to see the fallback system in action. Then read [Texture Packs](/slop-docs/modding/texture-packs/) for the full DLC pack format.
 - **Experiment with biome tinting.** Create a custom grass-like block and set the `IS_GRASS_TOP` flag to see how biome colors affect your texture.

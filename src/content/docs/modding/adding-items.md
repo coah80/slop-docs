@@ -322,7 +322,7 @@ Item::pickAxe_diamond = ( new PickaxeItem(22, _Tier::DIAMOND) )
 
 ### Shovel, Axe, Hoe
 
-Same pattern: `ShovelItem(id, tier)` with base attack 1, `HatchetItem(id, tier)` with base attack 3, `HoeItem(id, tier)` with no attack bonus. See [Tools & Weapons](/lce-docs/world/items/tools/) for full details on each.
+Same pattern: `ShovelItem(id, tier)` with base attack 1, `HatchetItem(id, tier)` with base attack 3, `HoeItem(id, tier)` with no attack bonus. See [Tools & Weapons](/slop-docs/world/items/tools/) for full details on each.
 
 ## Creating armor items
 
@@ -508,11 +508,11 @@ Item::ruby = ( new Item(151) )  // 256 + 151 = 407
     ->setUseDescriptionId(IDS_DESC_RUBY);
 ```
 
-This creates a simple gem item, similar to how emeralds and diamonds are registered. Pair it with a [Ruby Ore block](/lce-docs/modding/adding-blocks/) that drops this item.
+This creates a simple gem item, similar to how emeralds and diamonds are registered. Pair it with a [Ruby Ore block](/slop-docs/modding/adding-blocks/) that drops this item.
 
 ## Related guides
 
-- [Getting Started](/lce-docs/modding/getting-started/) for environment setup and the staticCtor pattern
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) to create blocks that drop your custom items
-- [Adding Recipes](/lce-docs/modding/adding-recipes/) to make your items craftable
-- [Item System Overview](/lce-docs/world/items/overview/) for the full Item class reference
+- [Getting Started](/slop-docs/modding/getting-started/) for environment setup and the staticCtor pattern
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) to create blocks that drop your custom items
+- [Adding Recipes](/slop-docs/modding/adding-recipes/) to make your items craftable
+- [Item System Overview](/slop-docs/world/items/overview/) for the full Item class reference

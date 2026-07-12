@@ -15,39 +15,39 @@ The code follows Mojang's original Java package structure pretty closely. Namesp
 void MinecraftWorld_RunStaticCtors();
 ```
 
-This kicks off all the static registries (tiles, items, biomes, enchantments, recipes, mob effects, and stats) before the game loop starts. The initialization order is strict and documented in the [Architecture](/lce-docs/overview/architecture/) page. Getting this wrong causes crashes because later systems depend on data from earlier ones (items depend on tiles, recipes depend on items, etc.).
+This kicks off all the static registries (tiles, items, biomes, enchantments, recipes, mob effects, and stats) before the game loop starts. The initialization order is strict and documented in the [Architecture](/slop-docs/overview/architecture/) page. Getting this wrong causes crashes because later systems depend on data from earlier ones (items depend on tiles, recipes depend on items, etc.).
 
 ## Subsystem Summary
 
 | Subsystem | Files | Units | Key Base Class | Details |
 |-----------|------:|------:|----------------|---------|
-| [Blocks (Tiles)](/lce-docs/world/blocks/) | 210 | 105 | `Tile` | All block types, from `AirTile` to `WoolCarpetTile` |
+| [Blocks (Tiles)](/slop-docs/world/blocks/) | 210 | 105 | `Tile` | All block types, from `AirTile` to `WoolCarpetTile` |
 | Tile Items | 30 | 15 | `TileItem` | Item representations of placeable blocks |
-| [Tile Entities](/lce-docs/world/tile-entities/) | 22 | 11 | `TileEntity` | Blocks with persistent state (chests, furnaces, signs) |
-| [Items](/lce-docs/world/items/) | 94 | 47 | `Item` | Tools, weapons, food, armor, and special items |
-| [Entities](/lce-docs/world/entities/) -- Mobs | 36 | 18 | `Monster` | Hostile mobs: Zombie, Skeleton, Creeper, EnderDragon, etc. |
-| [Entities](/lce-docs/world/entities/) -- Animals | 24 | 12 | `Animal` | Passive mobs: Pig, Cow, Sheep, Wolf, Ozelot, etc. |
-| [Entities](/lce-docs/world/entities/) -- Projectiles | 24 | 12 | `Throwable` / `Fireball` | Arrow, Snowball, ThrownPotion, DragonFireball, etc. |
-| [Entities](/lce-docs/world/entities/) -- Other | 24 | 12 | `Entity` | Boat, Minecart, FallingTile, PrimedTnt, ItemEntity |
+| [Tile Entities](/slop-docs/world/tile-entities/) | 22 | 11 | `TileEntity` | Blocks with persistent state (chests, furnaces, signs) |
+| [Items](/slop-docs/world/items/) | 94 | 47 | `Item` | Tools, weapons, food, armor, and special items |
+| [Entities](/slop-docs/world/entities/) -- Mobs | 36 | 18 | `Monster` | Hostile mobs: Zombie, Skeleton, Creeper, EnderDragon, etc. |
+| [Entities](/slop-docs/world/entities/) -- Animals | 24 | 12 | `Animal` | Passive mobs: Pig, Cow, Sheep, Wolf, Ozelot, etc. |
+| [Entities](/slop-docs/world/entities/) -- Projectiles | 24 | 12 | `Throwable` / `Fireball` | Arrow, Snowball, ThrownPotion, DragonFireball, etc. |
+| [Entities](/slop-docs/world/entities/) -- Other | 24 | 12 | `Entity` | Boat, Minecart, FallingTile, PrimedTnt, ItemEntity |
 | Entity Core | 37 | 19 | `Entity` | Base classes, spawner, entity data sync, IO |
-| [AI Goals](/lce-docs/world/ai-goals/) | 88 | 44 | `Goal` | Behavior tree goals: attack, flee, breed, follow, etc. |
+| [AI Goals](/slop-docs/world/ai-goals/) | 88 | 44 | `Goal` | Behavior tree goals: attack, flee, breed, follow, etc. |
 | AI Controls & Navigation | 23 | 12 | `PathNavigation` | Movement, look, and jump controls; A* pathfinding |
-| [Networking](/lce-docs/world/networking/) | 167 | 86 | `Packet` | All game packets for client-server communication |
-| [World Gen](/lce-docs/world/worldgen/) -- Features | 89 | 45 | `Feature` | Terrain decorations: ores, trees, lakes, dungeons |
-| [Biomes](/lce-docs/world/biomes/) | 50 | 26 | `Biome` | Biome definitions and the `BiomeSource` / `BiomeDecorator` |
-| [World Gen](/lce-docs/world/worldgen/) -- Layers | 40 | 20 | `Layer` | Biome map generation pipeline (zoom, smooth, river, etc.) |
-| [Structures](/lce-docs/world/structures/) | 16 | 8 | `StructureFeature` | Villages, strongholds, mine shafts, nether bridges |
-| [World Gen](/lce-docs/world/worldgen/) -- Noise | 12 | 6 | `PerlinNoise` | Perlin, simplex, and FastNoise generators |
-| [World Gen](/lce-docs/world/worldgen/) -- Level Sources | 19 | 10 | `ChunkSource` | Chunk generators for overworld, nether, end, and flat |
-| [Enchantments](/lce-docs/world/enchantments/) | 45 | 23 | `Enchantment` | All enchantment types plus `EnchantmentHelper` |
-| [Effects](/lce-docs/world/effects/) | 10 | 5 | `MobEffect` | Status effects and potion brewing |
-| [Crafting](/lce-docs/world/crafting/) | 33 | 17 | `Recipy` | Shaped, shapeless, and furnace recipes |
-| [Containers](/lce-docs/world/containers/) | 51 | 26 | `AbstractContainerMenu` | Inventory screens: crafting table, furnace, anvil, etc. |
-| [Storage](/lce-docs/world/storage/) | 67 | 36 | `LevelStorage` | World save/load, region files, NBT I/O, console save formats |
+| [Networking](/slop-docs/world/networking/) | 167 | 86 | `Packet` | All game packets for client-server communication |
+| [World Gen](/slop-docs/world/worldgen/) -- Features | 89 | 45 | `Feature` | Terrain decorations: ores, trees, lakes, dungeons |
+| [Biomes](/slop-docs/world/biomes/) | 50 | 26 | `Biome` | Biome definitions and the `BiomeSource` / `BiomeDecorator` |
+| [World Gen](/slop-docs/world/worldgen/) -- Layers | 40 | 20 | `Layer` | Biome map generation pipeline (zoom, smooth, river, etc.) |
+| [Structures](/slop-docs/world/structures/) | 16 | 8 | `StructureFeature` | Villages, strongholds, mine shafts, nether bridges |
+| [World Gen](/slop-docs/world/worldgen/) -- Noise | 12 | 6 | `PerlinNoise` | Perlin, simplex, and FastNoise generators |
+| [World Gen](/slop-docs/world/worldgen/) -- Level Sources | 19 | 10 | `ChunkSource` | Chunk generators for overworld, nether, end, and flat |
+| [Enchantments](/slop-docs/world/enchantments/) | 45 | 23 | `Enchantment` | All enchantment types plus `EnchantmentHelper` |
+| [Effects](/slop-docs/world/effects/) | 10 | 5 | `MobEffect` | Status effects and potion brewing |
+| [Crafting](/slop-docs/world/crafting/) | 33 | 17 | `Recipy` | Shaped, shapeless, and furnace recipes |
+| [Containers](/slop-docs/world/containers/) | 51 | 26 | `AbstractContainerMenu` | Inventory screens: crafting table, furnace, anvil, etc. |
+| [Storage](/slop-docs/world/storage/) | 67 | 36 | `LevelStorage` | World save/load, region files, NBT I/O, console save formats |
 | NBT & Tags | 15 | 14 | `Tag` | Named Binary Tag types (CompoundTag, ListTag, etc.) |
 | Commands | 23 | 13 | `Command` | Server commands: give, kill, time, gamemode, etc. |
 | Stats & Achievements | 19 | 10 | `Stat` | Gameplay statistics and achievement tracking |
-| [Game Rules](/lce-docs/world/gamerules/) | -- | -- | `LevelData` | Game rule flags stored in level data |
+| [Game Rules](/slop-docs/world/gamerules/) | -- | -- | `LevelData` | Game rule flags stored in level data |
 | Level Core | 49 | 28 | `Level` | The world itself: tick loop, lighting, chunks, dimensions |
 | Materials | 9 | 7 | `Material` | Block material properties (solid, liquid, flammable) |
 | Physics & Math | 31 | 16 | -- | AABB, Vec3, Pos, Random, Mth, Facing |

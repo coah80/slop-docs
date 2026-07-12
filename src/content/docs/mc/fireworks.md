@@ -331,5 +331,5 @@ The overlay renders as a single quad using a fixed texture region (32x32 pixels 
 
 ## Related pages
 
-- [Redstone Mechanics](/lce-docs/mc/redstone/) for redstone activation of dispensers for firework launching
-- [Behavior System](/lce-docs/mc/behaviors/) for `FireworksDispenseBehavior` details
+- [Redstone Mechanics](/slop-docs/mc/redstone/) for redstone activation of dispensers for firework launching
+- [Behavior System](/slop-docs/mc/behaviors/) for `FireworksDispenseBehavior` details

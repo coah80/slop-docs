@@ -211,5 +211,5 @@ LCEMP does not have the behavior registry, `DispenseItemBehavior`, `BehaviorRegi
 
 ## Related pages
 
-- [Hoppers and Droppers](/lce-docs/mc/hoppers-droppers/) for the dropper's use of `DefaultDispenseItemBehavior`
-- [Fireworks](/lce-docs/mc/fireworks/) for the `FireworksDispenseBehavior` and rocket entity
+- [Hoppers and Droppers](/slop-docs/mc/hoppers-droppers/) for the dropper's use of `DefaultDispenseItemBehavior`
+- [Fireworks](/slop-docs/mc/fireworks/) for the `FireworksDispenseBehavior` and rocket entity

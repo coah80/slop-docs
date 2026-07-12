@@ -22,11 +22,11 @@ This template walks you through building a fully working custom dimension from s
 - Hooking everything into the factory methods and static constructors
 
 If any of these systems are new to you, the reference pages go deeper:
-- [Custom Dimensions](/lce-docs/modding/custom-dimensions/) covers every virtual method on `Dimension`
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) covers the full `Tile` registration system
-- [Fog & Sky](/lce-docs/modding/fog-sky/) covers the rendering pipeline for fog colors
-- [Custom Materials](/lce-docs/modding/custom-materials/) covers `Material` behavior flags
-- [Custom World Generation](/lce-docs/modding/custom-worldgen/) covers noise and feature placement
+- [Custom Dimensions](/slop-docs/modding/custom-dimensions/) covers every virtual method on `Dimension`
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) covers the full `Tile` registration system
+- [Fog & Sky](/slop-docs/modding/fog-sky/) covers the rendering pipeline for fog colors
+- [Custom Materials](/slop-docs/modding/custom-materials/) covers `Material` behavior flags
+- [Custom World Generation](/slop-docs/modding/custom-worldgen/) covers noise and feature placement
 
 ## Files you will create
 
@@ -121,7 +121,7 @@ Tile::purpleStoneTile = (PurpleStoneTile *)(new PurpleStoneTile(200))
     ->setBaseItemTypeAndMaterial(Item::eBaseItemType_block, Item::eMaterial_stone);
 ```
 
-Pick IDs that are not already taken. 200 and 201 are used here as examples. Check your project for conflicts. See [Getting Started](/lce-docs/modding/getting-started/) for finding available IDs.
+Pick IDs that are not already taken. 200 and 201 are used here as examples. Check your project for conflicts. See [Getting Started](/slop-docs/modding/getting-started/) for finding available IDs.
 
 ## Step 2: Create the Purple Grass tile
 
@@ -173,7 +173,7 @@ Tile::purpleGrassTile = (PurpleGrassTile *)(new PurpleGrassTile(201))
     ->setBaseItemTypeAndMaterial(Item::eBaseItemType_block, Item::eMaterial_dirt);
 ```
 
-Both tiles will need textures. The `setTextureName()` call tells the game which texture to look up. You will need to add `purpleStone` and `purpleGrass` entries to the texture atlas. See [Block Textures](/lce-docs/modding/block-textures/) for how that works.
+Both tiles will need textures. The `setTextureName()` call tells the game which texture to look up. You will need to add `purpleStone` and `purpleGrass` entries to the texture atlas. See [Block Textures](/slop-docs/modding/block-textures/) for how that works.
 
 ## Step 3: Create the PurpleBiome
 
@@ -715,7 +715,7 @@ float PurpleDimension::getTimeOfDay(__int64 time, float a) const
 }
 ```
 
-For reference, the Aether uses `0.0f` (permanent noon) and the Nether uses `0.5f` (permanent midnight). Check [Custom Dimensions](/lce-docs/modding/custom-dimensions/) for the full table.
+For reference, the Aether uses `0.0f` (permanent noon) and the Nether uses `0.5f` (permanent midnight). Check [Custom Dimensions](/slop-docs/modding/custom-dimensions/) for the full table.
 
 ### Fog color
 
@@ -731,7 +731,7 @@ Vec3 *PurpleDimension::getFogColor(float td, float a) const
 }
 ```
 
-These values give a rich dark purple. If you want something lighter, bump all three channels up. If you want it to pulse or shift over time, multiply by a `Mth::sin()` of `td`. See [Fog & Sky](/lce-docs/modding/fog-sky/) for examples of time-varying fog.
+These values give a rich dark purple. If you want something lighter, bump all three channels up. If you want it to pulse or shift over time, multiply by a `Mth::sin()` of `td`. See [Fog & Sky](/slop-docs/modding/fog-sky/) for examples of time-varying fog.
 
 ### Sunrise and sky settings
 
@@ -1160,7 +1160,7 @@ You need texture files for:
 - `purpleGrass` - a grass texture with purple coloring (top, sides, bottom)
 - `purplePortal` - the portal swirl effect (you can reuse the nether portal texture and recolor it)
 
-See [Block Textures](/lce-docs/modding/block-textures/) for how to add entries to the texture atlas and set up multi-face textures for the grass block.
+See [Block Textures](/slop-docs/modding/block-textures/) for how to add entries to the texture atlas and set up multi-face textures for the grass block.
 
 ## Full file list
 
@@ -1239,12 +1239,12 @@ When it is working correctly:
 
 Once the basic dimension works, here are some things to build on top of it:
 
-- **Custom ores**: Add purple ore tiles that generate inside purple stone. Use `OreFeature` in your biome decorator with `Tile::purpleStone_Id` as the replacement target. See [Adding Blocks](/lce-docs/modding/adding-blocks/) for the ore tile pattern.
+- **Custom ores**: Add purple ore tiles that generate inside purple stone. Use `OreFeature` in your biome decorator with `Tile::purpleStone_Id` as the replacement target. See [Adding Blocks](/slop-docs/modding/adding-blocks/) for the ore tile pattern.
 - **Custom trees**: Create a tree feature that generates purple wood and purple leaves. Override `getTreeFeature()` on your biome.
-- **Ambient particles**: Add floating purple particles using `animateTick()` on your purple grass tile. See [Custom Particles](/lce-docs/modding/custom-particles/).
-- **Custom structures**: Place structures like towers or ruins during `postProcess()`. See [Custom Structures](/lce-docs/modding/custom-structures/).
-- **Custom mobs**: Add enemies and friendlies to the biome's mob lists. See [Adding Entities](/lce-docs/modding/adding-entities/).
+- **Ambient particles**: Add floating purple particles using `animateTick()` on your purple grass tile. See [Custom Particles](/slop-docs/modding/custom-particles/).
+- **Custom structures**: Place structures like towers or ruins during `postProcess()`. See [Custom Structures](/slop-docs/modding/custom-structures/).
+- **Custom mobs**: Add enemies and friendlies to the biome's mob lists. See [Adding Entities](/slop-docs/modding/adding-entities/).
 - **Better terrain**: Tweak the noise parameters in `getHeights()` for different island sizes and shapes. Add a carving noise layer to cut holes into the terrain.
 - **Custom light ramp**: Override `updateLightRamp()` on `PurpleDimension` to give the dimension a purple ambient glow, similar to how the Nether has a faint red ambient light.
 - **Portal particle effects**: Add a purple particle effect around the portal frame. The Nether portal does this with `animateTick()`.
-- **ColourTable integration**: Add a `Purple_Fog_Colour` entry to the colour table so texture packs can override your fog color without code changes. See [Fog & Sky](/lce-docs/modding/fog-sky/) for how the colour table works.
+- **ColourTable integration**: Add a `Purple_Fog_Colour` entry to the colour table so texture packs can override your fog color without code changes. See [Fog & Sky](/slop-docs/modding/fog-sky/) for how the colour table works.

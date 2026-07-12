@@ -41,7 +41,7 @@ The horse is the most complex new entity. It extends `Animal` and implements `Co
 
 `HorseRenderer` extends `MobRenderer` with texture locations for each horse type (horse, mule, donkey, zombie, skeleton). Applies foal scaling and height adjustment.
 
-For full details on horse inventory, equipment, and breeding, see the [Horses](/lce-docs/mc/horses/) page.
+For full details on horse inventory, equipment, and breeding, see the [Horses](/slop-docs/mc/horses/) page.
 
 ## Ocelot
 
@@ -293,7 +293,7 @@ Extends `Entity` directly (not a `Mob` or `Projectile`). Entity type: `eTYPE_FIR
 
 Tracks `life` (current tick) and `lifetime` (detonation time). On the client side, `handleEntityEvent()` triggers the particle explosion. Has custom brightness (`getBrightness`, `getLightColor`) for the glow effect.
 
-Client-side particle effects are handled separately in `Minecraft.Client/FireworksParticles.h/cpp`. See the [Fireworks](/lce-docs/mc/fireworks/) page for full details.
+Client-side particle effects are handled separately in `Minecraft.Client/FireworksParticles.h/cpp`. See the [Fireworks](/slop-docs/mc/fireworks/) page for full details.
 
 ## Entity render registration
 
@@ -303,4 +303,4 @@ All entity renderers are registered in `Minecraft.Client/EntityRenderDispatcher.
 
 LCEMP does not have any of these entity types. The `EntityHorse`, `Ocelot` (new AI version), `Witch`, `WitherBoss`, `WitherSkull`, `Bat`, `LeashFenceKnotEntity`, and `FireworksRocketEntity` classes are all exclusive to MinecraftConsoles. LCEMP does have the legacy `Ozelot` but not the newer `Ocelot` implementation.
 
-The minecart variants (`MinecartChest`, `MinecartHopper`, `MinecartFurnace`, `MinecartTNT`, `MinecartSpawner`) are also MinecraftConsoles-only and are covered on the [Minecart Variants](/lce-docs/mc/minecarts/) page.
+The minecart variants (`MinecartChest`, `MinecartHopper`, `MinecartFurnace`, `MinecartTNT`, `MinecartSpawner`) are also MinecraftConsoles-only and are covered on the [Minecart Variants](/slop-docs/mc/minecarts/) page.

@@ -350,7 +350,7 @@ bool Dimension::hasBedrockFog()
 
 ## Adding a Custom Dimension's Fog
 
-If you're adding a [custom dimension](/lce-docs/modding/custom-dimensions/), you need to override `getFogColor()` in your dimension class. Here's a template:
+If you're adding a [custom dimension](/slop-docs/modding/custom-dimensions/), you need to override `getFogColor()` in your dimension class. Here's a template:
 
 ```cpp
 // MyDimension.h

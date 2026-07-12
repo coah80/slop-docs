@@ -3,14 +3,14 @@ title: Getting Started with Modding
 description: The definitive guide to setting up and making changes to the LCE codebase.
 ---
 
-This is the complete guide to modding the LCE codebase. It covers how the registration systems work, how to add new blocks, items, entities, recipes, and more. Before you start, make sure you can build the project by following the [Building & Compiling](/lce-docs/overview/building/) guide.
+This is the complete guide to modding the LCE codebase. It covers how the registration systems work, how to add new blocks, items, entities, recipes, and more. Before you start, make sure you can build the project by following the [Building & Compiling](/slop-docs/overview/building/) guide.
 
 ## Prerequisites
 
 - **CMake** 3.10+
 - **MSVC** (Visual Studio 2022 recommended)
 - **C++11** (set via `CMAKE_CXX_STANDARD 11` in the CMakeLists.txt)
-- A working LCE build (see [Building & Compiling](/lce-docs/overview/building/))
+- A working LCE build (see [Building & Compiling](/slop-docs/overview/building/))
 - Basic C++ knowledge (inheritance, pointers, `shared_ptr`)
 
 ## Project Structure
@@ -939,12 +939,12 @@ The first instance hosts. The second connects to it over localhost. Both need th
 ## Tips
 
 - The codebase uses `shared_ptr<>` heavily for entities and players. Watch for lifetime issues when storing references.
-- Use `-name`, `-ip`, and `-port` launch arguments for testing multiplayer (see [Building & Compiling](/lce-docs/overview/building/))
+- Use `-name`, `-ip`, and `-port` launch arguments for testing multiplayer (see [Building & Compiling](/slop-docs/overview/building/))
 - Start by modifying existing content before trying to add entirely new things. Change a tile's destroy time or an item's stack size to make sure your build pipeline works.
 - Read existing subclasses. `OreTile`, `FoodItem`, and `Creeper` are all clean, well-structured examples to learn from.
 - The `// 4J` comments throughout the code mark changes 4J Studios made for the console port. These are useful context for understanding why something works a certain way.
 
 ## Next Steps
 
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) for a detailed tile creation walkthrough
-- [Adding Items](/lce-docs/modding/adding-items/) for a detailed item creation walkthrough
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) for a detailed tile creation walkthrough
+- [Adding Items](/slop-docs/modding/adding-items/) for a detailed item creation walkthrough

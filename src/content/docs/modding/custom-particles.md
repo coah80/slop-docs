@@ -724,6 +724,6 @@ Use `ParticleEngine::countParticles()` (shown in the debug screen with F3) to se
 
 ## Related Guides
 
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) to learn about `animateTick()` for ambient block particles
-- [Adding Entities](/lce-docs/modding/adding-entities/) for spawning particles from entity logic
-- [Texture Packs](/lce-docs/modding/texture-packs/) for customizing the `particles.png` sprite sheet
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) to learn about `animateTick()` for ambient block particles
+- [Adding Entities](/slop-docs/modding/adding-entities/) for spawning particles from entity logic
+- [Texture Packs](/slop-docs/modding/texture-packs/) for customizing the `particles.png` sprite sheet

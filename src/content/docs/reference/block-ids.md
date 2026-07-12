@@ -4,7 +4,7 @@ description: Complete table of all block (tile) IDs in LCE.
 ---
 
 Every block (called a "Tile" internally) is registered in `Tile::staticCtor()` in
-[`Minecraft.World/Tile.cpp`](/lce-docs/reference/file-index/). The ID passed to each
+[`Minecraft.World/Tile.cpp`](/slop-docs/reference/file-index/). The ID passed to each
 tile constructor is the numeric block ID used on the wire and in save data.
 
 The LCEMP repo covers blocks up to ID 171 (TU12-era). The MinecraftConsoles repo goes

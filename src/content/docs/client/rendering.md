@@ -163,7 +163,7 @@ int LevelRenderer::getDimensionIndexFromId(int id)
 }
 ```
 
-This maps: Overworld (id=0) to index 0, Nether (id=-1) to index 1, The End (id=1) to index 2. The formula only works for IDs -1, 0, and 1. Custom dimensions need this function updated (see [Custom Dimensions](/lce-docs/modding/custom-dimensions/)).
+This maps: Overworld (id=0) to index 0, Nether (id=-1) to index 1, The End (id=1) to index 2. The formula only works for IDs -1, 0, and 1. Custom dimensions need this function updated (see [Custom Dimensions](/slop-docs/modding/custom-dimensions/)).
 
 ### Memory budgets (per platform)
 

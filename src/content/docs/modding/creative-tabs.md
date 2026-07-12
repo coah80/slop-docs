@@ -1350,6 +1350,6 @@ ITEM_AUX(Item::spawnEgg_Id, 130 | ((2 + 1) << 12))
 
 ## Related Guides
 
-- [Adding Items](/lce-docs/modding/adding-items/) for creating items to put in creative tabs
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) for creating blocks to put in creative tabs
-- [Custom Potions](/lce-docs/modding/custom-potions/) for adding potions to the Brewing tab
+- [Adding Items](/slop-docs/modding/adding-items/) for creating items to put in creative tabs
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) for creating blocks to put in creative tabs
+- [Custom Potions](/slop-docs/modding/custom-potions/) for adding potions to the Brewing tab

@@ -7,7 +7,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 This guide covers the LCE potion and brewing system end to end: how `MobEffect` defines status effects, how `MobEffectInstance` tracks duration and amplifier on a mob, how the bitfield-based brewing chain works, how splash potions apply area damage, how effects render on screen, and how to add your own custom effects and ingredients.
 
-For the world-facing reference (all effect stats, tick intervals, brewing tables), see [Effects (Potions)](/lce-docs/world/effects/).
+For the world-facing reference (all effect stats, tick intervals, brewing tables), see [Effects (Potions)](/slop-docs/world/effects/).
 
 ## Key files
 

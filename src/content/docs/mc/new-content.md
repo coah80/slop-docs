@@ -392,13 +392,13 @@ Used for items like the Nether Star that should always look enchanted.
 
 **File**: `Minecraft.World/FireworksItem.h`, `.cpp`
 
-The firework rocket item. See the [Fireworks](/lce-docs/mc/fireworks/) page for full details.
+The firework rocket item. See the [Fireworks](/slop-docs/mc/fireworks/) page for full details.
 
 ### FireworksChargeItem
 
 **File**: `Minecraft.World/FireworksChargeItem.h`, `.cpp`
 
-The firework star item. See the [Fireworks](/lce-docs/mc/fireworks/) page for full details.
+The firework star item. See the [Fireworks](/slop-docs/mc/fireworks/) page for full details.
 
 ### ArmorDyeRecipe (also in LCEMP)
 
@@ -418,4 +418,4 @@ Special recipes for duplicating and extending maps.
 
 These blocks and items are registered in the global `Tile` and `Item` static initialization (in `Tile.cpp` and `Item.cpp` respectively). The stained glass and hay block tiles follow the standard `Tile::tiles[]` array pattern, while items use `Item::items[]` with their numeric IDs.
 
-For more details on fireworks, see the [Fireworks](/lce-docs/mc/fireworks/) page. For horse-related items (armor, saddles), see the [Horses](/lce-docs/mc/horses/) page. For dispenser item behaviors, see the [Behavior System](/lce-docs/mc/behaviors/) page.
+For more details on fireworks, see the [Fireworks](/slop-docs/mc/fireworks/) page. For horse-related items (armor, saddles), see the [Horses](/slop-docs/mc/horses/) page. For dispenser item behaviors, see the [Behavior System](/slop-docs/mc/behaviors/) page.

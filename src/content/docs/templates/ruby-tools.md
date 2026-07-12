@@ -17,7 +17,7 @@ We are building all of this from scratch:
 - Ore world generation with configurable Y levels and vein size
 - Texture registration for everything
 
-If you have not set up a build environment yet, start with [Getting Started](/lce-docs/modding/getting-started/).
+If you have not set up a build environment yet, start with [Getting Started](/slop-docs/modding/getting-started/).
 
 ## Files you will create
 
@@ -260,7 +260,7 @@ Tile::rubyBlock = (new MetalTile(Tile::rubyBlock_Id))
     ->setUseDescriptionId(IDS_DESC_RUBY_BLOCK);
 ```
 
-`MetalTile` is the same class that gold and diamond storage blocks use. It is just a solid block with no special logic. See [Adding Blocks](/lce-docs/modding/adding-blocks/) for more on tile properties.
+`MetalTile` is the same class that gold and diamond storage blocks use. It is just a solid block with no special logic. See [Adding Blocks](/slop-docs/modding/adding-blocks/) for more on tile properties.
 
 ## 4. The gem item
 
@@ -291,7 +291,7 @@ Item::ruby = (new Item(151))
     ->setUseDescriptionId(IDS_DESC_RUBY);
 ```
 
-Constructor arg `151` + offset `256` = final ID `407`. See [Adding Items](/lce-docs/modding/adding-items/) for more on the item system.
+Constructor arg `151` + offset `256` = final ID `407`. See [Adding Items](/slop-docs/modding/adding-items/) for more on the item system.
 
 ## 5. Tool tier
 
@@ -549,7 +549,7 @@ ADD_OBJECT(map[0], Item::ruby);
 ADD_OBJECT(map[1], Item::sword_ruby);
 ```
 
-The recipe system auto-generates the standard stick + material patterns for you. See [Adding Recipes](/lce-docs/modding/adding-recipes/) for details on how the shaped recipe arrays work.
+The recipe system auto-generates the standard stick + material patterns for you. See [Adding Recipes](/slop-docs/modding/adding-recipes/) for details on how the shaped recipe arrays work.
 
 ### Armor recipes
 
@@ -654,7 +654,7 @@ decorateDepthSpan(1, rubyOreFeature, 0, Level::genDepth / 8);
 
 That is 1 vein attempt per chunk, from Y=0 to Y=16. Small veins, low generation rate, deep underground only. Rubies will be rare. Bump the first arg (vein count) or the Y range to make them more common.
 
-For more on custom generation including biome-specific spawning, see [Custom World Generation](/lce-docs/modding/custom-worldgen/).
+For more on custom generation including biome-specific spawning, see [Custom World Generation](/slop-docs/modding/custom-worldgen/).
 
 :::note[Existing worlds]
 Ore generation only runs when new chunks are created. If you load an existing world, you will only find rubies in chunks you have not explored yet.
@@ -690,7 +690,7 @@ Every `setTextureName()` call maps to a real texture file. You need to provide a
 
 Armor also needs two model layer images that render on the player body. Layer 1 covers helmet, chestplate, and boots. Layer 2 covers leggings. The render index `5` we used in the ArmorItem constructors tells the renderer which layer files to look for.
 
-See [Block Textures](/lce-docs/modding/block-textures/) and [Texture Packs](/lce-docs/modding/texture-packs/) for atlas file paths and format details.
+See [Block Textures](/slop-docs/modding/block-textures/) and [Texture Packs](/slop-docs/modding/texture-packs/) for atlas file paths and format details.
 
 ## 11. String table entries
 
@@ -787,10 +787,10 @@ The structure stays identical. Only the names and numbers change.
 
 ## Related docs
 
-- [Adding Blocks](/lce-docs/modding/adding-blocks/)
-- [Adding Items](/lce-docs/modding/adding-items/)
-- [Adding Recipes](/lce-docs/modding/adding-recipes/)
-- [Custom World Generation](/lce-docs/modding/custom-worldgen/)
-- [Block Textures](/lce-docs/modding/block-textures/)
-- [Texture Packs](/lce-docs/modding/texture-packs/)
-- [Full Ore Guide](/lce-docs/modding/full-ore/) (longer version with more background)
+- [Adding Blocks](/slop-docs/modding/adding-blocks/)
+- [Adding Items](/slop-docs/modding/adding-items/)
+- [Adding Recipes](/slop-docs/modding/adding-recipes/)
+- [Custom World Generation](/slop-docs/modding/custom-worldgen/)
+- [Block Textures](/slop-docs/modding/block-textures/)
+- [Texture Packs](/slop-docs/modding/texture-packs/)
+- [Full Ore Guide](/slop-docs/modding/full-ore/) (longer version with more background)

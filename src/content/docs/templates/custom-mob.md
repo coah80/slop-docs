@@ -20,18 +20,18 @@ That is a lot of systems, but each piece is small. Let's go.
 
 | System | What It Does | Reference |
 |--------|-------------|-----------|
-| Entity hierarchy | How `Entity -> Mob -> PathfinderMob -> Monster` works | [Adding Entities](/lce-docs/modding/adding-entities/) |
-| GoalSelector AI | Priority-based behavior goals | [Custom AI](/lce-docs/modding/custom-ai/) |
-| ModelPart models | Box-based 3D models with animation | [Entity Models](/lce-docs/modding/entity-models/) |
-| EntityRenderer | Drawing entities in the world | [Adding Entities](/lce-docs/modding/adding-entities/) |
-| EntityIO | Registration, save/load, spawn eggs | [Adding Entities](/lce-docs/modding/adding-entities/) |
-| Biome spawning | Natural mob spawning rules | [Adding Entities](/lce-docs/modding/adding-entities/) |
-| Mob drops | Death loot system | [Custom Loot](/lce-docs/modding/custom-loot/) |
-| Sound events | Ambient, hurt, death sounds | [Custom Sounds](/lce-docs/modding/custom-sounds/) |
+| Entity hierarchy | How `Entity -> Mob -> PathfinderMob -> Monster` works | [Adding Entities](/slop-docs/modding/adding-entities/) |
+| GoalSelector AI | Priority-based behavior goals | [Custom AI](/slop-docs/modding/custom-ai/) |
+| ModelPart models | Box-based 3D models with animation | [Entity Models](/slop-docs/modding/entity-models/) |
+| EntityRenderer | Drawing entities in the world | [Adding Entities](/slop-docs/modding/adding-entities/) |
+| EntityIO | Registration, save/load, spawn eggs | [Adding Entities](/slop-docs/modding/adding-entities/) |
+| Biome spawning | Natural mob spawning rules | [Adding Entities](/slop-docs/modding/adding-entities/) |
+| Mob drops | Death loot system | [Custom Loot](/slop-docs/modding/custom-loot/) |
+| Sound events | Ambient, hurt, death sounds | [Custom Sounds](/slop-docs/modding/custom-sounds/) |
 
 ## Before you start
 
-Make sure you can build the project. See [Getting Started](/lce-docs/modding/getting-started/) if you have not done that yet. You should also read [Adding Entities](/lce-docs/modding/adding-entities/) first, since this guide builds on that foundation.
+Make sure you can build the project. See [Getting Started](/slop-docs/modding/getting-started/) if you have not done that yet. You should also read [Adding Entities](/slop-docs/modding/adding-entities/) first, since this guide builds on that foundation.
 
 ## Files you will create
 
@@ -242,7 +242,7 @@ And the targeting goals:
 | 1 | `HurtByTargetGoal` | Target whatever just hit us. The `false` means allies do not join in. |
 | 2 | `NearestAttackableTargetGoal` | Actively hunt the nearest player within 16 blocks |
 
-The targeting goals control **who** to attack. The behavior goals control **how** to attack and what to do otherwise. See [Custom AI](/lce-docs/modding/custom-ai/) for the full breakdown of how priorities and control flags work.
+The targeting goals control **who** to attack. The behavior goals control **how** to attack and what to do otherwise. See [Custom AI](/slop-docs/modding/custom-ai/) for the full breakdown of how priorities and control flags work.
 
 ### Implement the overrides
 
@@ -314,7 +314,7 @@ L"mob.shadowwalkerhurt",      // eSoundType_MOB_SHADOWWALKER_HURT
 L"mob.shadowwalkerdeath",     // eSoundType_MOB_SHADOWWALKER_DEATH
 ```
 
-These string names map to events in the Miles soundbank. You will need to add actual audio files to the soundbank as well. See [Custom Sounds](/lce-docs/modding/custom-sounds/) for the full soundbank pipeline.
+These string names map to events in the Miles soundbank. You will need to add actual audio files to the soundbank as well. See [Custom Sounds](/slop-docs/modding/custom-sounds/) for the full soundbank pipeline.
 
 ### Wire up the sound methods
 
@@ -341,7 +341,7 @@ The engine calls `getAmbientSound()` on a random timer. `getHurtSound()` fires w
 
 ## Step 5: Add custom loot drops
 
-The Shadow Walker drops 1 to 3 Ender Pearls, plus a bonus from the Looting enchantment. If you wanted it to drop a custom item, you would create that item first (see [Adding Items](/lce-docs/modding/adding-items/)).
+The Shadow Walker drops 1 to 3 Ender Pearls, plus a bonus from the Looting enchantment. If you wanted it to drop a custom item, you would create that item first (see [Adding Items](/slop-docs/modding/adding-items/)).
 
 Add these to `ShadowWalker.cpp`:
 
@@ -371,7 +371,7 @@ void ShadowWalker::dropDeathLoot(bool wasKilledByPlayer, int playerBonusLevel)
 }
 ```
 
-The `dropDeathLoot` method is called by `Mob::die()` on the server side only. The `wasKilledByPlayer` flag tells you whether loot should be player-quality, and `playerBonusLevel` is the Looting enchantment level from the killing weapon. See [Custom Loot](/lce-docs/modding/custom-loot/) for the full drop pipeline.
+The `dropDeathLoot` method is called by `Mob::die()` on the server side only. The `wasKilledByPlayer` flag tells you whether loot should be player-quality, and `playerBonusLevel` is the Looting enchantment level from the killing weapon. See [Custom Loot](/slop-docs/modding/custom-loot/) for the full drop pipeline.
 
 ## Step 6: Create the model
 
@@ -472,7 +472,7 @@ Each `ModelPart` gets a texture offset (the first two arguments to the construct
 
 The `addBox` parameters are: x offset, y offset, z offset, width, height, depth, grow. The grow value of `0.0f` means no inflation. Armor layers use grow values like `0.5f` to sit on top of the body without clipping.
 
-See [Entity Models](/lce-docs/modding/entity-models/) for the full details on UV mapping, cube geometry, and the `faceMask` system.
+See [Entity Models](/slop-docs/modding/entity-models/) for the full details on UV mapping, cube geometry, and the `faceMask` system.
 
 ### Animation
 
@@ -600,9 +600,9 @@ Register a texture constant in `Minecraft.Client/Textures.h`:
 #define TN_MOB_SHADOW_WALKER  /* next available texture index */
 ```
 
-Then load the actual texture file in the client's texture loading system. Your texture should be a 64x64 PNG (matching the `texWidth`/`texHeight` in the model). See [Block Textures](/lce-docs/modding/block-textures/) for the general texture pipeline. Entity textures work similarly, they just go through a different loading path.
+Then load the actual texture file in the client's texture loading system. Your texture should be a 64x64 PNG (matching the `texWidth`/`texHeight` in the model). See [Block Textures](/slop-docs/modding/block-textures/) for the general texture pipeline. Entity textures work similarly, they just go through a different loading path.
 
-For the UV layout, refer to [Entity Models](/lce-docs/modding/entity-models/). Each `ModelPart` cube maps its six faces onto the texture sheet based on the texture offset you set in the constructor. The head at offset `(0, 0)` uses the top-left area, the body at `(0, 16)` uses the area below that, and so on.
+For the UV layout, refer to [Entity Models](/slop-docs/modding/entity-models/). Each `ModelPart` cube maps its six faces onto the texture sheet based on the texture offset you set in the constructor. The head at offset `(0, 0)` uses the top-left area, the body at `(0, 16)` uses the area below that, and so on.
 
 ## Step 9: Register with EntityIO
 
@@ -732,10 +732,10 @@ If something goes wrong, check the most common issues:
 
 Once you have the basic Shadow Walker working, here are some ideas to build on it:
 
-- **Add a powered variant** using synched data. Use `defineSynchedData()` to add a boolean flag, then change the texture or scale in the renderer based on that flag. See [Adding Entities](/lce-docs/modding/adding-entities/) for the synched data system.
-- **Write a custom AI goal** that makes it teleport short distances, like the Enderman. See [Custom AI](/lce-docs/modding/custom-ai/) for how to write your own `Goal` subclass.
-- **Add child parts to the model** for horns or a tail. `ModelPart::addChild()` makes child parts move and rotate relative to their parent. See [Entity Models](/lce-docs/modding/entity-models/).
-- **Add rare drops** by overriding `dropRareDeathLoot()`. The base class gives it a 2.5% chance to fire, increased by Looting. See [Custom Loot](/lce-docs/modding/custom-loot/).
+- **Add a powered variant** using synched data. Use `defineSynchedData()` to add a boolean flag, then change the texture or scale in the renderer based on that flag. See [Adding Entities](/slop-docs/modding/adding-entities/) for the synched data system.
+- **Write a custom AI goal** that makes it teleport short distances, like the Enderman. See [Custom AI](/slop-docs/modding/custom-ai/) for how to write your own `Goal` subclass.
+- **Add child parts to the model** for horns or a tail. `ModelPart::addChild()` makes child parts move and rotate relative to their parent. See [Entity Models](/slop-docs/modding/entity-models/).
+- **Add rare drops** by overriding `dropRareDeathLoot()`. The base class gives it a 2.5% chance to fire, increased by Looting. See [Custom Loot](/slop-docs/modding/custom-loot/).
 - **Make it burn in sunlight** (it already does if `Monster` handles that). Or override `aiStep()` to add custom tick behavior like healing in darkness.
 - **Add a custom death animation** by overriding render behavior in your renderer. You could make it dissolve into particles.
-- **Create a custom dimension** full of Shadow Walkers. See [Custom Dimensions](/lce-docs/modding/custom-dimensions/).
+- **Create a custom dimension** full of Shadow Walkers. See [Custom Dimensions](/slop-docs/modding/custom-dimensions/).

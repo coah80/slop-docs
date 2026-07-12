@@ -5,7 +5,7 @@ description: Deep dive into LCE's enchantment system with advanced customization
 
 import { Aside } from '@astrojs/starlight/components';
 
-This guide goes beyond the basics covered in [Adding Enchantments](/lce-docs/modding/adding-enchantments/). Here you'll learn how the enchantment system actually works under the hood, how to bend the conflict rules, push enchantment levels past their normal limits, and build enchantments that do things the vanilla system never did.
+This guide goes beyond the basics covered in [Adding Enchantments](/slop-docs/modding/adding-enchantments/). Here you'll learn how the enchantment system actually works under the hood, how to bend the conflict rules, push enchantment levels past their normal limits, and build enchantments that do things the vanilla system never did.
 
 If you haven't read the adding enchantments guide yet, start there. This page assumes you already know how to create a basic `Enchantment` subclass and register it.
 
@@ -933,6 +933,6 @@ static bool hasAutoSmelt(shared_ptr<Inventory> inventory) {
 
 ## Related Guides
 
-- [Adding Enchantments](/lce-docs/modding/adding-enchantments/) for the basics of creating and registering enchantments
-- [Adding Items](/lce-docs/modding/adding-items/) for creating items your enchantments can go on
-- [Getting Started](/lce-docs/modding/getting-started/) for build setup and the staticCtor pattern
+- [Adding Enchantments](/slop-docs/modding/adding-enchantments/) for the basics of creating and registering enchantments
+- [Adding Items](/slop-docs/modding/adding-items/) for creating items your enchantments can go on
+- [Getting Started](/slop-docs/modding/getting-started/) for build setup and the staticCtor pattern

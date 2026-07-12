@@ -403,6 +403,6 @@ This creates both the 9-to-block and block-to-9 recipes automatically.
 
 ## Related guides
 
-- [Crafting & Recipes](/lce-docs/world/crafting/) for the full internals of the recipe system
-- [Adding Items](/lce-docs/modding/adding-items/) to create items for your recipes
-- [Making a Full Ore](/lce-docs/modding/full-ore/) for an end-to-end example using all recipe types
+- [Crafting & Recipes](/slop-docs/world/crafting/) for the full internals of the recipe system
+- [Adding Items](/slop-docs/modding/adding-items/) to create items for your recipes
+- [Making a Full Ore](/slop-docs/modding/full-ore/) for an end-to-end example using all recipe types

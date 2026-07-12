@@ -273,6 +273,6 @@ The dropper registers its own front textures (`_front_horizontal` and `_front_ve
 
 ## Related pages
 
-- [Redstone Mechanics](/lce-docs/mc/redstone/) for comparator analog signal reading from hoppers
-- [Minecart Variants](/lce-docs/mc/minecarts/) for the minecart hopper and minecart chest
-- [Behavior System](/lce-docs/mc/behaviors/) for the dispenser behavior registry details
+- [Redstone Mechanics](/slop-docs/mc/redstone/) for comparator analog signal reading from hoppers
+- [Minecart Variants](/slop-docs/mc/minecarts/) for the minecart hopper and minecart chest
+- [Behavior System](/slop-docs/mc/behaviors/) for the dispenser behavior registry details

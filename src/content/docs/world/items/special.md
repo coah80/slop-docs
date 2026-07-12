@@ -159,7 +159,7 @@ The `getIcon` method reuses the potion texture: `Item::potion->getIcon(0)`. The 
 | Minecart | 328 | `MinecartItem` | Type: `Minecart::RIDEABLE`; places minecart on rails |
 | Chest Minecart | 342 | `MinecartItem` | Type: `Minecart::CHEST` |
 | Furnace Minecart | 343 | `MinecartItem` | Type: `Minecart::FURNACE` |
-| Milk Bucket | 335 | `MilkBucketItem` | Clears all mob effects; crafting remainder: empty bucket. See [Decorative](/lce-docs/world/items/decorative/) |
+| Milk Bucket | 335 | `MilkBucketItem` | Clears all mob effects; crafting remainder: empty bucket. See [Decorative](/slop-docs/world/items/decorative/) |
 | Fishing Rod | 346 | `FishingRodItem` | `eBaseItemType_rod`, `eMaterial_wood`; casts and reels in fishing hook entity |
 
 ## MinecraftConsoles differences
@@ -205,4 +205,4 @@ MinecraftConsoles adds a full `Scoreboard` system with `Objective`, `ObjectiveCr
 - **`CarrotOnAStickItem`** works with the new horse entity in addition to pigs.
 - **Saddle** now also works on horses through the horse inventory menu.
 - **`SaddleItem::interactEnemy`** likely gains horse support (in addition to pig).
-- **`EmptyMapItem`** (ID 395) is split out as its own class. See [Decorative](/lce-docs/world/items/decorative/) for details.
+- **`EmptyMapItem`** (ID 395) is split out as its own class. See [Decorative](/slop-docs/world/items/decorative/) for details.

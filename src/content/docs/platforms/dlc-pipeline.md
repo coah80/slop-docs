@@ -205,7 +205,7 @@ Mashup packs are the most complex DLC type. A single mashup pack bundles multipl
 - **UI data** (`e_DLCType_UIData`): Custom menu themes
 - **Localisation** (`e_DLCType_LocalisationData`): Translated pack descriptions
 
-The game rules data is what makes mashup worlds special. It feeds into the `GameRuleManager` system (documented in [Custom GameRules](/lce-docs/modding/custom-gamerules/)) which handles schematic placement, biome overrides, and progress tracking.
+The game rules data is what makes mashup worlds special. It feeds into the `GameRuleManager` system (documented in [Custom GameRules](/slop-docs/modding/custom-gamerules/)) which handles schematic placement, biome overrides, and progress tracking.
 
 ## DLC in CMinecraftApp
 

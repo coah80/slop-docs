@@ -57,7 +57,7 @@ enum eGameMode
 
 ### eGameHostOption
 
-Controls world-level settings. These are stored as a bitmask in save data. See [Custom GameRules](/lce-docs/modding/custom-gamerules/) for the full list and how to add new options.
+Controls world-level settings. These are stored as a bitmask in save data. See [Custom GameRules](/slop-docs/modding/custom-gamerules/) for the full list and how to add new options.
 
 The 25 host options include:
 
@@ -203,7 +203,7 @@ Player ban tracking. `BANNEDLISTDATA` holds a single ban entry (player name + ID
 
 ### GameSessionData (in SessionInfo.h)
 
-Network session advertising data. Contains per-player arrays sized to `MINECRAFT_NET_MAX_PLAYERS`. Used for LAN discovery and platform matchmaking. See [Player Limit](/lce-docs/modding/player-limit/) for details on how this struct varies per platform.
+Network session advertising data. Contains per-player arrays sized to `MINECRAFT_NET_MAX_PLAYERS`. Used for LAN discovery and platform matchmaking. See [Player Limit](/slop-docs/modding/player-limit/) for details on how this struct varies per platform.
 
 ## Console_Awards_enum.h
 

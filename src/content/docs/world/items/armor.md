@@ -168,7 +168,7 @@ This dual-layer system is why leather armor always has those little accent detai
 
 ### How dyeing works
 
-Dyeing happens through the `ArmorDyeRecipe` crafting recipe, which combines leather armor with one or more `DyePowderItem` instances. See [Crafting & Recipes](/lce-docs/world/crafting/) for the details on that system.
+Dyeing happens through the `ArmorDyeRecipe` crafting recipe, which combines leather armor with one or more `DyePowderItem` instances. See [Crafting & Recipes](/slop-docs/world/crafting/) for the details on that system.
 
 ## ArmorItem methods
 

@@ -4,7 +4,7 @@ import starlight from '@astrojs/starlight';
 
 export default defineConfig({
 	site: 'https://coah80.github.io',
-	base: '/lce-docs',
+	base: '/slop-docs',
 	integrations: [
 		starlight({
 			title: 'LCE Docs',
@@ -13,11 +13,11 @@ export default defineConfig({
 			},
 			favicon: '/favicon.png',
 			head: [
-				{ tag: 'link', attrs: { rel: 'icon', href: '/lce-docs/favicon.png', type: 'image/png' } },
-				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://coah80.github.io/lce-docs/og-image.png' } },
-				{ tag: 'meta', attrs: { name: 'twitter:image', content: 'https://coah80.github.io/lce-docs/og-image.png' } },
+				{ tag: 'link', attrs: { rel: 'icon', href: '/slop-docs/favicon.png', type: 'image/png' } },
+				{ tag: 'meta', attrs: { property: 'og:image', content: 'https://coah80.github.io/slop-docs/og-image.png' } },
+				{ tag: 'meta', attrs: { name: 'twitter:image', content: 'https://coah80.github.io/slop-docs/og-image.png' } },
 			],
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/coah80/lce-docs' }],
+			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/coah80/slop-docs' }],
 			sidebar: [
 				{
 					label: 'Overview',

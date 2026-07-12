@@ -7,7 +7,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 This guide covers the LCE enchantment system: how to create enchantment subclasses, register them, define cost curves, implement damage/protection modifiers, set up compatibility rules, and how the enchanting table's selection algorithm works. It also covers the anvil combining system from `RepairMenu`.
 
-For advanced enchantment tricks (conflict overrides, pushing past level limits, enchantments that do completely new things), see [Custom Enchantments](/lce-docs/modding/custom-enchantments/).
+For advanced enchantment tricks (conflict overrides, pushing past level limits, enchantments that do completely new things), see [Custom Enchantments](/slop-docs/modding/custom-enchantments/).
 
 ## Enchantment system overview
 

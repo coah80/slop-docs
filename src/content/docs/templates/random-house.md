@@ -14,7 +14,7 @@ By the end you will understand how these systems work together:
 - **Loot tables** for filling chests with random items
 - **Registration** in the world generation pipeline
 
-If any of this is new to you, the [Custom Structures](/lce-docs/modding/custom-structures/) page explains the full StructureFeature framework in detail, and [Custom World Generation](/lce-docs/modding/custom-worldgen/) covers the generation pipeline end to end.
+If any of this is new to you, the [Custom Structures](/slop-docs/modding/custom-structures/) page explains the full StructureFeature framework in detail, and [Custom World Generation](/slop-docs/modding/custom-worldgen/) covers the generation pipeline end to end.
 
 ## What we are building
 
@@ -224,7 +224,7 @@ A few things to note:
 - We check the biome at the center of the chunk (`chunkX * 16 + 8`), not the corner. This avoids edge cases at biome boundaries.
 - The bounds check keeps houses away from the world edge. Console worlds are finite, so we need to be careful about this.
 
-For more on how `isFeatureChunk()` fits into the overall pipeline, see [Custom Structures](/lce-docs/modding/custom-structures/).
+For more on how `isFeatureChunk()` fits into the overall pipeline, see [Custom Structures](/slop-docs/modding/custom-structures/).
 
 ## Step 2: The StructureStart (glue between feature and piece)
 
@@ -452,13 +452,13 @@ A few things worth calling out:
 - `getOrientationData()` rotates block metadata (like door facing direction) to match the piece orientation. If you hardcode the data values instead, the door and torch will face the wrong way when the house spawns rotated.
 - All placement calls are clipped to `chunkBB` by the base class. This is critical. If you skip the bounding box, the structure system will try to load ungenerated chunks and crash.
 
-For the full list of placement methods available on `StructurePiece`, see the [Structures](/lce-docs/world/structures/) reference page.
+For the full list of placement methods available on `StructurePiece`, see the [Structures](/slop-docs/world/structures/) reference page.
 
 ## Step 4: The loot table
 
 Now for the fun part. We need to fill that chest with random items. We will do it manually with weighted random selection so you can see exactly how it works. The items are split into two pools: basic supplies and rare goodies.
 
-For more on how the loot system works under the hood, check out [Custom Loot & Drops](/lce-docs/modding/custom-loot/).
+For more on how the loot system works under the hood, check out [Custom Loot & Drops](/slop-docs/modding/custom-loot/).
 
 #### The generateLoot method
 
@@ -696,8 +696,8 @@ Now that you have a working structure, here are some ideas to build on it:
 
 - **Add a peaked roof** instead of the flat one. Use stairs blocks (`Tile::stairs_wood_Id`) placed with different data values for each side.
 - **Randomize materials.** Check the biome in `postProcess()` and swap to spruce planks in taiga, or sandstone in deserts (if you add desert to the allowed biomes list).
-- **Add a villager.** Spawn an NPC inside the house during `postProcess()` using `level->addFreshEntity()`. See [Adding Entities](/lce-docs/modding/adding-entities/) for how entity spawning works.
-- **Make a multi-room variant.** Override `addChildren()` in your piece to recursively add more rooms, like how strongholds and mineshafts build their layouts. The [Structures](/lce-docs/world/structures/) page has the full breakdown of how piece chaining works.
+- **Add a villager.** Spawn an NPC inside the house during `postProcess()` using `level->addFreshEntity()`. See [Adding Entities](/slop-docs/modding/adding-entities/) for how entity spawning works.
+- **Make a multi-room variant.** Override `addChildren()` in your piece to recursively add more rooms, like how strongholds and mineshafts build their layouts. The [Structures](/slop-docs/world/structures/) page has the full breakdown of how piece chaining works.
 - **Add a chimney.** Stack a few cobblestone blocks on the roof with a fire block on top (check that fire does not spread to the wood first).
 - **Custom loot tiers.** Scale the loot table based on distance from spawn. Houses farther out could have better items.
 - **Add it to superflat.** Register the feature in `FlatLevelSource` the same way you did in `RandomLevelSource`.

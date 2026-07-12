@@ -22,19 +22,19 @@ MinecraftConsoles adds a ton of gameplay systems that don't exist in LCEMP. Each
 
 ### Entity attributes and combat
 
-A full [attribute system](/lce-docs/mc/attributes/) with modifier operations (`ADDITION`, `MULTIPLY_BASE`, `MULTIPLY_TOTAL`), shared monster attributes (max health, follow range, knockback resistance, movement speed, attack damage), and a combat tracker that records damage entries and generates death messages. Seven attribute types and twelve named modifier IDs are defined.
+A full [attribute system](/slop-docs/mc/attributes/) with modifier operations (`ADDITION`, `MULTIPLY_BASE`, `MULTIPLY_TOTAL`), shared monster attributes (max health, follow range, knockback resistance, movement speed, attack damage), and a combat tracker that records damage entries and generates death messages. Seven attribute types and twelve named modifier IDs are defined.
 
 ### Scoreboard and teams
 
-A complete [scoreboard system](/lce-docs/mc/scoreboard/) with objectives, criteria (`dummy`, `deathCount`, `playerKillCount`, `totalKillCount`, `health`), player scores, display slots (list, sidebar, below-name), and player teams with friendly-fire and invisibility options. Includes a `ServerScoreboard` subclass that tracks objectives and sends packets to clients.
+A complete [scoreboard system](/slop-docs/mc/scoreboard/) with objectives, criteria (`dummy`, `deathCount`, `playerKillCount`, `totalKillCount`, `health`), player scores, display slots (list, sidebar, below-name), and player teams with friendly-fire and invisibility options. Includes a `ServerScoreboard` subclass that tracks objectives and sends packets to clients.
 
 ### Horse entities
 
-Full [horse entities](/lce-docs/mc/horses/) with five types (horse, donkey, mule, zombie, skeleton), seven coat variants, five markings, four armor tiers (none, iron, gold, diamond), saddle and chest support, breeding, taming, jump strength attribute, and a dedicated inventory menu. Layered texture rendering combines variant, marking, and armor textures.
+Full [horse entities](/slop-docs/mc/horses/) with five types (horse, donkey, mule, zombie, skeleton), seven coat variants, five markings, four armor tiers (none, iron, gold, diamond), saddle and chest support, breeding, taming, jump strength attribute, and a dedicated inventory menu. Layered texture rendering combines variant, marking, and armor textures.
 
 ### Minecart variants
 
-Multiple [minecart subtypes](/lce-docs/mc/minecarts/) beyond the base rideable minecart:
+Multiple [minecart subtypes](/slop-docs/mc/minecarts/) beyond the base rideable minecart:
 
 - **MinecartChest**, chest storage on rails
 - **MinecartFurnace**, self-propelled furnace cart
@@ -44,15 +44,15 @@ Multiple [minecart subtypes](/lce-docs/mc/minecarts/) beyond the base rideable m
 
 ### Hoppers and dispensers
 
-The [hopper and dropper systems](/lce-docs/mc/hoppers-droppers/) handle item transfer logic with cooldown timing, item ejection, item suction from above, and container-to-container moves. The `DispenseItemBehavior` system provides a registry (`BehaviorRegistry`) that maps items to custom dispense actions.
+The [hopper and dropper systems](/slop-docs/mc/hoppers-droppers/) handle item transfer logic with cooldown timing, item ejection, item suction from above, and container-to-container moves. The `DispenseItemBehavior` system provides a registry (`BehaviorRegistry`) that maps items to custom dispense actions.
 
 ### Fireworks
 
-A [fireworks system](/lce-docs/mc/fireworks/) including `FireworksRocketEntity` (projectile with lifetime), `FireworksItem` (placement and hover text), `FireworksChargeItem`, `FireworksRecipe` (crafting), `FireworksMenu` (UI), and `FireworksParticles` (client-side rendering). Explosion types include small, big, star, creeper, and burst.
+A [fireworks system](/slop-docs/mc/fireworks/) including `FireworksRocketEntity` (projectile with lifetime), `FireworksItem` (placement and hover text), `FireworksChargeItem`, `FireworksRecipe` (crafting), `FireworksMenu` (UI), and `FireworksParticles` (client-side rendering). Explosion types include small, big, star, creeper, and burst.
 
 ### Redstone
 
-A full [redstone system](/lce-docs/mc/redstone/) with signal constants (`SIGNAL_NONE = 0`, `SIGNAL_MAX = 15`), comparators with compare and subtract modes, repeaters with four delay settings, daylight detectors, and powered rails with chain propagation up to 8 blocks.
+A full [redstone system](/slop-docs/mc/redstone/) with signal constants (`SIGNAL_NONE = 0`, `SIGNAL_MAX = 15`), comparators with compare and subtract modes, repeaters with four delay settings, daylight detectors, and powered rails with chain propagation up to 8 blocks.
 
 ### Wither Boss
 
@@ -60,23 +60,23 @@ A full [redstone system](/lce-docs/mc/redstone/) with signal constants (`SIGNAL_
 
 ### Behavior and dispense registry
 
-A [behavior system](/lce-docs/mc/behaviors/) with a `Behavior` base class and `BehaviorRegistry` that maps `Item` pointers to `DispenseItemBehavior` instances, with a `DefaultDispenseItemBehavior` fallback (drops items as pickups). The `DispenserBootstrap` registers 15 item-specific dispense actions at startup.
+A [behavior system](/slop-docs/mc/behaviors/) with a `Behavior` base class and `BehaviorRegistry` that maps `Item` pointers to `DispenseItemBehavior` instances, with a `DefaultDispenseItemBehavior` fallback (drops items as pickups). The `DispenserBootstrap` registers 15 item-specific dispense actions at startup.
 
 ### New blocks and items
 
-MinecraftConsoles adds [many blocks and items](/lce-docs/mc/new-content/) beyond the LCEMP base, including stained glass (blocks and panes), hay bales, note blocks, jukeboxes, beacons, anvils, command blocks, flower pots, skulls, hoppers, droppers, comparators, daylight detectors, weighted pressure plates, wood and stone buttons, nether wart, soul sand, netherrack, and glowstone, along with items like leads, name tags, empty maps, spawn eggs, firework rockets, firework charges, and the Nether Star.
+MinecraftConsoles adds [many blocks and items](/slop-docs/mc/new-content/) beyond the LCEMP base, including stained glass (blocks and panes), hay bales, note blocks, jukeboxes, beacons, anvils, command blocks, flower pots, skulls, hoppers, droppers, comparators, daylight detectors, weighted pressure plates, wood and stone buttons, nether wart, soul sand, netherrack, and glowstone, along with items like leads, name tags, empty maps, spawn eggs, firework rockets, firework charges, and the Nether Star.
 
 ### New entities
 
-Several [new entity types](/lce-docs/mc/new-entities/) are implemented, including horses, ocelots (both new AI and legacy versions), witches, the Wither boss, Wither skulls, bats, leash fence knots, and firework rockets.
+Several [new entity types](/slop-docs/mc/new-entities/) are implemented, including horses, ocelots (both new AI and legacy versions), witches, the Wither boss, Wither skulls, bats, leash fence knots, and firework rockets.
 
 ### Commands
 
-An expanded [command system](/lce-docs/mc/commands/) with binary packet-based dispatch and ten implemented commands (9 shared with LCEMP, only `/effect` is MC-exclusive). Several more commands exist in Java-reference form waiting to be ported.
+An expanded [command system](/slop-docs/mc/commands/) with binary packet-based dispatch and ten implemented commands (9 shared with LCEMP, only `/effect` is MC-exclusive). Several more commands exist in Java-reference form waiting to be ported.
 
 ### Build system
 
-A [dual build system](/lce-docs/mc/build/) with the original Visual Studio solution and a newer CMake build, three GitHub Actions CI workflows, and clang-format code style enforcement.
+A [dual build system](/slop-docs/mc/build/) with the original Visual Studio solution and a newer CMake build, three GitHub Actions CI workflows, and clang-format code style enforcement.
 
 ## What LCEMP has that MinecraftConsoles does not
 

@@ -4,7 +4,7 @@ description: Complete table of all item IDs in LCE.
 ---
 
 Items are registered in `Item::staticCtor()` in
-[`Minecraft.World/Item.cpp`](/lce-docs/reference/file-index/). Block IDs 0-255 also
+[`Minecraft.World/Item.cpp`](/slop-docs/reference/file-index/). Block IDs 0-255 also
 take up space in the item ID range (blocks are automatically wrapped in `TileItem`). True
 item IDs start at 256.
 
@@ -174,7 +174,7 @@ item ID is `256 + slot`, declared as `*_Id` constants in `Item.h`.
 
 :::note
 In the LCEMP source, IDs 386-387, 395, 399, 401-402, 404 are unassigned.
-IDs 0-255 are reserved for block items (see the [Block ID Registry](/lce-docs/reference/block-ids/)).
+IDs 0-255 are reserved for block items (see the [Block ID Registry](/slop-docs/reference/block-ids/)).
 :::
 
 ## Additional Items (MinecraftConsoles)

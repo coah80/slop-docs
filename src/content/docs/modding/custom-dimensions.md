@@ -213,7 +213,7 @@ The Aether and End both return `NULL` since they don't have a day/night cycle.
 
 ### getFogColor(float td, float a)
 
-Returns an RGB `Vec3` for the fog color. The `td` parameter is the current time of day. See the [Fog & Sky page](/lce-docs/modding/fog-sky/) for the full breakdown of how each dimension handles this.
+Returns an RGB `Vec3` for the fog color. The `td` parameter is the current time of day. See the [Fog & Sky page](/slop-docs/modding/fog-sky/) for the full breakdown of how each dimension handles this.
 
 ### isNaturalDimension()
 

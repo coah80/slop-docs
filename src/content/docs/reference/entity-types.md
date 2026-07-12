@@ -4,7 +4,7 @@ description: Complete table of all entity type IDs in LCE.
 ---
 
 Entity types are registered in `EntityIO::staticCtor()` in
-[`Minecraft.World/EntityIO.cpp`](/lce-docs/reference/file-index/). Each call to
+[`Minecraft.World/EntityIO.cpp`](/slop-docs/reference/file-index/). Each call to
 `EntityIO::setId()` maps a factory function, an internal enum value (`eINSTANCEOF`),
 a string identifier, and a numeric ID.
 

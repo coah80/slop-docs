@@ -1478,7 +1478,7 @@ shared_ptr<ItemInstance> GemPolisherMenu::quickMoveStack(shared_ptr<Player> play
 
 ### Step 7: The screen
 
-You also need a screen class to render the UI. See the [Custom GUI Screens](/lce-docs/modding/custom-screens/) guide for the full screen system. The short version:
+You also need a screen class to render the UI. See the [Custom GUI Screens](/slop-docs/modding/custom-screens/) guide for the full screen system. The short version:
 
 ```cpp
 // GemPolisherScreen.h
@@ -1850,6 +1850,6 @@ In your block or tile entity's `use()` method, create the menu and open it on th
 
 ## Related guides
 
-- [Custom GUI Screens](/lce-docs/modding/custom-screens/) for the screen and rendering system
-- [Adding Items](/lce-docs/modding/adding-items/) for creating the items that go in your container
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) for creating the block that opens your container
+- [Custom GUI Screens](/slop-docs/modding/custom-screens/) for the screen and rendering system
+- [Adding Items](/slop-docs/modding/adding-items/) for creating the items that go in your container
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) for creating the block that opens your container

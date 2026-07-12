@@ -588,7 +588,7 @@ myStructure = new MyStructureFeature();
 myStructure->postProcess(this, chunkX, chunkZ);
 ```
 
-See the [Structures](/lce-docs/world/structures/) page for details on every built-in structure type, piece weights, and the full `StructurePiece` API.
+See the [Structures](/slop-docs/world/structures/) page for details on every built-in structure type, piece weights, and the full `StructurePiece` API.
 
 ## Nether generation customization
 

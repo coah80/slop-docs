@@ -17,7 +17,7 @@ It is a lot of steps, but each one is small. Let's go.
 
 ## Before you start
 
-Make sure you can build the project. See [Getting Started](/lce-docs/modding/getting-started/) if you have not done that yet. You will also want to be familiar with [Adding Blocks](/lce-docs/modding/adding-blocks/) and [Adding Items](/lce-docs/modding/adding-items/) since this guide builds on both of those.
+Make sure you can build the project. See [Getting Started](/slop-docs/modding/getting-started/) if you have not done that yet. You will also want to be familiar with [Adding Blocks](/slop-docs/modding/adding-blocks/) and [Adding Items](/slop-docs/modding/adding-items/) since this guide builds on both of those.
 
 ## Step 1: Pick your IDs
 
@@ -866,7 +866,7 @@ If ore is not showing up, make sure you created a **new world** after adding the
 
 ## Related guides
 
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) for more details on the tile system
-- [Adding Items](/lce-docs/modding/adding-items/) for more details on the item system
-- [Adding Recipes](/lce-docs/modding/adding-recipes/) for the full recipe type string encoding
-- [Custom World Generation](/lce-docs/modding/custom-worldgen/) for more generation options
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) for more details on the tile system
+- [Adding Items](/slop-docs/modding/adding-items/) for more details on the item system
+- [Adding Recipes](/slop-docs/modding/adding-recipes/) for the full recipe type string encoding
+- [Custom World Generation](/slop-docs/modding/custom-worldgen/) for more generation options

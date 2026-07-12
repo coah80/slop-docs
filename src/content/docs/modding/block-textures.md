@@ -514,6 +514,6 @@ If you created new `.cpp` files for tile subclasses, add them to `cmake/Sources.
 
 ## Related Guides
 
-- [Adding Blocks](/lce-docs/modding/adding-blocks/) for the full tile creation process
-- [Adding Items](/lce-docs/modding/adding-items/) to create matching item textures
-- [Texture Packs](/lce-docs/modding/texture-packs/) for the texture pack override system
+- [Adding Blocks](/slop-docs/modding/adding-blocks/) for the full tile creation process
+- [Adding Items](/slop-docs/modding/adding-items/) to create matching item textures
+- [Texture Packs](/slop-docs/modding/texture-packs/) for the texture pack override system

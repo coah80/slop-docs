@@ -307,4 +307,4 @@ MinecraftConsoles also adds the `GameRules` system, `CommandBlock` / `CommandBlo
 
 LCEMP also has a completely separate text-based command system in the `Minecraft.Server/` module for the standalone dedicated server. This system uses `ServerCommand` and `ConsoleCommandDispatcher` instead of the binary packet-based `Command` and `CommandDispatcher` from `Minecraft.World`. The dedicated server has 27 commands typed into the server console (stop, tp, time, give, kick, ban, whitelist, etc.).
 
-These two command systems overlap in functionality but are entirely separate implementations. See the [Dedicated Server](/lce-docs/platforms/dedicated-server/) page for the full command list and architecture.
+These two command systems overlap in functionality but are entirely separate implementations. See the [Dedicated Server](/slop-docs/platforms/dedicated-server/) page for the full command list and architecture.

@@ -182,7 +182,7 @@ Tile::myCustomTile = (MyCustomTile *)(new MyCustomTile(160))
     ->setUseDescriptionId(IDS_DESC_MY_CUSTOM);
 ```
 
-Pick an unused ID. See [Getting Started](/lce-docs/modding/getting-started/) for help finding available IDs.
+Pick an unused ID. See [Getting Started](/slop-docs/modding/getting-started/) for help finding available IDs.
 
 ## Step 4: Add to the Umbrella Header
 
@@ -988,7 +988,7 @@ Re-run CMake, rebuild, and the block will be available in-game.
 
 ## Related Guides
 
-- [Getting Started](/lce-docs/modding/getting-started/) for environment setup and the staticCtor pattern
-- [Adding Items](/lce-docs/modding/adding-items/) to create matching items for your blocks
-- [Blocks Reference](/lce-docs/world/blocks/) for the full Tile class documentation
-- [Custom World Generation](/lce-docs/modding/custom-worldgen/) to make your blocks generate in the world
+- [Getting Started](/slop-docs/modding/getting-started/) for environment setup and the staticCtor pattern
+- [Adding Items](/slop-docs/modding/adding-items/) to create matching items for your blocks
+- [Blocks Reference](/slop-docs/world/blocks/) for the full Tile class documentation
+- [Custom World Generation](/slop-docs/modding/custom-worldgen/) to make your blocks generate in the world
