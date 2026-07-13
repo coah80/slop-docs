@@ -70,7 +70,7 @@ SDK headers per platform:
 ```
 
 `SonyCommerce.h` splits `__PS3__` (`np/commerce2.h`, `np/drm.h`), `__PSVITA__` (`np_toolkit.h`), and
-`__ORBIS__` (NP Toolkit commerce constant remaps). Session sizing constants:
+`__ORBIS__` (NP Toolkit commerce constant remaps). Session sizing constants (`SQRNetworkManager.h`):
 
 ```cpp
 static const int MAX_LOCAL_PLAYER_COUNT = XUSER_MAX_COUNT;

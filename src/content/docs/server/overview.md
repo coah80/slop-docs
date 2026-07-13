@@ -101,7 +101,7 @@ Then ~30 `app.SetGameHostOption(eGameHostOption_*, ...)` calls (lines 555–588)
 
 ### 6. World load-vs-create
 
-`StorageManager.SetSaveDisabled(disableSaving)`, then `BootstrapWorldForServer(serverProperties, kServerActionPad, &TickCoreSystems)` decides whether to load an existing save or create a new world. See [WorldManager](#worldmanager-load-vs-create) below. On a `Loaded` result the actually-loaded save-id is persisted back to `level-id`; on `Failed` the server tears down and returns exit code 4 (lines 604–628).
+`StorageManager.SetSaveDisabled(disableSaving)`, then `BootstrapWorldForServer(serverProperties, kServerActionPad, &TickCoreSystems)` decides whether to load an existing save or create a new world. See [WorldManager](#worldmanager--load-vs-create) below. On a `Loaded` result the actually-loaded save-id is persisted back to `level-id`; on `Failed` the server tears down and returns exit code 4 (lines 604–628).
 
 ### 7. Hosting the game
 
