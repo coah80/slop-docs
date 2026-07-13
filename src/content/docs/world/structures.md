@@ -162,8 +162,11 @@ the `OceanMonumentPieces::loadStatic()` call) is new in commit `720e1a77`.
 > is unchanged but what lands in the chests is now table-driven. (2)
 > `a4c746be TU43 Structures, bug fixes & minor changes` adds **Igloo and Fossil**
 > generation — both are `Feature` subclasses (`IglooFeature`, `FossilFeature`, each
-> `: public Feature`) run from biome decorators, **not** new `StructureFeature`
-> starts, so the six-entry `StructureFeatureIO` registry above is unchanged. See the
+> `: public Feature`) run directly from the chunk-source decoration pass
+> (`RandomLevelSource::postProcess` places them with a per-chunk probability roll —
+> `1/64` fossil, `1/48` igloo — just before `biome->decorate()`), **not** new
+> `StructureFeature` starts, so the six-entry `StructureFeatureIO` registry above is
+> unchanged. See the
 > [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
 
 ## Ocean Monument (new)
