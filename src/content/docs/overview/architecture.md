@@ -18,7 +18,7 @@ Root `CMakeLists.txt` declares `project(LCE-Revelations LANGUAGES C CXX RC ASM_M
 
 Both server exes are literally named `Minecraft.Server.exe`; the variant identity lives in the build directory, enforced by `OUTPUT_NAME "Minecraft.Server"` + explicit output-dir overrides in `cmake/ServerTarget.cmake`.
 
-The servers are added **only on Windows64** (`CMakeLists.txt:160-163`):
+The servers are added **only on Windows64** (`CMakeLists.txt:158-160`):
 
 ```cmake
 add_subdirectory(Minecraft.World)
@@ -50,12 +50,12 @@ Iggy (Scaleform)          │
                                         Minecraft.Server.FourKit.Managed  (C# net10.0)
 ```
 
-- **`4JLibs`** is a git submodule (`Minecraft.Client/Windows64/4JLibs`, from `git.neolegacy.dev/neoStudiosLCE/4JLibs.git`) providing four static libs: `Input`, `Profile`, `Storage`, `Render`. It builds first (`add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")` at `CMakeLists.txt:146`). Both the client and the servers link all four.
+- **`4JLibs`** is a git submodule (`Minecraft.Client/Windows64/4JLibs`, from `git.neolegacy.dev/neoStudiosLCE/4JLibs.git`) providing four static libs: `Input`, `Profile`, `Storage`, `Render`. It builds first (`add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")` at `CMakeLists.txt:144`). Both the client and the servers link all four.
 - **Iggy** is the Autodesk Scaleform/Iggy Flash UI runtime (prebuilt libs under `Minecraft.Client/<Platform>/Iggy/`), linked into the client and the servers via the `IGGY_LIBS` list.
 - **`Minecraft.World`** links only 4JLibs; it has no dependency on the client or the servers.
 - **`Minecraft.Server.FourKit`** additionally depends on `Minecraft.Server.FourKit.Managed`, which runs `dotnet publish --runtime win-x64 --self-contained true` and stages the output into `runtime/` next to the exe.
 
-**Subdirectory / build order** (`CMakeLists.txt:146-163`): `4JLibs` → `Minecraft.World` → `Minecraft.Client` → (Windows64 only) `Minecraft.Server.FourKit` → `Minecraft.Server`.
+**Subdirectory / build order** (`CMakeLists.txt:144-160`): `4JLibs` → `Minecraft.World` → `Minecraft.Client` → (Windows64 only) `Minecraft.Server.FourKit` → `Minecraft.Server`.
 
 ### Generated headers wired into the graph
 

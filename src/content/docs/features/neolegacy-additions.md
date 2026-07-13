@@ -47,7 +47,7 @@ public:
 
 | Area | File | What changed |
 |---|---|---|
-| Translucent render | `Minecraft.Client/TileRenderer.cpp` (+150) | render path for the slime block face/layer |
+| Translucent render | `Minecraft.Client/TileRenderer.cpp` (+129) | render path for the slime block face/layer |
 | Render flags | `Minecraft.Client/TileRenderer.h` | new render helper |
 | Sticky-piston drag | `Minecraft.Client/PistonPieceRenderer.cpp` | pieces move attached slime blocks |
 | Piston physics | `Minecraft.World/PistonBaseTile.cpp` (+109) | push/pull chains through slime |
@@ -92,8 +92,8 @@ Vanilla LCE renders a worn/placed skull as a flat 2D item icon. neoLegacy gives 
 
 | File | Change |
 |---|---|
-| `Minecraft.Client/ItemInHandRenderer.cpp` | +37/−16 — render the skull as a block model in first person |
-| `Minecraft.Client/ItemRenderer.cpp` | +33 — 3D icon in inventory/HUD |
+| `Minecraft.Client/ItemInHandRenderer.cpp` | +22/−15 — render the skull as a block model in first person |
+| `Minecraft.Client/ItemRenderer.cpp` | +32/−1 — 3D icon in inventory/HUD |
 
 The underlying `SkullTile`, `SkullTileEntity`, and `SkullItem` files already exist in the base
 tree (they trace back to the `Initial commit` history root, not to a neoLegacy addition), so the

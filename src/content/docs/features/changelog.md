@@ -20,7 +20,7 @@ Two GitHub Actions workflows in `.github/workflows/` drive releases:
 | **Nightly Release** | `nightly.yml` | every push to `main` (and manual dispatch) | rolling `.zip` build; the primary user download (`README.md`) |
 | **Stable Release** | `stable.yml` | a push that edits the `BUMP` file | a tagged `v1.0.Nb` stable build |
 | Pull request CI | `pull-request.yml` | PRs | build/validation |
-| Upstream sync | `sync.yml` | scheduled | pulls from the LCE-Revelations base |
+| Branch sync | `sync.yml` | every push to `main` | merges `main` into the `feat/*`, `exp/*`, `experimental` (and `TU*` as of v1.1.0b) work branches |
 
 The stable workflow is deliberately wired to `BUMP` only — an inline note in `stable.yml` reads
 `#neo: DO NOT ADD NOTES.md HERE.`, so bumping the version number in `BUMP` is what publishes a

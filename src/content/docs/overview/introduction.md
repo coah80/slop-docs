@@ -89,4 +89,4 @@ Nightlies are produced by CI on every push to `main`; stable `v1.0.x` tags are c
 
 `git log --reverse` shows the repository's earliest commit is `def8cb41 "first commit"` by `daoge_cmd` on **2026-03-01**. This is a **squashed / re-rooted history**, not the genuine start of LCE reconstruction. neoLegacy's *tracked git history* begins 2026-03, but its *code lineage* is inherited from LCE-Revelations → LCERenewed and predates that date. Treat 2026-03-01 as the history-root date, not "the day the project was created."
 
-As of the snapshot these docs were written from, the tree had **1645 commits**. By author count the largest is release owner `piebot`, followed closely by the automated `github-actions` nightly-commit bot, then `Fireblade` and the LCE-Revelations maintainer `itsRevela`/`Revela`.
+As of the snapshot these docs were written from, the tree had **1645 commits**. By author count the largest is release owner `piebot` (202), followed by `Fireblade` and the LCE-Revelations maintainer `itsRevela` (126 each), then `Revela` (86). The automated `github-actions` nightly/sync bot accounts for only ~15 commits despite the many merge commits it authors.

@@ -105,7 +105,7 @@ So the release ritual is: write the changelog into `NOTES.md`, then edit `BUMP` 
 
 ### Branch sync
 
-`sync.yml` runs on push to `main` and merges `main` into all `exp/*`, `feat/*`, and `experimental` branches, aborting on conflict. This keeps long-running feature branches (worldgen, minigames, guardians, TU43) current — hence the many `github-actions` merge commits in the log.
+`sync.yml` runs on push to `main` and merges `main` into all `exp/*`, `feat/*`, and `experimental` branches, aborting on conflict. This keeps long-running feature branches that match those globs (`exp/worldgen`, `feat/minigames`, `experimental`) current — hence the many `github-actions` merge commits in the log. Branches outside the globs (e.g. `guardians`, `TU43`, `commands`) are not auto-synced at this snapshot; v1.1.0b later widened the filter to also cover `TU*` (see the [Changelog](/slop-docs/features/changelog/#v110b-current)).
 
 ## Legacy publisher (superseded)
 
