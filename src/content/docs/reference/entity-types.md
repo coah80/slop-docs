@@ -262,11 +262,23 @@ orphaned dead code, along with the client's `OzelotModel`/`OzelotRenderer`. The
 (`Ozelot.{cpp,h}`, `OzelotAttackGoal.{cpp,h}`, `OzelotModel.{cpp,h}`,
 `OzelotRenderer.{cpp,h}`; 767 lines removed), completing the rename to `Ocelot`.
 
-**The registry is unchanged:** the save name stays `L"Ozelot"`, the numeric ID stays
-`98`, `eINSTANCEOF` stays `eTYPE_OCELOT`, and the spawn-egg name stays `IDS_OZELOT`
-— so the `Ozelot` NBT/network identifiers and the sub-typed cat egg rows below
-(`98 | ((TYPE_BLACK/RED/SIAMESE + 1) << 12)`) are all still correct. Only the C++
-source-file/class name changed.
+**The Ozelot registry entry is unchanged:** the save name stays `L"Ozelot"`, the
+numeric ID stays `98`, `eINSTANCEOF` stays `eTYPE_OCELOT`, and the spawn-egg name
+stays `IDS_OZELOT` — so the `Ozelot` NBT/network identifiers and the sub-typed cat
+egg rows below (`98 | ((TYPE_BLACK/RED/SIAMESE + 1) << 12)`) are all still correct.
+Only the C++ source-file/class name changed.
+:::
+
+:::note[Added in v1.1.0b — polar bear]
+The `origin/main` build (`v1.1.0b`, `245cbb18`) adds one new spawnable entity, the
+**polar bear**, absent from the `47e5cba3` tables above. It gets a new `eINSTANCEOF`
+value `eTYPE_POLARBEAR = eTYPE_ANIMAL | eTYPE_ANIMALS_SPAWN_LIMIT_CHECK | 0x6`
+(`Class.h:141`, slotted after `eTYPE_RABBIT`) and an `EntityIO` registration with
+numeric ID **107** (`setId(PolarBear::create, eTYPE_POLARBEAR, L"PolarBear", 107,
+… IDS_POLAR_BEAR)`, `EntityIO.cpp:121`), so ID 107 is no longer a gap in that build.
+Two new tile-entity `eINSTANCEOF` values were also added in the same build —
+`eTYPE_BANNERTILEENTITY` (`| 0x12`) and `eTYPE_FLOWERPOTTILEENTITY` (`| 0x13`)
+(`Class.h:322-323`) — documented on the [Tile Entities](/slop-docs/world/tile-entities/) page.
 :::
 
 ### Sub-typed spawn-egg IDs (high-bit variant packing)
