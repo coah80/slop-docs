@@ -23,6 +23,17 @@ named `_Id` constants (slabs, beetroot, frosted ice, red sandstone, grass path,
 double-plant) are resolved from `Tile.h`. A **`—`** in the IDs column marks an abstract
 base or interface that is never instantiated directly, or a class registered elsewhere.
 
+:::note[Changed in v1.1.0b]
+v1.1.0b adds seven registrations and three new subclasses. New IDs (from `Tile.h`):
+`end_bricks` (206), `standing_banner` (176) / `wall_banner` (177), `magma` (213),
+`nether_wart_block` (214), `red_nether_brick` (215), `bone_block` (216). `end_bricks`,
+`nether_wart_block` and `red_nether_brick` reuse the generic `Tile` parent (no new class),
+while `MagmaTile`, `BoneBlockTile` and `BannerTile` are new subclasses (`BannerTile` is
+registered twice, standing + wall, and is backed by a `BannerTileEntity`). This lifts the
+tallies to roughly **~187 headers / ~184 subclasses**. See the family tables below for the
+individual entries.
+:::
+
 ## How a Tile is registered
 
 `Tile::staticCtor` sets the shared sound types first (`SOUND_STONE`, `SOUND_WOOD`,
@@ -109,6 +120,11 @@ factor out shared behaviour (shape, render class, redstone, entity backing).
 | `TheEndPortal` | `TheEndPortal.h` | 119 | End portal block (`BaseEntityTile`). |
 | `TheEndPortalFrameTile` | `TheEndPortalFrameTile.h` | 120 | End portal frame; accepts eyes of ender. |
 | `EggTile` | `EggTile.h` | 122 | Dragon egg. |
+| `Tile` (end bricks) | `Tile.h` | 206 (`end_bricks_Id`) | End stone bricks — generic `Tile`, `Material::stone` (v1.1.0b). |
+| `MagmaTile` | `MagmaTile.h` | 213 (`magma_Id`) | Magma block; damages entities standing on it (v1.1.0b). |
+| `Tile` (nether wart block) | `Tile.h` | 214 (`nether_wart_block_Id`) | Nether wart block — generic `Tile`, `Material::grass` (v1.1.0b). |
+| `Tile` (red nether brick) | `Tile.h` | 215 (`red_nether_brick_Id`) | Red nether brick — generic `Tile`, `Material::stone` (v1.1.0b). |
+| `BoneBlockTile` | `BoneBlockTile.h` | 216 (`bone_block_Id`) | Bone block; axis-oriented pillar. Extends `HayBlockTile` (v1.1.0b). |
 
 ## Liquids
 
@@ -284,6 +300,7 @@ Every tile here extends `BaseEntityTile` and owns a
 | `CauldronTile` | `CauldronTile.h` | 118 | Cauldron (water storage / dye / potion interactions). |
 | `BeaconTile` | `BeaconTile.h` | 138 | Beacon; projects a beam and area effects (`BeaconTileEntity`). |
 | `SignTile` | `SignTile.h` | 63 (standing), 68 (wall) | Sign; stores text lines in a TileEntity. |
+| `BannerTile` | `BannerTile.h` | 176 (standing), 177 (wall) | Banner; stores pattern layers in a `BannerTileEntity` (v1.1.0b). `BaseEntityTile`; the `bool onGround` ctor arg selects standing vs wall. |
 | `SkullTile` | `SkullTile.h` | 144 | Mob/player head. |
 | `MobSpawnerTile` | `MobSpawnerTile.h` | 52 | Monster spawner; holds a spawn definition. |
 | `CommandBlock` | `CommandBlock.h` | 137 | Command block (save-id `Control`). See [Commands](/slop-docs/world/commands/). |

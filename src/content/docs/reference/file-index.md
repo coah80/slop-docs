@@ -17,8 +17,30 @@ drift as the tree changes. All source paths link to Gitea
 Repo internals: the CMake project is still named `LCE-Revelations` (upstream
 lineage); some scripts say `LegacyEvolved`; the user-facing name is **neoLegacy**.
 Version per [`BUMP`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/BUMP)
-is **1.0.9b**. See [Architecture](/slop-docs/overview/architecture/) for the
+is **1.1.0b**. See [Architecture](/slop-docs/overview/architecture/) for the
 30,000-foot view.
+
+:::note[Changed in v1.1.0b]
+v1.1.0b (`BUMP` 1.0.9b → 1.1.0b) grows the tree in three places worth calling out:
+
+- **A new `Structures/` asset tree** under
+  `Minecraft.Client/Common/Media/MediaWindows64/Structures/` — piece XML for
+  `fossils/`, `igloo/`, and a full **`loot_tables/`** set (`chests/` for
+  mineshaft, desert pyramid, end city, igloo, jungle temple, nether bridge,
+  dungeon, stronghold, village blacksmith, bonus chest, plus per-mob
+  `entities/`). These are read by the new `LootTableManager`,
+  `FossilFeature`/`IglooFeature` in `Minecraft.World/`.
+- **New `tools/` scripts** — `wiiU2Windows.py` (Wii U → Windows64 asset
+  converter) and `struct_parse.py` (Structures XML parser), on top of the
+  existing SWF/`.arc`/audio tooling.
+- **New `Minecraft.World/` class-family members** feeding the tallies above:
+  `LootTableManager`, `FossilFeature`, `IglooFeature`, `PolarBear` (+ client
+  `PolarBearModel`/`PolarBearRenderer`), the banner stack
+  (`BannerTile`/`BannerItem`/`BannerTileEntity` + client
+  `BannerModel`/`BannerRenderer`), `BoneBlockTile`, `MagmaTile`, and
+  `FlowerPotTileEntity`. The `~Count` columns below predate these and drift
+  accordingly.
+:::
 
 ## Repository root
 
@@ -46,7 +68,7 @@ distribution, or tooling.
 |---|---|
 | [`CMakeLists.txt`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/CMakeLists.txt) | Root build. `project(LCE-Revelations)`, C++17, Windows-only guard, subdir order, all codegen wiring. |
 | [`CMakePresets.json`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/CMakePresets.json) | `windows64` (builds) + five console presets (`durango`/`orbis`/`ps3`/`psvita`/`xbox360`, 0-byte toolchain stubs — do not build). |
-| [`BUMP`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/BUMP) | Release version string (`1.0.9b`). Pushing a change triggers the stable-release workflow. |
+| [`BUMP`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/BUMP) | Release version string (`1.1.0b`). Pushing a change triggers the stable-release workflow. |
 | [`NOTES.md`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/NOTES.md) | Current-version changelog; consumed verbatim as the stable-release body. |
 | [`COMPILE.md`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/COMPILE.md) / [`README.md`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/README.md) / [`CONTRIBUTING.md`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/CONTRIBUTING.md) | Build/setup/contribution docs. |
 | [`build-linux.sh`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/build-linux.sh) | Canonical Linux→Windows cross-compile (clang-cl + xwin + Wine). What CI uses. |
@@ -326,5 +348,3 @@ API types: `World.cs`, `Location.cs`, `Material.cs`, `GameMode.cs`, `ChatColor.c
 - **Writing a FourKit plugin?** [FourKit plugins](/slop-docs/server/fourkit-plugins/).
 - **Need an ID?** The [reference](/slop-docs/reference/block-ids/) section has the
   block/item/entity/packet/enchantment tables.
-</content>
-</invoke>

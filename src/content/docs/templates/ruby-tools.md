@@ -38,11 +38,19 @@ before `Item` before `Recipes`. You do not touch the bootstrap; you insert into 
 | Ruby vein | `OreFeature` | — | `BiomeDecorator` |
 
 :::note[Choosing free ids]
-The highest registered tile id today is `dark_oak_door_Id = 197` (`Tile.h:437`), so `198`/`199`
-are the next free block ids (both under `TILE_NUM_COUNT = 4096`, `Tile.h:101`). The highest item
-id is `elytra_Id = 443` (`Item.h:677`), so `444`–`449` are free (under `ITEM_NUM_COUNT = 32000`,
+`198` is the first unregistered block id: the named block ids run up through
+`dark_oak_door_Id = 197`, and `199` is only a **commented-out** `sapling2_Id` placeholder
+(the `new Sapling2(199)` line is disabled in `staticCtor`), so both `198` and `199` are
+free to claim (both under `TILE_NUM_COUNT = 4096`, `Tile.h:101`). The highest item id is
+`elytra_Id = 443` (`Item.h:677`), so `444`–`449` are free (under `ITEM_NUM_COUNT = 32000`,
 `Item.h:34`). Verify these are still free in your checkout before you start — grep for `= 198`,
 `= 444`, etc. in `Tile.h` / `Item.h`.
+
+**Changed in v1.1.0b:** `197` is no longer the highest *registered* tile id — v1.1.0b added
+`end_bricks` (206), `magma` (213), `nether_wart_block` (214), `red_nether_brick` (215),
+`bone_block` (216), and the two banner ids (176/177). None of these touch `198`/`199`, so this
+recipe's ids are still safe, but do not assume 197 is the ceiling: skip past the v1.1.0b block
+when hunting for further free ids.
 :::
 
 ## How the codebase does ores (the reference)

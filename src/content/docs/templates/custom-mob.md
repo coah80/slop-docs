@@ -46,6 +46,14 @@ The entity system in neoLegacy is a direct C++ port of the decompiled Java LCE c
 The last hostile numeric id today is Guardian `68` (`EntityIO.cpp:103`); passive mobs start at
 `90`. So `69` is the next free hostile id. Confirm it is unused in your checkout before starting
 (grep `EntityIO.cpp` for `, 69)`).
+
+**Changed in v1.1.0b:** v1.1.0b added the **PolarBear** as a passive animal at numeric id `107`
+(`eTYPE_POLARBEAR = eTYPE_ANIMAL | eTYPE_ANIMALS_SPAWN_LIMIT_CHECK | 0x6`), so `68` is still the
+last *hostile* id and `69` is still free. Note also that the discriminator `0x12` now appears in
+`Class.h` for the new `eTYPE_BANNERTILEENTITY` (`eTYPE_TILEENTITY | 0x12`) — that is a **tile
+entity**, a different base flag from `eTYPE_MONSTER`, so it does **not** collide with this
+template's `eTYPE_FROSTMITE = eTYPE_MONSTER | … | 0x12`. `0x12` is still the next free discriminator
+in the `eTYPE_MONSTER` run.
 :::
 
 ## Step 1 — the mob logic class

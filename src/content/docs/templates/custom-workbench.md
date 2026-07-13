@@ -77,13 +77,15 @@ is small; most of the work is the console UI's fixed enum plumbing.
 ### Step 1.1 — pick an id and declare the block
 
 The tile registry is a fixed array `Tile *tiles[TILE_NUM_COUNT]`
-(`Tile.h:210`, `TILE_NUM_COUNT = 4096`) indexed by the numeric block id. The
-highest id in use is `frosted_ice_Id = 212` (`Tile.h:450`); ids 218+ are free. Add
-to `Tile.h` after `frosted_ice_Id`:
+(`Tile.h:210`, `TILE_NUM_COUNT = 4096`) indexed by the numeric block id. As of
+v1.1.0b the highest registered id is `bone_block_Id = 216` (v1.1.0b added
+`magma` 213, `nether_wart_block` 214, `red_nether_brick` 215, `bone_block` 216 on
+top of `frosted_ice_Id = 212`), so `217` and `218` are free. We use `218`. Add
+it to `Tile.h`:
 
 ```cpp
-    static const int frosted_ice_Id = 212;
-    static const int fabricator_Id = 218;   // <-- add
+    static const int bone_block_Id = 216;   // v1.1.0b — current highest
+    static const int fabricator_Id = 218;   // <-- add (217/218 free)
 ```
 
 Add the static pointer near `Tile::furnace` (`Tile.h:522`):
@@ -266,18 +268,28 @@ for the item-form details.
 
 Every `TileEntity` has an `eINSTANCEOF` type used for the `instanceof` bitmask and
 the save-id map. The tile-entity block runs `eTYPE_TILEENTITY | 0xNN`
-(`Class.h:302-320`). The last one is `eTYPE_HOPPERTILEENTITY = ... | 0x11`
-(`Class.h:320`). Add the next value:
+(`Class.h:307-323`). Add the next free discriminator:
 
 ```cpp
     eTYPE_HOPPERTILEENTITY				= eTYPE_TILEENTITY | 0x11,
-    eTYPE_COMPARATORTILEENTITY			= eTYPE_TILEENTITY | 0x0F,
+    eTYPE_BANNERTILEENTITY				= eTYPE_TILEENTITY | 0x12,   // v1.1.0b
+    eTYPE_FLOWERPOTTILEENTITY			= eTYPE_TILEENTITY | 0x13,   // v1.1.0b
     ...
-    eTYPE_FABRICATORTILEENTITY			= eTYPE_TILEENTITY | 0x12,   // <-- add (next free discriminator)
+    eTYPE_FABRICATORTILEENTITY			= eTYPE_TILEENTITY | 0x14,   // <-- add (next free discriminator)
 ```
 
-And register it in the `SUBCLASS` table (`Class.h:544`, in the block that lists
-`eTYPE_HOPPERTILEENTITY`):
+:::caution[Changed in v1.1.0b]
+Through the audit snapshot, `eTYPE_HOPPERTILEENTITY = eTYPE_TILEENTITY | 0x11` was the
+highest tile-entity discriminator and `0x12` was free. **v1.1.0b added
+`eTYPE_BANNERTILEENTITY = eTYPE_TILEENTITY | 0x12` and
+`eTYPE_FLOWERPOTTILEENTITY = eTYPE_TILEENTITY | 0x13`** (`Class.h:322-323`), so `0x12`/`0x13`
+are now taken — use **`0x14`** for the Fabricator. Always grep `Class.h` for the current
+highest `eTYPE_TILEENTITY | 0x..` before picking one.
+:::
+
+And register it in the `SUBCLASS` table (in the block that lists
+`eTYPE_HOPPERTILEENTITY` — around `Class.h:550`, now after the v1.1.0b
+`eTYPE_BANNERTILEENTITY`/`eTYPE_FLOWERPOTTILEENTITY` push_backs):
 
 ```cpp
     classes->push_back( SUBCLASS(eTYPE_FABRICATORTILEENTITY)->addParent( eTYPE_TILEENTITY ) );
@@ -483,10 +495,13 @@ why the next step (registering the id) matters.
 
 `TileEntity::staticCtor()` (`TileEntity.cpp:14`) maps a factory fn + type + a
 **legacy save-id string** so loaded worlds find the class. Add ours to the end of
-the list (`TileEntity.cpp:34`):
+the list. As of v1.1.0b the list ends with the new Banner/FlowerPot registrations
+(`TileEntity.cpp:35-36`), so append after `L"FlowerPot"`:
 
 ```cpp
     TileEntity::setId(ComparatorTileEntity::create, eTYPE_COMPARATORTILEENTITY, L"Comparator");
+    TileEntity::setId(BannerTileEntity::create, eTYPE_BANNERTILEENTITY, L"Banner");         // v1.1.0b
+    TileEntity::setId(FlowerPotTileEntity::create, eTYPE_FLOWERPOTTILEENTITY, L"FlowerPot"); // v1.1.0b
     TileEntity::setId(FabricatorTileEntity::create, eTYPE_FABRICATORTILEENTITY, L"Fabricator");   // <-- add
 ```
 
@@ -1118,8 +1133,8 @@ group that lists `UIScene_FurnaceMenu.cpp`):
 |-------|--------------------|
 | Container block (with block-entity) | `FurnaceTile.cpp:111` (`use`), `:142` (`newTileEntity`), `:162` (`onRemove`) |
 | Simplest full block-entity container | `BrewingStandTileEntity.h/.cpp` |
-| Container save id registry | `TileEntity.cpp:14`, `setId` `:37` |
-| Tile-entity type enum | `Class.h:302-320`, SUBCLASS `:531-544` |
+| Container save id registry | `TileEntity.cpp:14`, `setId` `:39` (v1.1.0b: list ends at `:36`) |
+| Tile-entity type enum | `Class.h:307-323`, SUBCLASS `:536-552` (v1.1.0b ranges) |
 | Minimal `AbstractContainerMenu` | `TrapMenu.cpp` (whole file) |
 | Menu base | `AbstractContainerMenu.h:14` |
 | Container-open packet | `ContainerOpenPacket.h` (packet id 100) |
