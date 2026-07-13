@@ -56,6 +56,16 @@ A handful of recipes are also added inline in `_compileRecipes` itself (planks,
 sticks, bed, enchanting table — `Recipes.cpp:49`+). Smelting is separate: it
 lives in `FurnaceRecipes` (`Minecraft.World.cpp:44`), covered in Step 4.
 
+:::note[Changed in v1.1.0b]
+Bootstrap line numbers on this page are for the snapshot. On `origin/main`
+(v1.1.0b) a `LootTableManager` preload shifted the `staticCtor` chain down ~8
+lines, so `Recipes::staticCtor()` is called at `Minecraft.World.cpp:53` and
+`FurnaceRecipes::staticCtor()` at `:52`. Within `Recipes.cpp` the handler
+call-order table is stable except `OreRecipies::addRecipes` which moves from
+`Recipes.cpp:1171` to `:1223` upstream. The handler *ordering* and every recipe
+idiom below are unchanged.
+:::
+
 ## Step 1 — The recipe DSL (read this first)
 
 Both `addShapedRecipy` and `addShapelessRecipy` are **varargs** functions

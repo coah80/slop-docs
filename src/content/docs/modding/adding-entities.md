@@ -100,6 +100,15 @@ classes->push_back( SUBCLASS(eTYPE_TERMITE)->addParent(eTYPE_MONSTER)->addParent
 If the bitmask and this table disagree the debug build hits `DEBUG_BREAK()`
 (`Class.h:616`) at startup — a fast way to catch a bad discriminator.
 
+:::note[Changed in v1.1.0b]
+`Class.h` gained a few lines on `origin/main` (v1.1.0b), so its citations shift by
+~1: `eTYPE_ENDERMITE` is at `Class.h:176` and the `SUBCLASS(eTYPE_ENDERMITE)`
+derivation entry at `:500`. The `EntityIO::setId` line for Endermite is still at
+`EntityIO.cpp:99` upstream, and `0x12` (`eTYPE_TERMITE` in this example) remains a
+free discriminator. Grep `git show origin/main:Minecraft.World/Class.h` for the
+current highest low-nibble value before picking one.
+:::
+
 ## Step 2 — Write the entity class
 
 Create `Minecraft.World/Termite.h`. Mirror `Endermite.h` exactly — the two

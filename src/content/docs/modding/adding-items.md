@@ -199,6 +199,15 @@ the master bootstrap (`Minecraft.World.cpp:37-39`), *before* `Item::staticCtor`.
 If you add a new digger tool type, you populate its own diggables table the same
 way; for a new tier of an existing tool, just reuse the tier constants above.
 
+:::note[Changed in v1.1.0b]
+The `Item.cpp` / `Item.h` citations on this page (Beetroot at `Item.cpp:549`, the
+`_Id` block at `Item.h:679`, the tiers at `Item.cpp:28`, etc.) are stable on
+`origin/main` — those files did not drift. The **one** exception is the bootstrap
+reference just above: the tool `staticCtor`s run at `Minecraft.World.cpp:45–47` on
+`origin/main` (v1.1.0b), not `:37–39`, because a `LootTableManager` preload pushed
+the whole chain down ~8 lines (`Item::staticCtor` there is line 51).
+:::
+
 See [Items](/slop-docs/world/items/) for the full tool/weapon hierarchy.
 
 ## Step 5 — Creative menu / sort category

@@ -55,6 +55,16 @@ If you add a new subsystem registry, this is where you'd hook its `staticCtor()`
 — but for a block or item you never touch this file; you edit the existing
 `Tile::staticCtor()` / `Item::staticCtor()` bodies.
 
+:::note[Changed in v1.1.0b]
+The line numbers above are for the snapshot this page was written against. On
+`origin/main` (v1.1.0b) a `LootTableManager` include + a `LoadFromDisk` preload
+were added just above the `staticCtor` chain, shifting the whole block **down by
+~8 lines**: `MinecraftWorld_RunStaticCtors()` is now `Minecraft.World.cpp:28`,
+`Material::staticCtor()` line 43, `Tile::staticCtor()` line 44, `Item::staticCtor()`
+line 51, `FurnaceRecipes` 52, `Recipes` 53. `git show origin/main:Minecraft.World/Minecraft.World.cpp`
+for the current bootstrap. The *ordering* is unchanged.
+:::
+
 ### Change X → edit Y
 
 | You want to change… | Edit | Registered in |
@@ -116,7 +126,9 @@ The **integer ID is chosen by hand and never auto-assigned**. IDs are a scarce,
 globally-shared namespace (blocks 0–`TILE_NUM_COUNT`, i.e. 0–4096, with items
 shadowing blocks below 256 — see [Adding Blocks](/slop-docs/modding/adding-blocks/)
 for the +256 rule). Pick an unused one; the neoLegacy additions cluster at
-152–197 for blocks.
+152–197 for blocks (as of this snapshot; on `origin/main`/v1.1.0b the block
+cluster extends further — see [Adding Blocks → pick an ID](/slop-docs/modding/adding-blocks/#step-0--pick-an-id)
+and always grep the current `origin/main` before choosing).
 
 The same idiom, with a different call, appears in the factory-style registries:
 

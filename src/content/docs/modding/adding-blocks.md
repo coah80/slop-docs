@@ -27,6 +27,18 @@ slime took 165. Pick the next free slot — check `Tile.h` for the highest
 `*_Id` constant and `Tile.cpp`'s `staticCtor` for the highest `new XxxTile(n)`.
 For this example assume **198** is free.
 
+:::note[Changed in v1.1.0b — check the current free range]
+This snapshot's block IDs top out at 197 (the wooden doors), so 198 is the next
+free slot. On `origin/main` (v1.1.0b) the range has grown past 197: it added the
+banner tiles at **176/177** (previously gaps) and a batch of higher `*_Id`
+constants — `end_bricks_Id = 206`, `magma_Id = 213`, `nether_wart_block_Id = 214`,
+`red_nether_brick_Id = 215`, `bone_block_Id = 216`. **198 is still free on
+`origin/main`**, but the neighbouring slots are filling, so before you commit an
+ID grep the *current* upstream, not just this page:
+`git show origin/main:Minecraft.World/Tile.h | grep _Id` and
+`git show origin/main:Minecraft.World/Tile.cpp | grep 'new .*Tile('`.
+:::
+
 :::note[IDs are permanent]
 Once a world is saved, block IDs are baked into the save. Don't reuse or
 renumber an ID that has shipped. If you're backporting a real TU25/TU31 block,
@@ -222,6 +234,15 @@ and the pointer needs a `nullptr` initializer at the top of `Tile.cpp` (e.g.
 
 **4b. Add the registration line to `Tile::staticCtor()`** (`Tile.cpp:359`).
 Slime and barrier are registered back to back at `Tile.cpp:572–573`:
+
+:::note[Changed in v1.1.0b]
+These line numbers are for the snapshot. On `origin/main` (v1.1.0b) the extra
+tiles added above them push everything down: `Tile::staticCtor()` is `Tile.cpp:366`
+and the slime/barrier pair is at `Tile.cpp:579–580` (barrier's line also picked
+up a `setBaseItemTypeAndMaterial(...)` call upstream). The registration *pattern*
+is identical — just diff `git show origin/main:Minecraft.World/Tile.cpp` if you're
+matching upstream line-for-line.
+:::
 
 ```cpp
 Tile::slimeBlock = (new SlimeTile(165))
