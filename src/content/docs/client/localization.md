@@ -424,12 +424,16 @@ verify against the branch you build:
   `tp->getName()` / `tp->getDesc1()` instead of a special-cased literal.
 - **`#36` / `5d9417ee` "fix: kanji fonts"** — added the Windows64 CJK TTFs
   (`DFGMaruGothic-Md.ttf`, `DFHeiMedium-B5.ttf`, `BOKMSD.ttf`, plus
-  `Mojangles.ttf`) and hardened the loc path. Its child commit `e6085e18`
-  ("fix: font crash when switching languages") had temporarily `#if 0`'d the
+  `Mojangles.ttf`) and hardened the loc path. Its follow-up commit `e6085e18`
+  ("fix: font crash when switching languages") `#if 0`'d the
   `IggyFontSetIndirectUTF8` calls in `SetupFont` to dodge a crash when switching
-  from a custom font back to the bitmap font. **In the current snapshot those
-  calls are active again** (`UIController.cpp` `SetupFont`), so that guard was
-  reverted after the merge — the font-switch path is the one described above.
+  from a custom font back to the bitmap font. **In the snapshot documented here
+  (`47e5cba3`) those calls are active** (`UIController.cpp` `SetupFont`), because
+  `e6085e18` is not yet in this tree — so the font-switch path is the one
+  described above. Note the state differs on the upstream head: at `3833d0f3`
+  `e6085e18` has landed and the two `IggyFontSetIndirectUTF8` calls are `#if 0`'d
+  out again (guarded, with the "caused a crash when switching from custom font to
+  bitmap font" comment), so on that branch the indirect redirect does not run.
 - **v1.1.0b further loc work (on `origin/main`, not in this snapshot):**
   `Minecraft.World/StringHelpers.cpp` rewrites `convStringToWstring` to do a
   real UTF-8→UTF-16 decode (via `std::wstring_convert` /

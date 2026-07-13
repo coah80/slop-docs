@@ -207,13 +207,16 @@ Because console DLC archives are big-endian, `DLCManager` provides the
 > the TU25-era skin packs — was fixed so packs show the correct icons. See the
 > `UIScene_SkinSelectMenu` notes in [Settings & Skin Select](/slop-docs/client/settings/).
 
-> **Changed in v1.1.0b:** the bundled **retail DLC assets** under
-> `Minecraft.Client/Windows64Media/DLC/` (Mash-Up packs, skin packs, texture
-> packs — 511 binary files) were deleted (commit `8cfce8ee`, "chore: delete
-> dlcs"). This is an asset-only removal: the `DLCManager` / `DLCPack` code, the
-> `EDLCType` set, and the built-in resource-tree packs under
+> **Changed in v1.1.0b:** most of the bundled **retail DLC assets** under
+> `Minecraft.Client/Windows64Media/DLC/` (Mash-Up packs, licensed skin packs,
+> texture packs — 511 binary files, including the Star Wars, Simpsons, Festive
+> and Battle & Beasts packs) were deleted (commit `8cfce8ee`, "chore: delete
+> dlcs"). The directory is **not** emptied, though: nine `.pck` files for the
+> generic **Skin Pack 1–6** dirs survive the cull and are still present at the
+> upstream head `3833d0f3`. This is an asset-only removal: the `DLCManager` /
+> `DLCPack` code, the `EDLCType` set, and the built-in resource-tree packs under
 > `Common/res/TitleUpdate/DLC/` (28 `.pck` files, unchanged) all remain. The
-> pipeline documented here is intact; only the shipped downloadable payloads are
+> pipeline documented here is intact; only the licensed downloadable payloads are
 > gone.
 
 ### DLC scenes
