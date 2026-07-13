@@ -36,7 +36,7 @@ mechanics referenced here.
 
 ## The base class
 
-Every command derives from `Command` ([`Command.h:12`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Command.h#L12)):
+Every command derives from `Command` ([`Command.h:12`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Command.h#L12)):
 
 ```cpp
 class Command
@@ -72,7 +72,7 @@ line-for-line.
 
 ### Step 1 — add an id to `EGameCommand`
 
-Open [`Minecraft.World/CommandsEnum.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/CommandsEnum.h). Add your value **before** the
+Open [`Minecraft.World/CommandsEnum.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/CommandsEnum.h). Add your value **before** the
 `eGameCommand_COUNT` sentinel so the count stays correct:
 
 ```cpp
@@ -124,13 +124,13 @@ public:
 };
 ```
 
-Compare to [`TeleportCommand.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/TeleportCommand.h): identical shape — `getId`, `execute`, and a static
+Compare to [`TeleportCommand.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/TeleportCommand.h): identical shape — `getId`, `execute`, and a static
 `preparePacket` factory that builds the wire payload.
 
 ### Step 3 — implement the executor
 
 Create `Minecraft.Client/SetSpawnCommand.cpp`. This mirrors
-[`TeleportCommand.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/TeleportCommand.cpp): read the payload with a
+[`TeleportCommand.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/TeleportCommand.cpp): read the payload with a
 `DataInputStream` over a `ByteArrayInputStream`, resolve the subject from the
 `PlayerList`, act, then log the admin action.
 
@@ -197,7 +197,7 @@ Key points, all taken from `TeleportCommand`:
 
 ### Step 4 — register it in the dispatcher
 
-Open [`Minecraft.Client/ServerCommandDispatcher.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/ServerCommandDispatcher.cpp). The constructor is the
+Open [`Minecraft.Client/ServerCommandDispatcher.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/ServerCommandDispatcher.cpp). The constructor is the
 whole registry — one `addCommand(new X())` per command
 (`ServerCommandDispatcher.cpp:10-53`). Add yours next to the others:
 

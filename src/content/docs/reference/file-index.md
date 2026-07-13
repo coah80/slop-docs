@@ -12,11 +12,11 @@ module roots (`Minecraft.World`, `Minecraft.Client`), every **class family**
 
 Counts are `find`/`ls` results against the repo at the time of writing; they will
 drift as the tree changes. All source paths link to Gitea
-(`git.neolegacy.dev/coah80/neoLegacy`).
+(`git.neolegacy.dev/neoStudiosLCE/neoLegacy`).
 
 Repo internals: the CMake project is still named `LCE-Revelations` (upstream
 lineage); some scripts say `LegacyEvolved`; the user-facing name is **neoLegacy**.
-Version per [`BUMP`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/BUMP)
+Version per [`BUMP`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/BUMP)
 is **1.1.0b**. See [Architecture](/slop-docs/overview/architecture/) for the
 30,000-foot view.
 
@@ -66,13 +66,13 @@ distribution, or tooling.
 
 | File | Purpose |
 |---|---|
-| [`CMakeLists.txt`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/CMakeLists.txt) | Root build. `project(LCE-Revelations)`, C++17, Windows-only guard, subdir order, all codegen wiring. |
-| [`CMakePresets.json`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/CMakePresets.json) | `windows64` (builds) + five console presets (`durango`/`orbis`/`ps3`/`psvita`/`xbox360`, 0-byte toolchain stubs — do not build). |
-| [`BUMP`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/BUMP) | Release version string (`1.1.0b`). Pushing a change triggers the stable-release workflow. |
-| [`NOTES.md`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/NOTES.md) | Current-version changelog; consumed verbatim as the stable-release body. |
-| [`COMPILE.md`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/COMPILE.md) / [`README.md`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/README.md) / [`CONTRIBUTING.md`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/CONTRIBUTING.md) | Build/setup/contribution docs. |
-| [`build-linux.sh`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/build-linux.sh) | Canonical Linux→Windows cross-compile (clang-cl + xwin + Wine). What CI uses. |
-| [`flake.nix`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/flake.nix) / `flake.lock` / `global.json` | Nix build; `.NET 10.0.100` SDK pin for FourKit. |
+| [`CMakeLists.txt`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/CMakeLists.txt) | Root build. `project(LCE-Revelations)`, C++17, Windows-only guard, subdir order, all codegen wiring. |
+| [`CMakePresets.json`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/CMakePresets.json) | `windows64` (builds) + five console presets (`durango`/`orbis`/`ps3`/`psvita`/`xbox360`, 0-byte toolchain stubs — do not build). |
+| [`BUMP`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/BUMP) | Release version string (`1.1.0b`). Pushing a change triggers the stable-release workflow. |
+| [`NOTES.md`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/NOTES.md) | Current-version changelog; consumed verbatim as the stable-release body. |
+| [`COMPILE.md`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/COMPILE.md) / [`README.md`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/README.md) / [`CONTRIBUTING.md`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/CONTRIBUTING.md) | Build/setup/contribution docs. |
+| [`build-linux.sh`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/build-linux.sh) | Canonical Linux→Windows cross-compile (clang-cl + xwin + Wine). What CI uses. |
+| [`flake.nix`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/flake.nix) / `flake.lock` / `global.json` | Nix build; `.NET 10.0.100` SDK pin for FourKit. |
 | `docker-compose.dedicated-server*.yml`, `*-dedicated-server.sh` | Local-build vs GHCR-pull server compose + helper scripts. |
 | `.clang-format` / `.clang-tidy` | Code style. `.gitmodules` — one submodule (`Windows64/4JLibs`). |
 
@@ -91,7 +91,7 @@ distribution, or tooling.
 | `x64headers/` | 7 | Xbox/console platform shims: `xmcore.h`, `qnet.h`, `xsocialpost.h`, `xuiapp.h`, `extraX64.h`, `xrnm.h`, `xuiresource.h`. |
 
 Everything is bootstrapped from one function,
-[`MinecraftWorld_RunStaticCtors()`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Minecraft.World.cpp#L26)
+[`MinecraftWorld_RunStaticCtors()`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Minecraft.World.cpp#L26)
 (`Minecraft.World.cpp:26`) — the ordering there is load-bearing. The recurring
 registration idiom is a `static Base *field;` per instance plus a
 `static Base **array` indexed by ID, all assigned inside a `staticCtor()` with

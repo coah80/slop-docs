@@ -651,7 +651,7 @@ model entries (`EndermiteModel` at `:629`–`630`, `EndermiteRenderer` at `:928`
   for blocks and items.
 - [Entities & Mobs](/slop-docs/world/entities/) · [AI Goals](/slop-docs/world/ai-goals/) ·
   [Client Rendering](/slop-docs/client/rendering/) · [Biomes](/slop-docs/world/biomes/)
-- Source: [`Endermite.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Endermite.cpp),
-  [`EntityIO.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/EntityIO.cpp),
-  [`EndermiteModel.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/EndermiteModel.cpp),
-  [`EntityRenderDispatcher.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/EntityRenderDispatcher.cpp).
+- Source: [`Endermite.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Endermite.cpp),
+  [`EntityIO.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/EntityIO.cpp),
+  [`EndermiteModel.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/EndermiteModel.cpp),
+  [`EntityRenderDispatcher.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/EntityRenderDispatcher.cpp).

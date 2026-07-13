@@ -11,7 +11,7 @@ This page covers the modding *ecosystem*: how you get a build, what upstream wil
 
 Because there is no loader, every client modification follows the same shape:
 
-1. **Fork** the canonical repo (`https://git.neolegacy.dev/coah80/neoLegacy`, a self-hosted Forgejo/Gitea; GitHub `pieeebot/neoLegacy` is a public mirror).
+1. **Fork** the canonical repo (`https://git.neolegacy.dev/neoStudiosLCE/neoLegacy`, a self-hosted Forgejo/Gitea; GitHub `pieeebot/neoLegacy` is a public mirror).
 2. **Patch** the source. Blocks/items/entities/worldgen live in `Minecraft.World/`; rendering, UI, screens, and models in `Minecraft.Client/`; the dedicated server in `Minecraft.Server/`; the plugin host in `Minecraft.Server.FourKit/`.
 3. **Rebuild** the affected target with CMake — Visual Studio 2022 natively on Windows, or `build-linux.sh` / the Nix flake to cross-compile Windows x64 binaries from Linux. See [Building & Compiling](/slop-docs/overview/building/).
 4. **Distribute** the resulting `.zip` (client) or server runtime (see [Distribution channels](#distribution-channels)).

@@ -6,7 +6,7 @@ description: A full worked example — add a new Biome subclass to neoLegacy end
 This walks the complete process of adding a biome, using the real neoLegacy
 mesa backport as the template. **`MesaBiome`** (`MesaBiome.h`/`MesaBiome.cpp`,
 added in commit
-[`720e1a77`](https://git.neolegacy.dev/coah80/neoLegacy/commit/720e1a77)) is the
+[`720e1a77`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/commit/720e1a77)) is the
 richest concrete example in the tree: it subclasses `Biome`, overrides the
 surface builder and decorator, registers six ids in `Biome::staticCtor`, and gets
 wired into the biome-selection `GenLayer` pipeline. Every step below cites what

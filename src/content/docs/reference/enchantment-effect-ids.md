@@ -15,7 +15,7 @@ Both static constructors run during boot from `MinecraftWorld_RunStaticCtors()`
 (`Minecraft.World/Minecraft.World.cpp`): `MobEffect::staticCtor()` at line 42,
 `Enchantment::staticCtor()` at line 74. Display names below are the resolved
 English strings from
-[`stringsGeneric.xml`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Windows64Media/loc/stringsGeneric.xml)
+[`stringsGeneric.xml`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Windows64Media/loc/stringsGeneric.xml)
 (each `IDS_…` constant → its `<value>`).
 
 For the systems that consume these registries, see
@@ -175,7 +175,7 @@ than ticking. `AbsoptionMobEffect` is spelled that way in source
 ### Attribute modifiers
 
 Six effects attach an `AttributeModifier` to a
-[`SharedMonsterAttributes`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/SharedMonsterAttributes.h)
+[`SharedMonsterAttributes`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/SharedMonsterAttributes.h)
 value via `addAttributeModifier(...)` at registration (`MobEffect.cpp:50-70`):
 
 | ID | Effect | Attribute | Amount | Operation |

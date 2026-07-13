@@ -2,7 +2,7 @@
 
 **Live site: https://coah80.github.io/slop-docs/**
 
-AI-generated documentation for [neoLegacy](https://git.neolegacy.dev/coah80/neoLegacy) — the community continuation of Minecraft Legacy Console Edition that backports newer Title Updates onto the TU19 base (TU25 done, TU31 ~97%, TU43 landing).
+AI-generated documentation for [neoLegacy](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy) — the community continuation of Minecraft Legacy Console Edition that backports newer Title Updates onto the TU19 base (TU25 done, TU31 ~97%, TU43 landing).
 
 An AI went through all ~13,000 source files across dozens of analysis passes, then adversarially fact-checked its own output claim-by-claim against the code. It's still AI-written, so if anything is wrong, PR the page — that's the deal.
 
@@ -30,7 +30,7 @@ Pages are verified against neoLegacy commit `47e5cba3` (v1.0.9b), with **"Change
 ## Built with
 
 - [Astro Starlight](https://starlight.astro.build/)
-- Source analyzed: [neoLegacy](https://git.neolegacy.dev/coah80/neoLegacy) (`git.neolegacy.dev`), lineage: LCE-Revelations → neoLegacy
+- Source analyzed: [neoLegacy](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy) (`git.neolegacy.dev`), lineage: LCE-Revelations → neoLegacy
 
 ## Contributing
 

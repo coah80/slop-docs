@@ -113,6 +113,6 @@ So the release ritual is: write the changelog into `NOTES.md`, then edit `BUMP` 
 
 ## Where to get help
 
-- **Source / issues** — `git.neolegacy.dev/coah80/neoLegacy` (issue templates: `bug_report.yml`, `suggestion_request.yml`).
+- **Source / issues** — `git.neolegacy.dev/neoStudiosLCE/neoLegacy` (issue templates: `bug_report.yml`, `suggestion_request.yml`).
 - **Discord** — `discord.gg/neolegacy`.
 - Read [Building & Compiling](/slop-docs/overview/building/) before your first PR so your changes actually compile on the CI cross toolchain.

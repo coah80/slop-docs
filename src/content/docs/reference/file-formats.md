@@ -18,7 +18,7 @@ For each format it answers four questions:
    the authoritative wire-format specs. This page summarizes; it does not
    duplicate their byte tables.
 
-Source paths link to Gitea (`git.neolegacy.dev/coah80/neoLegacy`). Version
+Source paths link to Gitea (`git.neolegacy.dev/neoStudiosLCE/neoLegacy`). Version
 references are against `origin/main` = **v1.1.0b**.
 
 ## Orientation table
@@ -49,7 +49,7 @@ is a file count followed by one record per file (name, offset, size); the raw
 data section follows. Names prefixed with `*` are zlib-compressed.
 
 **Where neoLegacy handles it.** The runtime reader is
-[`ArchiveFile::_readHeader`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/ArchiveFile.cpp#L9)
+[`ArchiveFile::_readHeader`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/ArchiveFile.cpp#L9)
 in `Minecraft.Client/ArchiveFile.cpp`. It reads `numberOfFiles = dis->readInt()`,
 then for each entry reads `readUTF()` for the name and two `readInt()`s for the
 data-section pointer and file size. The leading-`*` compression flag is stripped
@@ -66,7 +66,7 @@ if (meta->filename[0] == '*') {
 ```
 
 Decompression happens lazily in
-[`ArchiveFile::getFile`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/ArchiveFile.cpp#L120),
+[`ArchiveFile::getFile`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/ArchiveFile.cpp#L120),
 which reads a `decompressedSize` int and inflates the payload. On Windows64,
 Xbox One, and Orbis the whole archive is slurped into `m_cachedData` up front.
 
@@ -89,10 +89,10 @@ followed by named colour values, read big-endian. It maps engine colour names
 (the `ColourTableElements` list) to RGBA integers used across text and UI.
 
 **Where neoLegacy handles it.** The binary parser is
-[`ColourTable::loadColoursFromData`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Common/Colours/ColourTable.cpp#L373),
+[`ColourTable::loadColoursFromData`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Common/Colours/ColourTable.cpp#L373),
 which reads `coloursCount = dis.readInt()` and then loops each named entry. The
 resource is loaded in
-[`AbstractTexturePack.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/AbstractTexturePack.cpp#L360):
+[`AbstractTexturePack.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/AbstractTexturePack.cpp#L360):
 the code looks for `res/colours.col` first, and if that file is absent falls
 back to `res/colours.xml`:
 
@@ -107,7 +107,7 @@ else if(coloursXmlFile.exists()) {
 ```
 
 The XML loader is `loadColourTableFromXmlFile`
-([AbstractTexturePack.cpp:101](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/AbstractTexturePack.cpp#L101)).
+([AbstractTexturePack.cpp:101](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/AbstractTexturePack.cpp#L101)).
 
 **Status in this fork.** neoLegacy added a human-editable **`colours.xml`
 fallback** so the colour table no longer requires the original binary `colours.col`
@@ -129,18 +129,18 @@ string table — a numeric string-ID to translated-text map. neoLegacy replaced
 that pipeline with XML source files plus a compile-time codegen step.
 
 **Where neoLegacy handles it.** The runtime table is `StringTable`
-([StringTable.cpp](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/StringTable.cpp#L307)),
+([StringTable.cpp](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/StringTable.cpp#L307)),
 whose `ProcessXmlStringTableData` walks an XML root directory of `strings*.xml`
 files (e.g. `Windows64Media/loc/stringsGeneric.xml`,
 `stringsLeaderboards.xml`, `stringsRichPresence.xml`). A source comment marks the
 switch: `// Fireblade - switched from locs to xmls`
-([StringTable.cpp:12](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/StringTable.cpp#L12)).
+([StringTable.cpp:12](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/StringTable.cpp#L12)).
 
 The numeric `IDS_*` constants are generated at build time. The CMake script
-[`GenerateStringsHeaderFromXml.cmake`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/cmake/GenerateStringsHeaderFromXml.cmake)
+[`GenerateStringsHeaderFromXml.cmake`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/cmake/GenerateStringsHeaderFromXml.cmake)
 scans the XML root and emits `strings.h`; `GenerateStringIdLookup.cmake` builds
 the reverse lookup. The wiring lives in
-[`Minecraft.Client/CMakeLists.txt`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/CMakeLists.txt#L27)
+[`Minecraft.Client/CMakeLists.txt`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/CMakeLists.txt#L27)
 (`MINECRAFT_CLIENT_COMPILETIME_STRINGS_HEADER`, `GenerateStringIdLookup`
 dependency).
 
@@ -162,7 +162,7 @@ folder, a relative filename, a sample rate, and a size; the audio payload is
 Bink Audio (`.binka`).
 
 **Where neoLegacy handles it.** Extraction only, via
-[`tools/msscmp_extract.py`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/tools/msscmp_extract.py).
+[`tools/msscmp_extract.py`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/tools/msscmp_extract.py).
 The parser checks `data[:4] != b'BANK'`, then reads big-endian offsets out of
 the header — the file-table offset at `0x18` and the entry count at `0x34` — and
 walks the entry records, resolving each sound's folder/name/sample-rate/size.
@@ -184,13 +184,13 @@ page](/slop-docs/tools/repo-tools/) for the extractor.
 **What it is.** Mojang's tag-based tree format for structured world, entity, and
 tile-entity data. Each tag has a type byte, a name, and a payload; compound tags
 nest. The type constants are declared in
-[`Tag.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Tag.h#L10):
+[`Tag.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Tag.h#L10):
 `TAG_End=0`, `TAG_Byte=1`, `TAG_Short=2`, `TAG_Int=3`, `TAG_Long=4`,
 `TAG_Float=5`, `TAG_Double=6`, `TAG_Byte_Array=7`, `TAG_String=8`, and the
 compound/list types.
 
 **Where neoLegacy handles it.** The reader/writer front door is
-[`NbtIo`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/NbtIo.h):
+[`NbtIo`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/NbtIo.h):
 
 ```cpp
 static CompoundTag *readCompressed(InputStream *in);
@@ -218,7 +218,7 @@ page](/slop-docs/world/storage/) for how NBT feeds chunk and level saving.
 sensitivity, render distance, difficulty, FOV, gamma, GUI scale, and so on.
 
 **Where neoLegacy handles it.** The option registry is
-[`Options.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Options.cpp),
+[`Options.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Options.cpp),
 which declares each `Options::Option` with a caption ID and progress/boolean
 flags (`options.music`, `options.sensitivity`, `options.renderDistance`,
 `options.difficulty`, `options.fov`, `options.gamma`, `options.guiScale`, …).
@@ -240,15 +240,15 @@ option list and behaviour.
 show what the world looks like. LCE thumbnails are 64×64.
 
 **Where neoLegacy handles it.** The Windows64 capture path is
-[`CConsoleMinecraftApp::CaptureSaveThumbnail`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Windows64/Windows64_App.cpp#L43)
+[`CConsoleMinecraftApp::CaptureSaveThumbnail`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Windows64/Windows64_App.cpp#L43)
 in `Windows64/Windows64_App.cpp`. It grabs the framebuffer and downsamples to
 `THUMBNAIL_SIZE` (defined as `64` at
-[Windows64_App.cpp:41](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Windows64/Windows64_App.cpp#L41))
+[Windows64_App.cpp:41](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Windows64/Windows64_App.cpp#L41))
 with a simple box filter into an RGBA buffer. It is invoked from the save flow at
-[`Minecraft.cpp:2021`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Minecraft.cpp#L2021).
+[`Minecraft.cpp:2021`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Minecraft.cpp#L2021).
 The captured thumbnail data is threaded into the save container in
 `ConsoleSaveFileOriginal` (`thumbData`/`thumbSize`, e.g. around
-[Flush](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ConsoleSaveFileOriginal.cpp#L681)).
+[Flush](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ConsoleSaveFileOriginal.cpp#L681)).
 
 **Status in this fork.** **Written.** neoLegacy generates the thumbnail on the
 Windows64 target and stores it in the save.
@@ -264,14 +264,14 @@ Windows64 target and stores it in the save.
 and schematic references that a generated level uses.
 
 **Where neoLegacy handles it.** The loader is
-[`GameRuleManager`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Common/GameRules/GameRuleManager.cpp).
-[`loadGameRules(byte *dIn, UINT dSize)`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Common/GameRules/GameRuleManager.cpp#L140)
+[`GameRuleManager`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Common/GameRules/GameRuleManager.cpp).
+[`loadGameRules(byte *dIn, UINT dSize)`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Common/GameRules/GameRuleManager.cpp#L140)
 parses a raw buffer into a `LevelGenerationOptions`, dispatching to the rule
 definition classes in the same directory (`AddItemRuleDefinition`,
 `ApplySchematicRuleDefinition`, `NamedAreaRuleDefinition`,
 `CompoundGameRuleDefinition`, `StartFeature`, …). A companion serializer is the
 "Reverse of loadGameRules" path noted at
-[GameRuleManager.cpp:237](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Common/GameRules/GameRuleManager.cpp#L237).
+[GameRuleManager.cpp:237](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Common/GameRules/GameRuleManager.cpp#L237).
 Schematics referenced by rules load through `ConsoleSchematicFile` /
 `loadSchematicFile`.
 
@@ -294,21 +294,21 @@ compressed chunks.
 **Where neoLegacy handles it.**
 
 - **Container:**
-  [`ConsoleSaveFileOriginal.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ConsoleSaveFileOriginal.cpp)
+  [`ConsoleSaveFileOriginal.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ConsoleSaveFileOriginal.cpp)
   reads and writes the wrapper — decompression (with cross-platform endian
   handling via `isLocalEndianDifferent`), the file header (`header.ReadHeader` /
   `header.WriteHeader`), per-file entries, and the thumbnail. Cross-platform
   conversion lives in `ConsoleSaveFileConverter.cpp`.
 - **Region files:**
-  [`RegionFile.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/RegionFile.cpp)
+  [`RegionFile.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/RegionFile.cpp)
   defines `SECTOR_BYTES = 4096`, `SECTOR_INTS = SECTOR_BYTES / 4`, and the
   chunk-compression versions `VERSION_GZIP=1`, `VERSION_DEFLATE=2`,
   `VERSION_XBOX=3`
-  ([RegionFile.h](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/RegionFile.h#L16)).
+  ([RegionFile.h](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/RegionFile.h#L16)).
   It reads the offset and timestamp tables sector-by-sector, byte-swapping when
   `saveFile->isSaveEndianDifferent()`.
 - **Split saves / `region_format_16`:**
-  [`RegionFileCache.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/RegionFileCache.cpp)
+  [`RegionFileCache.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/RegionFileCache.cpp)
   gates on `useSplitSaves(platform)` and probes for a marker file:
   ```cpp
   bool isNew = saveFile->doesFileExist(ConsoleSavePath(L"region_format_16"));
@@ -316,7 +316,7 @@ compressed chunks.
   On new-format split saves the world is spread across multiple region files
   rather than one blob. The container marks a save as this format by writing the
   `region_format_16` entry (`header.AddFile(L"region_format_16")` at
-  [ConsoleSaveFileOriginal.cpp:227](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ConsoleSaveFileOriginal.cpp#L227)).
+  [ConsoleSaveFileOriginal.cpp:227](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ConsoleSaveFileOriginal.cpp#L227)).
 
 **Status in this fork.** **Consumed and converted**, and `region_format_16`
 (the split-save layout) is live in **v1.1.0b**. See the [world storage
@@ -336,8 +336,8 @@ begins with a version int (used to detect endianness), then UTF-16 strings and
 32-bit sizes describing packed entries.
 
 **Where neoLegacy handles it.** Tooling only:
-[`tools/pck_extract.py`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/tools/pck_extract.py)
-and [`tools/pck_pack.py`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/tools/pck_pack.py).
+[`tools/pck_extract.py`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/tools/pck_extract.py)
+and [`tools/pck_pack.py`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/tools/pck_pack.py).
 The extractor auto-detects endianness by checking whether the first int reads as
 a small version number big- or little-endian (`0 < v < 100`), then reads `u32`
 lengths and UTF-16 strings.
@@ -379,7 +379,7 @@ cover how LCE uses it within the archive/UI pipeline.
 versioned, timestamped `.mcs` name.
 
 **Where neoLegacy handles it.** The `.mcs` naming is produced in
-[`ConsoleSaveFileOriginal.cpp:1033`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ConsoleSaveFileOriginal.cpp#L1033):
+[`ConsoleSaveFileOriginal.cpp:1033`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ConsoleSaveFileOriginal.cpp#L1033):
 
 ```cpp
 swprintf(fileName, XCONTENT_MAX_FILENAME_LENGTH+1,
@@ -392,7 +392,7 @@ The payload inside is the same console save container documented above.
 
 **Status in this fork.** At snapshot `47e5cba3` the `.mcs` handling is limited to
 the save **naming** shown here. **Changed in v1.1.0b:** a standalone
-[`tools/wiiU2Windows.py`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/tools/wiiU2Windows.py)
+[`tools/wiiU2Windows.py`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/tools/wiiU2Windows.py)
 converter was added (commits `042ee0a2`/`929b32ff`) — it converts Wii U `.mcs`
 saves to the Windows/Xbox-One layout (144-byte entry table, `region_format_16`,
 `--dlc`/`--no-split` presets). See [Repo Tools](/slop-docs/tools/repo-tools/).

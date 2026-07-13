@@ -236,7 +236,7 @@ is `unordered_map<int64_t, PortalPosition*> cachedPortals` keyed by chunk
 (`PortalForcer.h:19`).
 
 **The linkage-persistence fix** (commit
-[`b47c16b6`](https://git.neolegacy.dev/coah80/neoLegacy/commit/b47c16b6),
+[`b47c16b6`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/commit/b47c16b6),
 "fix: persisting portal linkages") is essential context for anyone touching this.
 Before it, `findPortal` trusted a cached `PortalPosition` blindly. The fix
 (`PortalForcer.cpp` `findPortal`) **validates the cache against the world** —

@@ -5,7 +5,7 @@ description: A full worked example — add a StructureFeature with pieces to neo
 
 Structures are multi-block builds placed at seed-deterministic grid positions:
 villages, strongholds, temples, and — added for neoLegacy in commit
-[`720e1a77`](https://git.neolegacy.dev/coah80/neoLegacy/commit/720e1a77) — the
+[`720e1a77`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/commit/720e1a77) — the
 **ocean monument**. A structure is three cooperating classes plus one registry:
 
 - a **`StructureFeature`** — decides *where* structures go and creates their starts

@@ -8,7 +8,7 @@ neoLegacy TU31 backports as the template: **`WaterWalkerEnchantment`** (Depth
 Strider — an armor-boots enchant that changes a movement calculation) and
 **`FrostWalkerEnchantment`** (a treasure enchant that runs custom world logic
 every tick). Both were merged as real features
-([`2a86a939`](https://git.neolegacy.dev/coah80/neoLegacy/commit/2a86a939), Depth
+([`2a86a939`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/commit/2a86a939), Depth
 Strider; `9` = Frost Walker), so you can diff against them.
 
 Read [Adding Blocks](/slop-docs/modding/adding-blocks/) first for the

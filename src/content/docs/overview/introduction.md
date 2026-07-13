@@ -16,7 +16,7 @@ neoLegacy is **not** vanilla LCE. It is a fork lineage descendant that adds game
 | Base version | TU19 (`CONTRIBUTING.md:2`) |
 | Current version | **1.1.0b** (`BUMP`) — these docs were audited at `47e5cba3` / v1.0.9b; see the [Changelog](/slop-docs/features/changelog/#v110b-current) for the v1.1.0b delta |
 | Language | C++17 engine (CMake) + C# plugin layer (FourKit, .NET 10) |
-| Primary forge | `https://git.neolegacy.dev/coah80/neoLegacy` (self-hosted Gitea/Forgejo) |
+| Primary forge | `https://git.neolegacy.dev/neoStudiosLCE/neoLegacy` (self-hosted Gitea/Forgejo) |
 | Public mirror | `github.com/pieeebot/neoLegacy` (Nightly release for end users) |
 | Network/protocol version | 570 — **static**, gates cross-play (`cmake/GenerateBuildVer.cmake:10`) |
 
@@ -83,7 +83,7 @@ Nightlies are produced by CI on every push to `main`; stable `v1.0.x` tags are c
 ## Community
 
 - **Discord** — `discord.gg/neolegacy` (badge in `README.md:5`).
-- **Source** — `git.neolegacy.dev/coah80/neoLegacy` (canonical) and the `pieeebot/neoLegacy` GitHub mirror.
+- **Source** — `git.neolegacy.dev/neoStudiosLCE/neoLegacy` (canonical) and the `pieeebot/neoLegacy` GitHub mirror.
 
 ## History-root caveat
 

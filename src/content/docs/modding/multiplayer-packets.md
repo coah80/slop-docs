@@ -16,14 +16,14 @@ Background: [World / Networking](/slop-docs/world/networking/),
 ## Read this first: the protocol version wall
 
 neoLegacy connections are gated by a single protocol version constant
-([`SharedConstants.h:10`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/SharedConstants.h#L10)):
+([`SharedConstants.h:10`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/SharedConstants.h#L10)):
 
 ```cpp
 static const int NETWORK_PROTOCOL_VERSION = 79;
 ```
 
 At login the server compares the client's reported version and hangs up on any
-mismatch ([`PendingConnection.cpp:237`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/PendingConnection.cpp#L237)):
+mismatch ([`PendingConnection.cpp:237`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/PendingConnection.cpp#L237)):
 
 ```cpp
 if (packet->clientVersion != SharedConstants::NETWORK_PROTOCOL_VERSION)
@@ -55,7 +55,7 @@ send it*, but bumping the version is the honest signal.
 
 ## The packet contract
 
-Every packet subclasses `Packet` ([`Packet.h:15`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Packet.h#L15)) and implements six virtuals.
+Every packet subclasses `Packet` ([`Packet.h:15`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Packet.h#L15)) and implements six virtuals.
 `SetTimePacket` is the minimal complete example (`SetTimePacket.cpp`):
 
 ```cpp
@@ -79,7 +79,7 @@ small action byte).
 ### Step 1 — write the header
 
 Create `Minecraft.World/PlayerPingPacket.h`, modeled on
-[`AnimatePacket.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/AnimatePacket.h):
+[`AnimatePacket.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/AnimatePacket.h):
 
 ```cpp
 #pragma once
@@ -114,7 +114,7 @@ Two things copied verbatim from `AnimatePacket.h`: the
 ### Step 2 — write the implementation
 
 Create `Minecraft.World/PlayerPingPacket.cpp`, mirroring
-[`AnimatePacket.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/AnimatePacket.cpp):
+[`AnimatePacket.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/AnimatePacket.cpp):
 
 ```cpp
 #include "stdafx.h"
@@ -169,7 +169,7 @@ takes a max length and caps allocations for safety, so always pass a sane bound.
 ### Step 3 — register the id in `Packet::staticCtor`
 
 Every id is registered by a `map(...)` call in `Packet::staticCtor`
-([`Packet.cpp:15`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Packet.cpp#L15)). The signature is (`Packet.cpp:182`):
+([`Packet.cpp:15`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Packet.cpp#L15)). The signature is (`Packet.cpp:182`):
 
 ```cpp
 static void map(int id, bool receiveOnClient, bool receiveOnServer,
@@ -206,7 +206,7 @@ will simply be ignored — set these to match the direction you actually use.
 ### Step 4 — declare the handler on `PacketListener`
 
 `PacketListener` is the base interface every connection implements
-([`PacketListener.h:115`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/PacketListener.h#L115)). Add a forward declaration and a virtual handler,
+([`PacketListener.h:115`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/PacketListener.h#L115)). Add a forward declaration and a virtual handler,
 next to `handleAnimate` (`PacketListener.h:11` and `:139`):
 
 ```cpp
@@ -269,7 +269,7 @@ playerConnection->send(std::make_shared<PlayerPingPacket>(somePlayer, pingMs));
 
 For anything attached to an entity (motion, animation, custom per-entity state),
 the server does not hand-send to each viewer. `EntityTracker`
-([`EntityTracker.h:12`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/EntityTracker.h#L12)) owns a `TrackedEntity` per entity and fans packets out
+([`EntityTracker.h:12`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/EntityTracker.h#L12)) owns a `TrackedEntity` per entity and fans packets out
 to exactly the players who have that entity in view. Two methods matter
 (`EntityTracker.h:28-29`):
 

@@ -15,7 +15,7 @@ already read it.
 
 neoLegacy is developed on a self-hosted Gitea/Forgejo instance, **not** on
 GitHub. The `origin` remote of a real clone points at
-`https://git.neolegacy.dev/coah80/neoLegacy.git`, and the CI workflows are Gitea
+`https://git.neolegacy.dev/neoStudiosLCE/neoLegacy.git`, and the CI workflows are Gitea
 Actions (they reference `gitea.*` contexts, e.g. `gitea.event_name`,
 `gitea.ref_name` in `.github/workflows/pull-request.yml`). GitHub is used only as
 a **download mirror**: the README points end users at

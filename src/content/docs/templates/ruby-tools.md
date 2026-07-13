@@ -568,7 +568,7 @@ For reference, if you had split ruby into its own `RubyTile.cpp` you would add i
   entities.
 - [Tiles & Blocks](/slop-docs/world/blocks/) · [Items](/slop-docs/world/items/) ·
   [World Generation](/slop-docs/world/worldgen/) · [Recipes](/slop-docs/world/crafting/)
-- Source: [`OreTile.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/OreTile.cpp),
-  [`OreFeature.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/OreFeature.cpp),
-  [`Tile.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Tile.cpp),
-  [`Item.cpp`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp).
+- Source: [`OreTile.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/OreTile.cpp),
+  [`OreFeature.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/OreFeature.cpp),
+  [`Tile.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Tile.cpp),
+  [`Item.cpp`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp).

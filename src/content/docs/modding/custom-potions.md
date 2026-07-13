@@ -14,9 +14,9 @@ Potions in LCE are two separate systems glued together:
    creative-menu entries, and tooltips all key off bit masks in that aux value.
 
 This page uses the real TU31 backport as the template:
-[**Potion of Leaping (Jump Boost) and Water Breathing**](https://git.neolegacy.dev/coah80/neoLegacy/commit/b7a07cfb)
+[**Potion of Leaping (Jump Boost) and Water Breathing**](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/commit/b7a07cfb)
 (`b7a07cfb`), plus the follow-up
-[**creative-menu fix**](https://git.neolegacy.dev/coah80/neoLegacy/commit/a5455295)
+[**creative-menu fix**](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/commit/a5455295)
 (`a5455295`) — which is the gotcha section below. Both `MobEffect::jump` (id 8)
 and `MobEffect::waterBreathing` (id 13) already existed as effects; the TU31
 work was making them *brewable and obtainable*.

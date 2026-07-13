@@ -27,7 +27,7 @@ The `Minecraft.World/GameRules.cpp` header comment is explicit
 
 ### What it looks like today
 
-`GameRules` ([`GameRules.h:3`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/GameRules.h#L3)) is a fixed set of `static const int` ids and a
+`GameRules` ([`GameRules.h:3`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/GameRules.h#L3)) is a fixed set of `static const int` ids and a
 single `getBoolean(rule)` accessor — there is **no dynamic map** and **no
 setter**. The ids are (`GameRules.cpp:7-15`):
 
@@ -76,7 +76,7 @@ bool GameRules::getBoolean(const int rule)
 
 The backing store is the per-pad **host options** array owned by `Consoles_App`
 (global `app`). The relevant enum values live in
-[`Common/App_enums.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Common/App_enums.h) (`App_enums.h:663-683`): `eGameHostOption_FireSpreads`,
+[`Common/App_enums.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Common/App_enums.h) (`App_enums.h:663-683`): `eGameHostOption_FireSpreads`,
 `eGameHostOption_MobGriefing`, `eGameHostOption_KeepInventory`,
 `eGameHostOption_DoMobSpawning`, `eGameHostOption_DoMobLoot`,
 `eGameHostOption_DoTileDrops`, `eGameHostOption_NaturalRegeneration`,
@@ -159,7 +159,7 @@ handshake:
 - **On join:** the host sends every option packed into
   `PreLoginPacket::m_serverSettings` — built from
   `app.GetGameHostOption(eGameHostOption_All)` on the server
-  ([`PendingConnection.cpp:229`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/PendingConnection.cpp#L229)) and applied on the client with
+  ([`PendingConnection.cpp:229`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/PendingConnection.cpp#L229)) and applied on the client with
   `app.SetGameHostOption(eGameHostOption_All, packet->m_serverSettings)`
   (`ClientConnection.cpp:2119`).
 - **On change mid-game:** the host broadcasts a `ServerSettingsChangedPacket`
@@ -183,7 +183,7 @@ belongs to System 2 below.
 
 This is a completely different feature that happens to share the "game rule"
 name. It is the console **mini-game / mash-up map** scripting layer, under
-[`Common/GameRules/`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.Client/Common/GameRules). Modders adding survival/creative behaviour usually do **not**
+[`Common/GameRules/`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.Client/Common/GameRules). Modders adding survival/creative behaviour usually do **not**
 touch this; it exists for map-maker content (Battle/Tumble/Glide mini-games,
 tutorial world, structure-generation maps).
 
@@ -225,7 +225,7 @@ Each type is implemented by a matching `*RuleDefinition.cpp` in
 ### Sync behavior (this is what packet 158 is for)
 
 The console ruleset system syncs progress with
-[`UpdateGameRuleProgressPacket`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/UpdateGameRuleProgressPacket.h) (id 158). Its payload is
+[`UpdateGameRuleProgressPacket`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/UpdateGameRuleProgressPacket.h) (id 158). Its payload is
 ruleset-typed, not a boolean bag (`UpdateGameRuleProgressPacket.h:9-13`):
 
 ```cpp

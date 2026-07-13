@@ -12,7 +12,7 @@ from a fluent builder chain.
 
 Files: `Item.h`, `Item.cpp`, plus one `*Item.{h,cpp}` per subclass. The registry
 is bootstrapped from `Item::staticCtor()`
-([`Item.cpp:282`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L282)),
+([`Item.cpp:282`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L282)),
 called at line 43 of `MinecraftWorld_RunStaticCtors()` — **after** `Tile::staticCtor()`,
 because item registration depends on blocks already existing (see
 [the master bootstrap](/slop-docs/world/overview/)).
@@ -23,7 +23,7 @@ This is the single most important thing to understand about items in LCE, and it
 trips up every modder. **Item IDs and Tile IDs share one number line.** IDs
 0–255 belong to blocks; IDs 256+ belong to pure items. The `Item::items` array is
 sized `ITEM_NUM_COUNT = 32000`
-([`Item.h:34`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.h#L34)),
+([`Item.h:34`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.h#L34)),
 and it holds *both* — every `Tile` gets a shadow `Item` entry in the low 256
 slots so you can hold it and place it.
 
@@ -39,12 +39,12 @@ Item::Item(int id) : id( 256 + id )
 }
 ```
 
-([`Item.cpp:624`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L624))
+([`Item.cpp:624`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L624))
 
 So the number you pass to a constructor is the item's index **within the item
 range**, not its final ID. `new WeaponItem(12, ...)` produces the wooden sword,
 whose real ID is `256 + 12 = 268` — matching `wooden_sword_Id = 268`
-([`Item.h:459`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.h#L459)).
+([`Item.h:459`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.h#L459)).
 The `*_Id` constants in `Item.h` are the **final, network- and save-visible**
 IDs; the constructor arguments are those minus 256.
 
@@ -80,18 +80,18 @@ for (int i = 0; i < 256; i++)
     }
 ```
 
-([`Tile.cpp:663`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Tile.cpp#L663))
+([`Tile.cpp:663`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Tile.cpp#L663))
 
 Blocks that need multiple sub-textures or aux-data variants are assigned a typed
 `TileItem` subclass *before* this loop runs, so the loop skips them (`Item::items[i] == nullptr`
 guard). `TileItem::tileId = id + 256` maps the item back to its block
-([`TileItem.cpp:20`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/TileItem.cpp#L20)).
+([`TileItem.cpp:20`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/TileItem.cpp#L20)).
 See the [Blocks page](/slop-docs/world/blocks/) for the block side.
 
 ## The base class
 
 `class Item : public enable_shared_from_this<Item>`
-([`Item.h:28`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.h#L28)).
+([`Item.h:28`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.h#L28)).
 Items are singletons (one instance per ID, stored in `Item::items`); the *stacks*
 players carry are `ItemInstance` objects that reference an `Item` by ID plus a
 count and aux/data value.
@@ -115,7 +115,7 @@ count and aux/data value.
 | `m_textureName` | `wstring` | per-item texture (4J switched from atlas coords) |
 
 The constant `ICON_DESCRIPTION_PREFIX = L"item."`
-([`Item.cpp:26`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L26))
+([`Item.cpp:26`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L26))
 prefixes localization keys.
 
 ### The two crafting-menu enums (4J additions)
@@ -134,7 +134,7 @@ menu groups items by (material × base type). Selected values:
 | `giltFruit`, `seed`, `bowl`, `treasure` | food/misc |
 
 `setBaseItemTypeAndMaterial(iType, iMaterial)`
-([`Item.cpp:653`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L653))
+([`Item.cpp:653`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L653))
 sets both in one call; it appears in almost every registration line.
 
 ### Virtual behaviour hooks
@@ -164,7 +164,7 @@ enabling the one-line builder chains used throughout `staticCtor()`.
 ## Tool tiers
 
 Tool durability, speed, and damage come from a shared `Item::Tier` table
-([`Item.h:160`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.h#L160)),
+([`Item.h:160`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.h#L160)),
 five static instances defined at the top of `Item.cpp`:
 
 ```cpp
@@ -175,7 +175,7 @@ const _Tier *_Tier::DIAMOND = new _Tier(3, 1561, 8,  3, 10);
 const _Tier *_Tier::GOLD    = new _Tier(0,   32, 12, 0, 22);
 ```
 
-([`Item.cpp:28`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L28))
+([`Item.cpp:28`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L28))
 
 | Tier | level | uses | speed | dmg bonus | ench value |
 |------|-------|------|-------|-----------|-----------|
@@ -192,14 +192,14 @@ into weapon damage.
 ## Tools and weapons
 
 `DiggerItem`
-([`DiggerItem.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/DiggerItem.h))
+([`DiggerItem.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/DiggerItem.h))
 is the base for the three mining tools. It stores a `TileArray *tiles` (the set
 of blocks it mines fast), a `speed`, an `attackDamage`, and its `Tier`.
 
 - **`PickaxeItem`**, **`ShovelItem`**, **`HatchetItem`** (axe), **`HoeItem`**.
 - **`WeaponItem`** (sword) — not a `DiggerItem`. Its damage is
   `4 + tier->getAttackDamageBonus()`
-  ([`WeaponItem.cpp:15`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/WeaponItem.cpp#L15)),
+  ([`WeaponItem.cpp:15`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/WeaponItem.cpp#L15)),
   so wood/gold swords deal 4, stone 5, iron 6, diamond 7.
 
 Each digger family owns a **static diggable-block table** filled by its own
@@ -215,11 +215,11 @@ Each digger family owns a **static diggable-block table** filled by its own
 `PickaxeItem::canDestroySpecial(tile)` layers the harvest-level gate on top:
 obsidian needs level 3 (diamond); diamond/emerald/gold ore and lit redstone ore
 need level ≥ 2; iron/lapis ore need level ≥ 1
-([`PickaxeItem.cpp:39`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/PickaxeItem.cpp#L39)).
+([`PickaxeItem.cpp:39`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/PickaxeItem.cpp#L39)).
 
 The `ShovelItem` also carries the **grass-path** interaction (TU31): right-clicking
 grass or dirt with a shovel converts it to `Tile::grass_path`
-([`ShovelItem.cpp:30`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ShovelItem.cpp#L30)).
+([`ShovelItem.cpp:30`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ShovelItem.cpp#L30)).
 
 Other tool-like items: **`BowItem`**, **`FishingRodItem`**, **`ShearsItem`**,
 **`FlintAndSteelItem`**, **`CarrotOnAStickItem`**, **`LeashItem`** (lead),
@@ -234,7 +234,7 @@ for iron) reflect that.
 ## Armor
 
 `ArmorItem`
-([`ArmorItem.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ArmorItem.h))
+([`ArmorItem.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ArmorItem.h))
 holds a `slot`, a `defense`, a `modelIndex`, and an `ArmorMaterial *`. Slots:
 
 | Constant | Value |
@@ -247,7 +247,7 @@ holds a `slot`, a `defense`, a `modelIndex`, and an `ArmorMaterial *`. Slots:
 `ArmorItem::ArmorMaterial` is a nested class with five static instances. Each
 carries a `durabilityMultiplier`, a four-entry `slotProtections[]` array (defense
 per slot, in half-shields), and an `enchantmentValue`
-([`ArmorItem.cpp:64`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ArmorItem.cpp#L64)):
+([`ArmorItem.cpp:64`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ArmorItem.cpp#L64)):
 
 | Material | durability × | protection {head, torso, legs, feet} | ench value |
 |----------|-------------|--------------------------------------|-----------|
@@ -259,7 +259,7 @@ per slot, in half-shields), and an `enchantmentValue`
 
 Actual durability = `healthPerSlot[slot] * durabilityMultiplier`, where
 `healthPerSlot[] = {11, 16, 15, 13}`
-([`ArmorItem.cpp:15`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ArmorItem.cpp#L15)).
+([`ArmorItem.cpp:15`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ArmorItem.cpp#L15)).
 So a diamond chestplate has `16 * 33 = 528` uses.
 
 Leather armor supports dyeing: `ArmorItem` overrides `hasCustomColor` /
@@ -274,7 +274,7 @@ The full 20-piece armor set (4 materials × 4 slots + 4 chain) registers at
 ## Food
 
 `FoodItem`
-([`FoodItem.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/FoodItem.h))
+([`FoodItem.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/FoodItem.h))
 carries `nutrition`, `saturationModifier`, an `m_isMeat` flag, `canAlwaysEat`, and
 an optional applied effect (`effectId`, `effectDurationSeconds`, `effectAmplifier`,
 `effectProbability`). Eating takes `EAT_DURATION = 32` ticks (`20 * 1.6`).
@@ -301,7 +301,7 @@ Item::raw_chicken= (new FoodItem(109, 2, FOOD_SATURATION_LOW, true))
                      ->setEatEffect(MobEffect::hunger->id, 30, 0, .3f)->setIconName(L"chickenRaw")...
 ```
 
-([`Item.cpp:362`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L362))
+([`Item.cpp:362`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L362))
 
 Raw chicken (30 % hunger), rotten flesh (80 % hunger), spider eye (poison), and
 poisonous potato (60 % poison) all use `setEatEffect(id, seconds, amplifier, probability)`.
@@ -309,7 +309,7 @@ poisonous potato (60 % poison) all use `setEatEffect(id, seconds, amplifier, pro
 ## Block items (TileItem family)
 
 `TileItem`
-([`TileItem.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/TileItem.h))
+([`TileItem.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/TileItem.h))
 is the in-hand form of a block. It maps ID→tile (`tileId = id + 256`), overrides
 `useOn` to place the block, and forwards its description ID to the owning `Tile`.
 Its subclasses exist to handle blocks whose item form needs extra behaviour or
@@ -339,7 +339,7 @@ Item::items[log_Id] = (new MultiTextureTileItem(Tile::log_Id - 256, treeTrunk,
     (int*)TreeTile::TREE_NAMES, 6))->setIconName(L"log")->setDescriptionId(IDS_TILE_LOG)...
 ```
 
-([`Tile.cpp:617`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Tile.cpp#L617))
+([`Tile.cpp:617`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Tile.cpp#L617))
 
 **`TilePlanterItem`** is a special case worth calling out: it's an item that,
 when used, places a tile whose ID differs from the item's own. This is how items
@@ -351,7 +351,7 @@ Item::reeds    = (new TilePlanterItem(82, Tile::reeds))->setIconName(L"reeds")..
 Item::repeater = (new TilePlanterItem(100, Tile::unpowered_repeater))->setIconName(L"diode")...
 ```
 
-([`Item.cpp:401`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L401))
+([`Item.cpp:401`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L401))
 
 ## Special items
 
@@ -388,12 +388,12 @@ Music discs jump to a separate high ID band (2000-series constructor arg →
 2256-series final ID). Note the ordering quirk: `record_08` is assigned last
 (`new RecordingItem(2011, L"where are we now")`, the "Cat"/TU-era bonus disc),
 so the pointer indices don't match the play order
-([`Item.cpp:467`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L467)).
+([`Item.cpp:467`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L467)).
 
 ### Dye
 
 `DyePowderItem`
-([`DyePowderItem.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/DyePowderItem.h))
+([`DyePowderItem.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/DyePowderItem.h))
 is a single item (ID `256 + 95 = 351`) with 16 color variants selected by aux
 value — it calls `setStackedByData(true)` so each color stacks separately. The
 color indices are:
@@ -409,12 +409,12 @@ color indices are:
 | 6 | CYAN | `0x287697` | 14 | ORANGE | `0xeb8844` |
 | 7 | SILVER | `0xababab` | 15 | WHITE | `0xf0f0f0` |
 
-([`DyePowderItem.cpp:68`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/DyePowderItem.cpp#L68))
+([`DyePowderItem.cpp:68`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/DyePowderItem.cpp#L68))
 
 `DyePowderItem::useOn` doubles as bone-meal (`growCrop`) and sheep-coloring
 (`interactEnemy`). The **TU31 delta** here is that `useOn` now also fertilizes the
 **beetroot** crop (`Tile::beetroots_Id`) in addition to wheat/carrots/potatoes
-([`DyePowderItem.cpp:250`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/DyePowderItem.cpp#L250)) —
+([`DyePowderItem.cpp:250`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/DyePowderItem.cpp#L250)) —
 the beetroot block is itself a TU31 backport (see below). Beetroot also yields
 red dye when crafted, but that is handled in the recipe tables, not in
 `DyePowderItem` itself.
@@ -423,7 +423,7 @@ red dye when crafted, but that is handled in the recipe tables, not in
 
 These items do **not** exist in vanilla LCE TU19; they are TU25/TU31 backports.
 All are registered at the tail of `Item::staticCtor()`
-([`Item.cpp:530`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L530)+).
+([`Item.cpp:530`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L530)+).
 
 | Item | Class | Ctor arg | Final ID | Notes |
 |------|-------|----------|----------|-------|
@@ -452,7 +452,7 @@ All are registered at the tail of `Item::staticCtor()`
 ### Door items (new woods)
 
 `DoorItem`
-([`DoorItem.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/DoorItem.h))
+([`DoorItem.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/DoorItem.h))
 takes `(id, Material *, doorType)`. TU19 shipped only `wooden_door` (ID 324) and
 `iron_door` (ID 330). TU25 adds the five wood variants above — all built with
 `Material::wood` and a distinct `doorType` string that keys the placed block and
@@ -464,7 +464,7 @@ Item::spruce_door = (new DoorItem(171, Material::wood, L"doorSpruce"))
     ->setIconName(L"doorSpruce")->setDescriptionId(IDS_ITEM_DOOR_SPRUCE)...
 ```
 
-([`Item.cpp:535`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L535))
+([`Item.cpp:535`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/Item.cpp#L535))
 
 `DoorItem::place(level, x, y, z, dir, tile)` (static) writes the two-tall door
 block pair. The acacia and dark-oak doors pair with the acacia/dark-oak tile set
@@ -473,9 +473,9 @@ described on the [Blocks page](/slop-docs/world/blocks/).
 ### Armor stand item
 
 `ArmorStandItem`
-([`ArmorStandItem.h`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ArmorStandItem.h))
+([`ArmorStandItem.h`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ArmorStandItem.h))
 is ID `256 + 160 = 416` with `maxStackSize = 16`
-([`ArmorStandItem.cpp:12`](https://git.neolegacy.dev/coah80/neoLegacy/src/branch/main/Minecraft.World/ArmorStandItem.cpp#L12)).
+([`ArmorStandItem.cpp:12`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/Minecraft.World/ArmorStandItem.cpp#L12)).
 Its `useOn` spawns an `ArmorStand` entity at the clicked position; the static
 `randomizePose(stand, rng)` helper jitters the head/body pose. This is a paired
 item+entity backport — the entity side (`eTYPE_ARMORSTAND`) lives in the
