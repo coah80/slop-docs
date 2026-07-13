@@ -236,6 +236,19 @@ should participate in the fade, route it through the streaming path above rather
 than the one-shot `play` path.
 :::
 
+:::note[Changed in v1.1.0b — jukebox now cross-fades]
+On `origin/main`, `SoundEngine::playStreaming` (`SoundEngine.cpp:821`) gained a
+**cross-fade on the jukebox path**: if a stream is already
+`Playing`/`Opening` (or `m_musicStreamActive`) when a new disc name comes in, it
+switches to a new `eMusicStreamState_Fading` state
+(`m_musicFadeSecondsRemaining = MUSIC_FADE_DURATION_SECONDS`) instead of hard-cutting,
+and a new `SoundEngine::stopStreamingNow()` was added to tear the stream down
+cleanly. The `Level::playStreamingMusic(name, …)` → `LevelRenderer` → `playStreaming`
+call chain you use to trigger music is **unchanged** — you get the fade for free
+by routing through the streaming path; you don't call the new state machine
+directly.
+:::
+
 ## Step 6 — no CMake change for the sound *event*
 
 Adding an `eSOUND_TYPE` value and a `wchSoundNames[]` entry needs **no new source

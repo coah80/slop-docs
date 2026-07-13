@@ -25,6 +25,26 @@ Read [Getting Started](/slop-docs/modding/getting-started/) first, and keep the
 For the worked example we'll add a small **Shrine**: a single 5×4×5 stone-brick
 room, modeled directly on the swamp hut so the moving parts stay visible.
 
+:::note[Changed in v1.1.0b — a second, lighter structure path exists]
+This page documents the full `StructureFeature` + `StructureStart` +
+`StructurePiece` + `StructureFeatureIO` machinery (as ocean monument uses it),
+and that path is unchanged. But v1.1.0b (`origin/main`) added **two new
+structures — igloos and fossils — that deliberately *skip* it.**
+`IglooFeature` and `FossilFeature` (`IglooFeature.h`/`FossilFeature.h`) derive
+from plain **`Feature`** (the worldgen-decoration base from
+[Custom World Generation](/slop-docs/modding/custom-worldgen/)), not
+`StructureFeature`: they add **no** `EStructureStart`/`EStructurePiece` enum
+entries and register **nothing** with `StructureFeatureIO`. They are placed by a
+direct `.place(...)` call in `RandomLevelSource::postProcess`
+(`RandomLevelSource.cpp:790`/`:799` on `origin/main`) and build from
+template XML under
+`Minecraft.Client/Common/Media/.../Structures/igloo/` and `.../fossils/`. So for
+a **fixed, template-driven** structure the `Feature` route is now the simpler
+precedent; reach for the full `StructureFeature` framework (this page) when you
+need seed-deterministic grid placement, multi-piece starts, or save/load of piece
+state.
+:::
+
 ## The two enums you must extend
 
 Structure ids are enums, not strings, in the fast path. Both live in
@@ -374,6 +394,23 @@ member `ShrineFeature *shrine;` to `RandomLevelSource.h` (mirroring
 `OceanMonumentFeature *oceanMonument;`, `:72`), construct it in the ctor with
 `setLevel(level)`, add it to the `apply` and `postProcess` blocks, and delete it
 in the destructor. The `prescanNearby` call is monument-specific — skip it.
+
+## Loot chests (changed in v1.1.0b)
+
+The Shrine and swamp-hut examples above place no chest, so they need no loot
+wiring. If your structure *does* drop a populated chest, note that **v1.1.0b
+replaced the old hardcoded loot path**. At the audited snapshot, scattered
+features filled chests from static `WeighedTreasure` arrays
+(`ScatteredFeaturePieces.cpp` `DesertPyramidPiece::treasureItems` /
+`JunglePyramidPiece::treasureItems`). On `origin/main` those arrays are gone and
+chests are filled through the new **`LootTableManager`**
+(`LootTableManager.h`/`.cpp`, added whole in v1.1.0b): e.g. the desert pyramid now
+calls `LootTableManager::Get().ResolveDrops("chests/desert_pyramid", …)` and the
+igloo `ResolveDrops("chests/igloo_chest", …)` (`IglooFeature.cpp:148`), feeding
+the result to `WeighedTreasure::addChestItems`. Loot table ids are XML files under
+`.../Structures/loot_tables/chests/`. For a new chest-bearing structure on v1.1.0b,
+add a loot-table XML and resolve it that way rather than hand-rolling a
+`WeighedTreasure` array.
 
 ## Localization and textures
 
