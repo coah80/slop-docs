@@ -70,6 +70,7 @@ export default defineConfig({
 						{ label: 'Texture Packs & Resources', slug: 'client/resources' },
 						{ label: 'Audio', slug: 'client/audio' },
 						{ label: 'Settings & Options', slug: 'client/settings' },
+						{ label: 'Localization', slug: 'client/localization' },
 						{ label: 'Achievements & Stats', slug: 'client/achievements' },
 						{ label: 'Multiplayer & Networking', slug: 'client/networking' },
 						{ label: 'Tutorial, DLC & Console Systems', slug: 'client/consoles-systems' },
