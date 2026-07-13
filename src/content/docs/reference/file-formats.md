@@ -393,7 +393,7 @@ The payload inside is the same console save container documented above.
 **Status in this fork.** At snapshot `47e5cba3` the `.mcs` handling is limited to
 the save **naming** shown here. **Changed in v1.1.0b:** a standalone
 [`tools/wiiU2Windows.py`](https://git.neolegacy.dev/neoStudiosLCE/neoLegacy/src/branch/main/tools/wiiU2Windows.py)
-converter was added (`929b32ff`, later fixed in `1c936577`) — it converts Wii U `.mcs`
+converter was added (`929b32ff`, fixed in `1c936577`, landed on main via `042ee0a2` #37) — it converts Wii U `.mcs`
 saves to the Windows/Xbox-One layout (144-byte entry table, `region_format_16`,
 `--dlc`/`--no-split` presets). See [Repo Tools](/slop-docs/tools/repo-tools/).
 
@@ -416,7 +416,7 @@ build on it.
 ## Unverified / notes
 
 - **`wiiU2Windows.py`** — absent at snapshot `47e5cba3`; **added in v1.1.0b**
-  (`929b32ff`, fixed in `1c936577`), readable at `origin/main:tools/wiiU2Windows.py`. The
+  (`929b32ff`, fixed in `1c936577`, landed via `042ee0a2` #37), readable at `upstream/main:tools/wiiU2Windows.py`. The
   `.mcs` **naming** logic exists at both refs (`ConsoleSaveFileOriginal.cpp:1033`).
 - **`AssetTitleUpdateColourOverride`** — this is a **CMake custom target**, not a
   C++ symbol: `CMakeLists.txt:166-174` deletes the stale
