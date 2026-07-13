@@ -63,11 +63,12 @@ these `Screen`s. They are kept compiling because renderers, `Gui`, `Font`,
 Direct `Screen` subclasses (grep `public Screen` across the `*.h`):
 
 `TitleScreen`, `OptionsScreen`, `VideoSettingsScreen`, `ControlsScreen`,
-`PauseScreen`, `ChatScreen`, `InBedChatScreen`, `DeathScreen`,
+`PauseScreen`, `ChatScreen`, `DeathScreen`,
 `AchievementScreen`, `StatsScreen`, `ConfirmScreen`, `ConnectScreen`,
 `DisconnectedScreen`, `ErrorScreen`, `JoinMultiplayerScreen`, `NameEntryScreen`,
 `ReceivingLevelScreen`, `RenameWorldScreen`, `SelectWorldScreen`,
-`CreateWorldScreen`, `TextEditScreen`.
+`CreateWorldScreen`, `TextEditScreen`. (`InBedChatScreen` extends `ChatScreen`,
+not `Screen` directly.)
 
 Container screens form a small chain under `AbstractContainerScreen`
 (`AbstractContainerScreen.h:8`, `: public Screen`). Each of these extends it

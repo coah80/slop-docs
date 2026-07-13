@@ -238,8 +238,9 @@ full control set in `Common/UI/`:
 | `UIControl_AchievementsList` / `UIControl_LeaderboardList` / `UIControl_PlayerList` | Grids/rosters. |
 | `UIControl_PlayerSkinPreview` / `UIControl_MinecraftPlayer` / `UIControl_MinecraftHorse` | 3D previews. |
 | `UIControl_EnchantmentBook` / `UIControl_EnchantmentButton` / `UIControl_BeaconEffectButton` | Container-specific controls. |
+| `UIControl_SlotList` | Inventory/container slot grid (add-slot + highlight/red-box). |
 | `UIControl_Progress` / `UIControl_SpaceIndicatorBar` | Progress + disk-space bars. |
-| `UIControl_Cursor` / `UIControl_BitmapIcon` / `UIControl_Book` / `UIControl_Touch` | Cursor, icons, book pages, touch input. |
+| `UIControl_Cursor` / `UIControl_BitmapIcon` / `UIControl_Book` / `UIControl_PageFlip` / `UIControl_Touch` | Cursor, icons, book pages, page-flip, touch input. |
 
 Shared **components** (added to a layer independently of any one scene) live in
 `UIComponent_*`: `UIComponent_Logo` (the modifiable in-game logo),
