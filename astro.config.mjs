@@ -113,6 +113,14 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Contributing',
+					items: [
+						{ label: 'Getting Started', slug: 'contributing/getting-started' },
+						{ label: 'Code Style', slug: 'contributing/code-style' },
+						{ label: 'Testing Your Changes', slug: 'contributing/testing' },
+					],
+				},
+				{
 					label: 'Modding Guide',
 					items: [
 						{ label: 'Getting Started', slug: 'modding/getting-started' },
@@ -202,6 +210,7 @@ export default defineConfig({
 						{ label: 'Tile Class Index', slug: 'reference/tile-classes' },
 						{ label: 'Console Enums & Structs', slug: 'reference/console-enums' },
 						{ label: 'File & Directory Index', slug: 'reference/file-index' },
+						{ label: 'File Formats', slug: 'reference/file-formats' },
 					],
 				},
 			],

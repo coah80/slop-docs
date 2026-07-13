@@ -1,11 +1,12 @@
 ---
 title: Backport Case Studies
-description: Commit-by-commit anatomy of five real neoLegacy backports — slime block, barrier block, depth strider, Java-parity worldgen, and the donated classic crafting menu.
+description: Commit-by-commit anatomy of six real neoLegacy backports — slime block, barrier block, depth strider, Java-parity worldgen, the donated classic crafting menu, and the TU43 template-XML structures.
 ---
 
-This page dissects five real backports from the neoLegacy history, at four
+This page dissects six real backports from the neoLegacy history, at several
 different scales — from a single block to a 3,349-line worldgen overhaul to a
-wholesale donated UI. Each one is traced through its actual commits so you can
+wholesale donated UI to the data-driven TU43 structures. Each one is traced
+through its actual commits so you can
 see *what files were touched and why*, and *how the feature was iterated to the
 completeness bar* after the initial `feat` commit.
 
@@ -400,19 +401,155 @@ Reference: [Container menus](/slop-docs/world/containers/);
 
 ---
 
+## 6. TU43 structures — the template-XML era
+
+**Scale:** two structures + a whole loot-table subsystem. **Milestone:** TU43.
+**Authors:** Tranqlmao (structures), Fireblade (structure assets + loot tables).
+
+The first five case studies are all-C++ ports: geometry, drops, and recipes are
+hardcoded in `.cpp` files. The TU43 structures work marks a **shift toward
+data-driven** backporting — some of the content now lives in XML assets loaded
+at runtime rather than in C++ arrays. But the shift is *partial*, and reading
+exactly *which* parts moved to data and which stayed in code is the whole lesson.
+
+This is spread across three commits:
+
+- **`52138bfe feat: structure files, updated sounds, and village improvements`
+  (#33)** (Fireblade) — drops in the **structure XML assets** (fossil/igloo),
+  the `tools/struct_parse.py` NBT→XML converter, updated mob sounds
+  (cow/polarbear), and village tweaks. 51 files, +2,119/−4.
+- **`a4c746be TU43 Structures, bug fixes & minor changes`** (Tranqlmao) — the
+  actual **`FossilFeature` / `IglooFeature` C++ classes**, their decoration
+  hooks, and the bone-block recipe. (A large multi-topic TU43 commit; only its
+  structure slice is dissected here — 89 files, +1,792/−589 overall.)
+- **`54528fac feat: loot tables (#43)`** (Fireblade) — the **`LootTableManager`**
+  and the whole tree of loot-table XMLs (chests, entities, gameplay/fishing).
+  146 files, +6,396/−1,276.
+
+### The structure classes are still plain C++ `Feature`s
+
+`IglooFeature` and `FossilFeature` (`Minecraft.World/*.{cpp,h}`, added in
+`a4c746be`) are ordinary `Feature` subclasses — the same base as the earlier
+worldgen features. They're placed from the standard decoration pass in
+`RandomLevelSource::postProcess`, next to the monster-room and other feature
+placements:
+
+```cpp
+// Minecraft.World/RandomLevelSource.cpp
+if (pprandom->nextInt(64) == 0) { FossilFeature fossil; fossil.place(level, pprandom, fx, fy, fz); }
+if (pprandom->nextInt(48) == 0) { IglooFeature igloo;  igloo.place(level, pprandom, ix, iy, iz); }
+```
+
+(`FossilFeature` is also placed from `CustomLevelSource.cpp`.) So far this is
+identical to cases 1–5: a `Feature` subclass wired into decoration.
+
+### The surprise: the geometry is *not* read from the XML at runtime
+
+Here's the subtlety. `52138bfe` added
+`Common/Media/.../Structures/fossils/*.xml` and `.../igloo/*.xml` — palette +
+blocks + entities documents produced by `tools/struct_parse.py`, which converts
+Java `.nbt` structure files to XML (it walks NBT tags and emits `<Palette>`,
+`<Blocks>`, `<Entities>`). You'd expect `FossilFeature::place()` to load and
+stamp those XMLs. **It doesn't.** No code path reads `Structures/fossils/` or
+`Structures/igloo/` at runtime — the geometry is baked into C++:
+
+- **`FossilFeature`** carries the structures as static arrays of
+  `FossilBlock{ x, y, z, data }` — `skull01[]`…`skull04[]`, `spine01[]`…`spine04[]`
+  — plus a `FossilStructure` table of dimensions. `place()` picks a variant,
+  offsets to center it, and stamps `bone_block` (or `coal_ore` for the "coal"
+  variant) block by block. The `_coal.xml` asset variants have C++ counterparts
+  only as the `useCoal` boolean.
+- **`IglooFeature`** is fully *imperative*: `place()` and `placeBasement()` are
+  long sequences of `level->setTileAndData(...)` calls that build the snow dome,
+  the carpet, the furnace/crafting-table, and the basement's stone-brick prison
+  with its zombie-villager, villager, chest, brewing stand, and sign.
+
+So the `Structures/*.xml` assets here are **donor/reference data**, converted
+from NBT during development — the same role Java Edition plays as a
+[parity reference](/slop-docs/backporting/overview/#donor-sources) in case 4 —
+not a runtime template engine. The `.nbt`→XML tool exists to *author* the
+structure; a human then transcribes it into the C++ `place()` logic.
+
+### What *did* move to data: loot tables
+
+The genuinely data-driven part is drops. `54528fac` introduces
+`LootTableManager` (`Minecraft.World/LootTableManager.{cpp,h}`, +1,111/+96),
+which at startup loads every XML under
+`Common/Media/MediaWindows64/Structures/loot_tables/` via the `ATG::XMLParser`
+SAX parser. The tree mirrors the loot-table categories:
+
+| Directory | Contents |
+|-----------|----------|
+| `loot_tables/chests/` | structure chests — `igloo_chest.xml`, `desert_pyramid.xml`, `simple_dungeon.xml`, `stronghold_*.xml`, `village_blacksmith.xml`, `nether_bridge.xml`, `spawn_bonus_chest.xml`, … |
+| `loot_tables/entities/` | mob death drops — `cow.xml`, `creeper.xml`, `skeleton.xml`, `polarbear.xml`, plus `sheep/<color>.xml` per wool colour |
+| `loot_tables/gameplay/` | `fishing.xml` + `fishing/{fish,junk,treasure}.xml` |
+
+The manager is bootstrapped in `Minecraft.World.cpp` (a `FATAL` abort if the
+tables fail to load) and drops are resolved with a `ResolveDrops(path, …)` call
+that runs the pool/roll/weight/function logic the XML describes
+(`set_count`, `looting_enchant`, `set_damage`, `set_nbt`, conditions, …). Three
+consumers were rewired to it in the same commit:
+
+- **Mob deaths.** `Mob::dropDeathLoot` now builds the table name
+  `"entities/" + <lowercased mob name>` and calls `ResolveDrops`. The old
+  per-mob C++ drop overrides are **deleted or commented out** — `Cow.h`'s
+  `dropDeathLoot` becomes `// virtual void dropDeathLoot(...)`. The hardcoded
+  drop arrays are gone; the XML is authoritative.
+- **Structure chests.** `IglooFeature::placeBasement` fills its chest with
+  `LootTableManager::Get().ResolveDrops("chests/igloo_chest", …)` (then force-adds
+  a guaranteed golden apple), via `WeighedTreasure::addChestItems`.
+- **Fishing.** `FishingHelper` resolves `gameplay/fishing/{fish,junk,treasure}`
+  instead of a hardcoded catch table.
+
+### The recipe still lives in C++
+
+Acquisition didn't move to data. The bone-block recipe (9 bone meal → bone
+block) is a normal C++ shaped recipe added to
+`StructureRecipies::addRecipes` in `a4c746be`:
+
+```cpp
+r->addShapedRecipy(new ItemInstance((Tile*)Tile::bone_block, 1),
+    L"sssczg", L"###", L"###", L"###",
+    L'#', new ItemInstance(Item::dye, 1, DyePowderItem::WHITE), ...);
+```
+
+### How this differs from cases 1–5
+
+| Aspect | Cases 1–5 (all-C++) | Case 6 (TU43 structures) |
+|--------|---------------------|--------------------------|
+| Feature class | C++ `Tile`/`Feature`/`Enchantment` | C++ `Feature` (unchanged) |
+| Structure geometry | n/a | **hardcoded C++** (`FossilBlock[]`, imperative `setTileAndData`) — XML is reference-only |
+| Drops | hardcoded in C++ (`getResourceCount`, drop arrays) | **data-driven XML** via `LootTableManager` (`entities/`, `chests/`, `gameplay/`) |
+| Recipe | C++ (`OreRecipies`/`StructureRecipies`) | C++ (`StructureRecipies`) — unchanged |
+| New tooling | — | `tools/struct_parse.py` (NBT→XML authoring), `LootTableManager` (runtime XML) |
+
+**Lesson:** "data-driven" arrived unevenly. Drops genuinely became data —
+authored once as XML, loaded at runtime, replacing scattered C++ arrays — which
+is a real maintainability win and the direction the project is heading. But
+structure *geometry* only became data as an **authoring aid**: the NBT→XML tool
+helps you read the shape, and you still transcribe it into C++ `place()` logic
+by hand. When you backport a TU43+ structure, expect to write the geometry in
+C++ but the drops in an XML loot table.
+
+Reference: [Structures](/slop-docs/world/structures/);
+[World generation](/slop-docs/world/worldgen/); [Biomes](/slop-docs/world/biomes/).
+
+---
+
 ## Cross-cutting patterns
 
-Reading all five together, the same shape recurs:
+Reading all six together, the same shape recurs:
 
-| Pattern | Slime | Barrier | Depth Strider | Worldgen | Classic Crafting |
-|---------|:-:|:-:|:-:|:-:|:-:|
-| New `*.{cpp,h}` class pair | ✓ | ✓ | ✓ | ✓ (many) | ✓ |
-| Registration in a `staticCtor` | ✓ | ✓ | ✓ | ✓ | — (UI enum) |
-| `stringsGeneric.xml` name/tooltip | ✓ | ✓ | ✓ | — | ✓ |
-| Recipe / acquisition | ✓ (fix) | — (admin block) | via table | — | — |
-| Client render/particle/UI work | ✓ | ✓ | — | — | ✓ (donated) |
-| FourKit C# mirror | — | — | ✓ | — | — |
-| `feat` + follow-up `fix:` chain | ✓ (5) | 1 merge | 1 merge | bundled | ✓ |
+| Pattern | Slime | Barrier | Depth Strider | Worldgen | Classic Crafting | TU43 Structures |
+|---------|:-:|:-:|:-:|:-:|:-:|:-:|
+| New `*.{cpp,h}` class pair | ✓ | ✓ | ✓ | ✓ (many) | ✓ | ✓ (Fossil/Igloo Feature) |
+| Registration in a `staticCtor` | ✓ | ✓ | ✓ | ✓ | — (UI enum) | — (decoration hook) |
+| `stringsGeneric.xml` name/tooltip | ✓ | ✓ | ✓ | — | ✓ | — |
+| Recipe / acquisition | ✓ (fix) | — (admin block) | via table | — | — | ✓ (C++ shaped recipe) |
+| Client render/particle/UI work | ✓ | ✓ | — | — | ✓ (donated) | — |
+| FourKit C# mirror | — | — | ✓ | — | — | — |
+| Data-driven XML (loot/geometry) | — | — | — | — | — | ✓ (loot only) |
+| `feat` + follow-up `fix:` chain | ✓ (5) | 1 merge | 1 merge | bundled | ✓ | 3 commits |
 
 The [Backporting Workflow](/slop-docs/backporting/workflow/) turns this recurring
 shape into a checklist you can follow.

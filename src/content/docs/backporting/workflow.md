@@ -47,6 +47,15 @@ Strider case study shows why: the enchantment class is trivial; the real
 implementation is a specific edit to `LivingEntity::travel()`. You cannot wire
 that correctly without knowing where the physics lives.
 
+**As of v1.1.0b — structures have a template-XML donor path.** For a *structure*
+feature, the donor is often a Java `.nbt` structure file. Run
+`tools/struct_parse.py` on it to get a readable XML dump (`<Palette>`,
+`<Blocks>`, `<Entities>`) of the shape — but note this XML is an **authoring
+aid, not a runtime template**. You still transcribe the geometry into a C++
+`Feature::place()` (hardcoded `setTileAndData` calls or a static block array),
+exactly as `FossilFeature`/`IglooFeature` do. See
+[Case Study 6](/slop-docs/backporting/case-studies/#6-tu43-structures--the-template-xml-era).
+
 ## Step 2 — Map the concept onto this codebase's idioms
 
 neoLegacy is a direct C++ port of decompiled Java LCE. Two idioms matter:
@@ -172,6 +181,18 @@ recipe — acquisition is creative-only.)
 
 Confirm `getResourceCount()` / drop behaviour matches the original — barrier
 returns 0 (no drops, not silk-touchable); a normal block drops itself.
+
+**As of v1.1.0b — mob, chest, and fishing drops are data-driven XML.** Block
+drops are still C++ (`getResourceCount()`), but *mob* death loot, *structure
+chest* contents, and *fishing* catches now come from loot-table XML loaded at
+runtime by `LootTableManager`. Add or edit the matching file under
+`Common/Media/MediaWindows64/Structures/loot_tables/`:
+`entities/<mobname>.xml` for a mob (the name is derived as
+`"entities/" + lowercased mob name`), `chests/<name>.xml` for a structure chest
+(resolved with `LootTableManager::Get().ResolveDrops("chests/<name>", …)`), or
+`gameplay/fishing/*` for fishing. Do **not** re-add a hardcoded C++
+`dropDeathLoot` override for a mob — that path was removed in favour of the XML.
+See [Case Study 6](/slop-docs/backporting/case-studies/#6-tu43-structures--the-template-xml-era).
 
 ### Client render / interactions
 
