@@ -526,5 +526,3 @@ claim the same slot, the fastest way to catch an ID collision.
 - [Block Entities (TileEntity)](/slop-docs/world/tile-entities/) — per-block state.
 - [Entities](/slop-docs/world/entities/) — the armor stand and spawn-egg entity side.
 - [Container Menus](/slop-docs/world/containers/) — the fireworks/brewing/anvil UIs.
-</content>
-</invoke>
