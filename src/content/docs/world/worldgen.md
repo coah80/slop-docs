@@ -21,7 +21,7 @@ three dimensions is on [Dimensions](/slop-docs/world/dimensions/).
 Files: `ChunkSource.h`, `LevelSource.h`, `RandomLevelSource.h/.cpp`,
 `FlatLevelSource.*`, `CustomLevelSource.*`, `HellRandomLevelSource.*`,
 `HellFlatLevelSource.*`, `TheEndLevelRandomLevelSource.*`, `ReadOnlyChunkCache.h`,
-`Layer.h/.cpp`, `BiomeSource.h/.cpp`, and 40 `*Layer.h` headers (~33 distinct GenLayer classes in the biome-selection pipeline).
+`Layer.h/.cpp`, `BiomeSource.h/.cpp`, and 32 `*Layer.h` headers in `Minecraft.World` (the GenLayer biome-selection pipeline).
 
 ## ChunkSource — the terrain producer
 
