@@ -252,6 +252,23 @@ is the NBT save name (`"id"` tag). Extracted from `EntityIO.cpp:47-144`.
 Note the save name `Ozelot` for the Ocelot (`eTYPE_OCELOT`) — the NBT/network name
 keeps the historical spelling, while the class is `Ocelot`.
 
+:::note[Changed in v1.1.0b — `Ozelot`→`Ocelot` class cleanup]
+By the `47e5cba3` snapshot the gameplay class had already been renamed to `Ocelot`
+(`EntityIO` registers `Ocelot::create`, and the CMake source lists build
+`Ocelot.cpp` / `OcelotAttackGoal.cpp` / `OcelotSitOnTileGoal.cpp`), but the old
+`Ozelot.cpp/.h` and `OzelotAttackGoal.cpp/.h` files were still present on disk as
+orphaned dead code, along with the client's `OzelotModel`/`OzelotRenderer`. The
+`origin/main` build (`v1.1.0b`, `245cbb18`) **deletes all eight** of those files
+(`Ozelot.{cpp,h}`, `OzelotAttackGoal.{cpp,h}`, `OzelotModel.{cpp,h}`,
+`OzelotRenderer.{cpp,h}`; 767 lines removed), completing the rename to `Ocelot`.
+
+**The registry is unchanged:** the save name stays `L"Ozelot"`, the numeric ID stays
+`98`, `eINSTANCEOF` stays `eTYPE_OCELOT`, and the spawn-egg name stays `IDS_OZELOT`
+— so the `Ozelot` NBT/network identifiers and the sub-typed cat egg rows below
+(`98 | ((TYPE_BLACK/RED/SIAMESE + 1) << 12)`) are all still correct. Only the C++
+source-file/class name changed.
+:::
+
 ### Sub-typed spawn-egg IDs (high-bit variant packing)
 
 `EntityIO.cpp:135-144` registers additional entries that pack a **subtype into the

@@ -250,14 +250,51 @@ The **Flag** column marks blocks added on top of neoLegacy's TU19 base:
 | 208 | `grass_path_Id` | `GrassPathTile` | `grass_path_top` | TU31 | `Tile.cpp:584` |
 | 212 | `frosted_ice_Id` | `FrostedIceTile` | `ice` | neoLegacy | `Tile.cpp:585` |
 
+## Changed in v1.1.0b
+
+The `origin/main` build (`v1.1.0b`, commit `245cbb18`) registers **seven** tile IDs
+that are unregistered gaps in the table above (which reflects the `47e5cba3`
+snapshot). Each moves from a `//nnn name` placeholder comment in `Tile.h` to a live
+`static const int` constant plus a `Tile::` field and a `staticCtor` registration
+(all in `Minecraft.World/Tile.cpp`):
+
+| ID | Constant (`Tile.h`) | Class | Icon | Source |
+|---:|---|---|---|---|
+| 176 | `standing_banner_Id` | `BannerTile` (standing) | `planks_oak` | `Tile.cpp:624` |
+| 177 | `wall_banner_Id` | `BannerTile` (wall) | `planks_oak` | `Tile.cpp:625` |
+| 206 | `end_bricks_Id` | `Tile` (Material::stone) | `end_bricks` | `Tile.cpp:594` |
+| 213 | `magma_Id` | `MagmaTile` | `magma` | `Tile.cpp:595` |
+| 214 | `nether_wart_block_Id` | `Tile` (Material::grass) | `nether_wart_block` | `Tile.cpp:596` |
+| 215 | `red_nether_brick_Id` | `Tile` (Material::stone) | `red_nether_brick` | `Tile.cpp:597` |
+| 216 | `bone_block_Id` | `BoneBlockTile` | `bone_block_side` | `Tile.cpp:598` |
+
+Notes:
+
+- The two banners share the new `BannerTile` class (`BannerTile.cpp/.h`, with a
+  `BannerTileEntity`), constructed `new BannerTile(id, isStanding)` — `true` for
+  standing (176), `false` for wall (177). Both are `sendTileData()` /
+  `setNotCollectStatistics()` and use the `planks_oak` icon as a placeholder.
+- The standing banner also gets a **custom block item** in the `Tile.cpp:611-646`
+  override block: `Item::items[standing_banner_Id] = new BannerItem(...)` (icon
+  `sign`, `IDS_TILE_BANNER`) — it is *not* a new `Item::staticCtor` entry, so it does
+  not appear in the [Item ID Registry](/slop-docs/reference/item-ids/). (A separate
+  `//425 banner` placeholder in `Item.h` remains unregistered.)
+- `magma` and `bone_block` get their own tile classes (`MagmaTile`,
+  `BoneBlockTile`); `end_bricks`, `nether_wart_block`, and `red_nether_brick` are
+  plain `Tile` instances differing only by material/hardness.
+- With these live, the only remaining unregistered IDs below 217 are 198-205,
+  209-211 (still `//purpur_*` / `//end_gateway` / `//structure_void` placeholders).
+
 ## Notes on gaps and ordering
 
 - **Registration order &ne; ID order.** Blocks 161-197 are assigned across two
   non-contiguous stretches of `staticCtor` (161 at `:399`, 162-175 at `:569-609`,
   193-197 at `:457-461`), so the table above is sorted by ID, not by source line.
-- **Unregistered IDs in range.** 176 and 177 are skipped between `double_plant` (175)
-  and `daylight_detector_inverted` (178). IDs 198-206 and 209-211 are unused; the next
-  live IDs are `beetroots_Id` = 207, `grass_path_Id` = 208, and `frosted_ice_Id` = 212.
+- **Unregistered IDs in range (snapshot `47e5cba3`).** 176 and 177 are skipped between
+  `double_plant` (175) and `daylight_detector_inverted` (178). IDs 198-206 and 209-211
+  are unused; the next live IDs are `beetroots_Id` = 207, `grass_path_Id` = 208, and
+  `frosted_ice_Id` = 212. **(176/177/206 become registered in `v1.1.0b` — see
+  [Changed in v1.1.0b](#changed-in-v110b) above.)**
 - **`sapling2` (id 199) is commented out** in both `Tile.h:228` and `Tile.cpp:384`, so no
   block occupies id 199.
 - **Sea lantern (169) and prismarine (168)** are registered *after* the acacia/fence

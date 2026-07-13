@@ -157,6 +157,19 @@ registered: 17/18 have superseded comment variants, and 203 `ChatAutoCompletePac
 204 `ClientInformationPacket`, 252 `SharedKeyPacket`, 253 `ServerAuthDataPacket`
 are all disabled (`Packet.cpp:42-45`, `:138-139`, `:148-150`).
 
+## Changed in v1.1.0b
+
+**No change to this registry.** `Minecraft.World/Packet.cpp` is identical between the
+`47e5cba3` snapshot and the `origin/main` (`v1.1.0b`, `245cbb18`) build: still **97**
+non-commented `map()` calls over the same IDs, directions, and flags, and
+`SharedConstants::NETWORK_PROTOCOL_VERSION` is unchanged at **79**. The `v1.1.0b` work
+(region world-save, structures, banners) added no network packet — the banner tiles
+sync through the existing `TileEntityDataPacket` (id 132) via their `BannerTileEntity`
+(`getUpdatePacket()` returns a `TileEntityDataPacket` of the new sub-type
+`TYPE_BANNER = 5`, added alongside `TYPE_FLOWER_POT = 6` in `TileEntityDataPacket.h`).
+Those are packet *payload* constants, not new IDs, so the registry above is untouched
+and wire compatibility with the snapshot is preserved.
+
 ## Related pages
 
 - [Networking](/slop-docs/world/networking/) — packet architecture and transport.

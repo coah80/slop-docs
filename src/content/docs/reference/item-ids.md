@@ -268,3 +268,21 @@ matching `record_*_Id` constant are shown.
   A handful of block items get custom classes at `Tile.cpp:611-646`.
 - **`ITEM_NUM_COUNT` = 32000** (`Item.h:34`) sizes the `Item::items` array, leaving ample
   headroom above the record IDs.
+
+## Changed in v1.1.0b
+
+**No change to this registry.** `Minecraft.World/Item.cpp` and `Item.h` are byte-for-byte
+identical between the `47e5cba3` snapshot and the `origin/main` (`v1.1.0b`, `245cbb18`)
+build, so every ID, offset, class, and icon tabled above still holds. In particular:
+
+- The banner content added in `v1.1.0b` does **not** add an `Item::staticCtor` entry.
+  Banners are the two new *tiles* 176/177 (see
+  [Block ID Registry → Changed in v1.1.0b](/slop-docs/reference/block-ids/#changed-in-v110b)),
+  and the standing banner's inventory item is a **block-shadow item** —
+  `Item::items[176] = new BannerItem(...)` registered in the `Tile.cpp:611-646`
+  custom-block-item override block, in the 0-255 alias range, not here.
+- A `//425 banner` placeholder comment remains in `Item.h` but is never registered, so
+  real item ID 425 (offset 169) stays unused — there is no gap-fill between
+  `name_tag_Id` = 421 and `mutton_Id` = 423 in `v1.1.0b`.
+- No new records, foods, or materials were added by the region-save / structure work in
+  the `v1.1.0b` diff.
