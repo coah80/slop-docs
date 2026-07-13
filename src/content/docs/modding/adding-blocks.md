@@ -238,7 +238,7 @@ Slime and barrier are registered back to back at `Tile.cpp:572–573`:
 :::note[Changed in v1.1.0b]
 These line numbers are for the snapshot. On `origin/main` (v1.1.0b) the extra
 tiles added above them push everything down: `Tile::staticCtor()` is `Tile.cpp:366`
-and the slime/barrier pair is at `Tile.cpp:579–580` (barrier's line also picked
+and the slime/barrier pair is at `Tile.cpp:579–580` (slime's line also picked
 up a `setBaseItemTypeAndMaterial(...)` call upstream). The registration *pattern*
 is identical — just diff `git show origin/main:Minecraft.World/Tile.cpp` if you're
 matching upstream line-for-line.
