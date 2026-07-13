@@ -125,8 +125,8 @@ The controller's three hot methods:
 | Method | `UIController.cpp` | Job |
 |--------|--------------------|-----|
 | `tick()` | `:559` | Per-frame update. Applies font changes (`SetupFont()`), processes deferred navigate-home / close-all requests (`m_bCloseAllScenes[]`), then ticks every group. |
-| `tickInput()` | `:990` | Routes pad + (Windows64) mouse input to the focused scene, unless system/commerce UI is up (`m_bSystemUIShowing`). |
-| `renderScenes()` | `:1855` | Renders each player group (only when `app.GetGameStarted()` and the fullscreen group isn't hiding lower scenes), then always renders the fullscreen group. |
+| `tickInput()` | `:998` | Routes pad + (Windows64) mouse input to the focused scene, unless system/commerce UI is up (`m_bSystemUIShowing`). |
+| `renderScenes()` | `:1863` | Renders each player group (only when `app.GetGameStarted()` and the fullscreen group isn't hiding lower scenes), then always renders the fullscreen group. |
 
 Scene transitions are requested by id, not by pointer:
 `ui.NavigateToScene(pad, eUIScene_MainMenu)` (e.g. `UIController.cpp:569`). The
@@ -248,6 +248,15 @@ Shared **components** (added to a layer independently of any one scene) live in
 `UIComponent_Chat`, `UIComponent_Tooltips`, `UIComponent_TutorialPopup`,
 `UIComponent_PressStartToPlay`, `UIComponent_DebugUIConsole`,
 `UIComponent_DebugUIMarketingGuide`.
+
+> **Changed past v1.1.0b (`3a860d44 feat: customizable panorama`, upstream tip `3833d0f3`):**
+> `UIComponent_Panorama` gained an optional `panorama.xml` override file, parsed at texture-load time
+> from the panorama texture root. It configures the menu-backdrop scroll speed, Gaussian blur sigma,
+> and an optional **grid** mode (grid size X/Y + a nearest-neighbour scaling toggle) that restores the
+> tiled classic-Minecraft panorama look. Defaults match the prior hard-coded values, so behaviour is
+> unchanged when the file is absent; this is a pure client-presentation setting with **no new
+> `eGameSetting`** (`App_enums` is untouched). See the
+> [Past v1.1.0b changelog note](/slop-docs/features/changelog/#past-v110b).
 
 Fonts: `UIBitmapFont`, `UIUnicodeBitmapFont`, `UITTFFont`, `UIFontData`, and
 `UIString`.

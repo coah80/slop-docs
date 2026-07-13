@@ -51,17 +51,17 @@ menu input. Every frame `ui.tick()` (`UIController.cpp:559`) calls
 if(m_accumulatedTicks == 0) tickInput();
 ```
 
-`tickInput()` (`UIController.cpp:990`) does two jobs:
+`tickInput()` (`UIController.cpp:998`) does two jobs:
 
 1. **(Windows64 only)** mouse hover / click hit-testing against the top scene's
    controls — see [Mouse in menus](#mouse-in-menus-windows64) below.
-2. Calls `handleInput()` (`UIController.cpp:1410`), the controller/keyboard path.
+2. Calls `handleInput()` (`UIController.cpp:1418`), the controller/keyboard path.
 
 `handleInput()` loops every pad and every menu action key, calling
 `handleKeyPress(iPad, key)`:
 
 ```cpp
-// UIController.cpp:1410
+// UIController.cpp:1418
 void UIController::handleInput()
 {
     for(unsigned int iPad = 0; iPad < XUSER_MAX_COUNT; ++iPad)
@@ -77,7 +77,7 @@ void UIController::handleInput()
 `handleKeyPress` reads edge state from the platform `InputManager`
 (`InputManager.ButtonPressed(iPad, key)` / `ButtonReleased(...)`), then dispatches
 the event to the UI groups. The fullscreen group is offered the key first, then
-the pad's own player group (`UIController.cpp:1833-1837`):
+the pad's own player group (`UIController.cpp:1841-1845`):
 
 ```cpp
 m_groups[static_cast<int>(eUIGroup_Fullscreen)]->handleInput(iPad, key, repeat, pressed, released, handled);
@@ -122,7 +122,7 @@ ones the controller/KBM code maps include:
 Windows64 support is a neoLegacy addition, so `handleKeyPress` contains a
 KBM-specific layer that translates keyboard and mouse events into the abstract
 menu actions above. When the mouse is *not* grabbed (i.e. a menu is up), each
-`ACTION_*` key is given a virtual-key equivalent (`UIController.cpp:1643-1654`):
+`ACTION_*` key is given a virtual-key equivalent (`UIController.cpp:1651-1662`):
 
 | Menu action | Keyboard |
 |-------------|----------|
@@ -135,16 +135,16 @@ menu actions above. When the mouse is *not* grabbed (i.e. a menu is up), each
 | `ACTION_MENU_PAGEUP` / `_PAGEDOWN` | `VK_PRIOR` / `VK_NEXT` |
 
 Mouse buttons are folded into the same actions when the cursor is free
-(`UIController.cpp:1663-1683`):
+(`UIController.cpp:1671-1683`):
 
 - **Left click** → `ACTION_MENU_OK` / `ACTION_MENU_A` (confirm / select).
 - **Right click** → `ACTION_MENU_X` (e.g. pick up half a stack in inventory).
 - **Mouse wheel** → `ACTION_MENU_OTHER_STICK_UP` / `_DOWN`, further remapped to
-  `LEFT`/`RIGHT` or `UP`/`DOWN` depending on the top scene (`UIController.cpp:1683-1711`).
+  `LEFT`/`RIGHT` or `UP`/`DOWN` depending on the top scene (`UIController.cpp:1691-1719`).
 
 ### Mouse in menus (Windows64)
 
-The Windows64 half of `tickInput()` (`UIController.cpp:1004+`) does real cursor
+The Windows64 half of `tickInput()` (`UIController.cpp:1012+`) does real cursor
 hit-testing that the console builds never needed. When the mouse is active and
 not grabbed, it walks the menu layers by priority —
 
@@ -162,7 +162,7 @@ each `UIControl`. Buttons, `UIControl_ButtonList`/`UIControl_MultiList`,
 `UIControl_TexturePackList`, achievement lists and sliders each get their own
 `SetTouchFocus(...)` handling so hover, click, and slider-drag all work with a
 mouse. The smallest-area control under the cursor wins focus
-(`UIController.cpp:1231-1239`), and slider drags are tracked across frames via
+(`UIController.cpp:1239-1247`), and slider drags are tracked across frames via
 `m_mouseDraggingSliderScene` / `m_mouseDraggingSliderId`. The tooltip layer is
 deliberately excluded from mouse hit-testing so non-interactive button hints
 never steal focus.

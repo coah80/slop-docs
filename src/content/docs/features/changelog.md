@@ -140,11 +140,15 @@ rewritten for the release. Highlights, with source commits:
 
 ### Past v1.1.0b {#past-v110b}
 
-Upstream `main` has advanced **10 commits** past the `245cbb18` (v1.1.0b) tag, to `237dc7d3` (a
-`Merge branch 'main'`, 2026-07-13). Alongside CI/artifact housekeeping (`e8e2e44e chore: bump server
-version` — the `BUILD_NUMBER` 570→571 bump noted [above](#network-protocol-build-number-570); `977a7496`/
-`8bdad8e9 ci: windows runner`; `2fcba506`, `61218fed`, `fd8aeb2b` artifact cleanup), two content
-changes land in the final four commits (`fd8aeb2b → 237dc7d3`):
+Upstream `main` has advanced **13 commits** past the `245cbb18` (v1.1.0b) tag, to `3833d0f3`
+(`feat: customizable panorama + village fixes (#46)`, 2026-07-13). Upstream **force-pushed** this
+range: the earlier tip `237dc7d3` and the earlier TU43 bug-fix commit `f61aa677` were rewritten out
+of history (neither is an ancestor of `upstream/main` any more) and re-rolled as `680f539f` (same
+message and fixes). Hashes below reflect the rewritten history. Alongside CI/artifact housekeeping
+(`e8e2e44e chore: bump server version` — the `BUILD_NUMBER` 570→571 bump noted
+[above](#network-protocol-build-number-570); `977a7496`/`8bdad8e9 ci: windows runner`; `2fcba506`,
+`61218fed`, `fd8aeb2b` artifact cleanup), the content changes land in five commits (`fd8aeb2b →
+3833d0f3`):
 
 **PackGraphics**
 
@@ -155,7 +159,7 @@ changes land in the final four commits (`fd8aeb2b → 237dc7d3`):
   packs separate. No IDs or registries change — these are new image assets filling gaps in the
   existing numbered `PackGraphics` set.
 
-**TU43 Bug fixes** (`f61aa677`)
+**TU43 Bug fixes** (`680f539f`, formerly `f61aa677` before the force-push)
 
 A single commit fixing regressions in the v1.1.0b TU43 structures/blocks and elytra work:
 
@@ -177,9 +181,30 @@ A single commit fixing regressions in the v1.1.0b TU43 structures/blocks and ely
 - **Classic Crafting blank screen** — `UIScene::needsReloaded` only requests a 1080p upgrade if a
   `…1080.swf` asset actually exists, so 720-only movies (e.g. classic crafting) stop looping forever at
   1080p.
-- **Server-side loot tables** — `cmake/ServerTarget.cmake` (+17 lines) gains an `AssetLootTablesCopy`
+- **Server-side loot tables** — `cmake/ServerTarget.cmake` (+13 lines) gains an `AssetLootTablesCopy`
   target that copies the loot-table XMLs into the dedicated-server build; without it the server had no
   loot tables and mobs/chests/fishing dropped nothing. See [Deployment](/slop-docs/server/deployment/).
+
+**Customizable panorama** (`3a860d44 feat: customizable panorama`)
+
+- The main-menu panorama (`UIComponent_Panorama`) gains an optional `panorama.xml` override file,
+  parsed at texture-load time from the panorama texture root. It sets scroll speed, Gaussian blur
+  sigma, and an optional **grid** mode that restores the tiled look of the classic Minecraft panorama
+  (grid size X/Y, plus a nearest-neighbour scaling toggle). Defaults match the previous hard-coded
+  values (`scrollSpeed = 0.0001/16.6667`, `blurSigma = 0.5`, grid off), so behaviour is unchanged when
+  no XML is present. Purely client presentation — **no new `eGameSetting`** (`App_enums` is untouched);
+  the header adds `m_panoramaScrollSpeed`/`m_panoramaBlurSigma`/`m_panoramaGrid*` fields. See
+  [UI System](/slop-docs/client/ui-system/).
+
+**Village generation** (`99414c89 fix: village generation`, `f5b395b4 fix: wood bridges`)
+
+- **Village biome inheritance** — previously every village piece (houses, paths, etc.) had to sit in a
+  village-appropriate biome or it was culled. Villages now inherit the biome check from the **well**'s
+  point of view (`Level.cpp` +23 / `Level.h` +1; `VillagePieces.cpp` +49): as long as the well is in an
+  acceptable biome, the rest of the village keeps generating. See
+  [Structures & Features](/slop-docs/world/structures/).
+- **Wood bridges** — a one-line `VillagePieces.cpp` fix (`f5b395b4`) restores wooden village
+  path/bridge pieces.
 
 ## History root caveat
 

@@ -167,11 +167,22 @@ the `OceanMonumentPieces::loadStatic()` call) is new in commit `720e1a77`.
 > **not** new `StructureFeature` starts, so the six-entry `StructureFeatureIO`
 > registry above is unchanged. Fossils use a `1/64` per-chunk roll. Igloos landed
 > at `a4c746be` on a flat `1/48` per-chunk roll, but the TU43 bug-fix commit
-> `f61aa677` (upstream `237dc7d3`, past v1.1.0b) reworked igloo placement to vanilla
+> `680f539f` (upstream tip `3833d0f3`, past v1.1.0b; formerly `f61aa677` under `237dc7d3`
+> before upstream force-pushed the range) reworked igloo placement to vanilla
 > `MapGenScatteredFeature` spacing — at most one scattered feature per 32×32-chunk
 > region, deterministically seeded — rather than a per-chunk roll. See the
 > [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current) and the
 > [Past v1.1.0b note](/slop-docs/features/changelog/#past-v110b).
+
+> **Changed past v1.1.0b (`99414c89 fix: village generation` + `f5b395b4 fix: wood bridges`,
+> upstream tip `3833d0f3`):** village placement no longer culls individual pieces (houses, paths, etc.)
+> that fall outside a village-appropriate biome. Per the commit message, the biome check now inherits
+> from the **well**'s point of view — if the well sits in an acceptable biome, the rest of the village
+> keeps generating. Mechanically the change is in `VillagePieces.cpp` (+49; the old per-piece biome
+> rejection blocks are commented out, terrain/plant clearing added) plus a new
+> `Level::getTopSolidOrLiquidBlock(x, z)` helper (`Level.h` +1 / `Level.cpp` +23) used for piece
+> grounding. A follow-up one-line `VillagePieces.cpp` fix (`f5b395b4`) restores wooden bridge/path
+> pieces. Piece geometry and the `Village` start table above are otherwise unchanged.
 
 ## Ocean Monument (new)
 
