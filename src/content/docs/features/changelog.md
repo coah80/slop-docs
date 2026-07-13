@@ -32,6 +32,10 @@ Every stable tag has a matching `-Dedicated-Server` tag (e.g. `v1.0.9b-Dedicated
 
 ## Network protocol: build number 570
 
+:::note[Changed upstream (post-v1.1.0b)]
+Upstream `neoStudiosLCE/neoLegacy` bumped `BUILD_NUMBER` **570 → 571** in `e8e2e44e` ("chore: bump server version"), so current upstream builds speak protocol **571**. Everything below describes the mechanism, which is unchanged; substitute 571 for the current value.
+:::
+
 Multiplayer compatibility is gated on a static build/network number, not the `1.0.Nb` version.
 `fd43009a chore: bump network version to 570 (#78)` raised it from **560 to 570**:
 

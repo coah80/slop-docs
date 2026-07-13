@@ -209,6 +209,10 @@ hardening the console netcode against malformed or malicious peers.
 
 ## Protocol version — BUILD_NUMBER 570
 
+:::note[Changed upstream (post-v1.1.0b)]
+Upstream `neoStudiosLCE/neoLegacy` bumped `BUILD_NUMBER` **570 → 571** in `e8e2e44e` ("chore: bump server version"), so current upstream builds speak protocol **571**. Everything below describes the mechanism, which is unchanged; substitute 571 for the current value.
+:::
+
 There is no version-negotiation packet. Compatibility is gated entirely by a
 compile-time build number, set in `cmake/GenerateBuildVer.cmake:10`:
 

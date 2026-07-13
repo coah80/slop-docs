@@ -25,7 +25,7 @@ To contribute:
 
 1. **Make an account on `git.neolegacy.dev`.** This is where you fork, push, and
    open pull requests.
-2. **Fork** `coah80/neoLegacy` into your namespace on that forge.
+2. **Fork** `neoStudiosLCE/neoLegacy` into your namespace on that forge.
 3. **Clone your fork** — and mind the submodule (below).
 
 The 4JLibs submodule lives on the same forge under the `neoStudiosLCE`

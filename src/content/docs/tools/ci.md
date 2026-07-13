@@ -63,6 +63,10 @@ Files: `.github/workflows/nightly.yml`
 
 ## `stable.yml` — Stable Release
 
+:::note[Changed upstream (post-v1.1.0b)]
+The canonical `neoStudiosLCE/neoLegacy` repo reworked `stable.yml` after v1.1.0b (commits `977a7496`/`8bdad8e9` "ci: windows runner" and follow-ups `2fcba506`/`61218fed`/`fd8aeb2b`): stable releases now build **natively on a `windows-10` runner with MSVC** (`configurePreset: windows64`) instead of the Ubuntu clang-cl cross build described below — the cross build remains how `nightly.yml` works. `BUILD_NUMBER` also moved to 571 (`e8e2e44e`).
+:::
+
 **Trigger:** push that touches the **`BUMP`** file (or `workflow_dispatch`). `BUMP` is the human-facing version string — currently `1.0.9b`. Editing `BUMP` and pushing is the release ritual.
 
 ```yaml
