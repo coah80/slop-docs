@@ -50,7 +50,7 @@ distribution, or tooling.
 | Path | Files | What it is | Docs |
 |---|---:|---|---|
 | `Minecraft.World/` | 1,965 | Shared world/gameplay static lib (`Minecraft.World`). The game-logic core — a C++ port of decompiled Java LCE. Flat module root. | [World overview](/slop-docs/world/overview/) |
-| `Minecraft.Client/` | 18,172 | The game client exe (`Minecraft.Client`) + every platform subtree + all media. Flat module root at its top level. | [Client overview](/slop-docs/client/overview/) |
+| `Minecraft.Client/` | 18,067 | The game client exe (`Minecraft.Client`) + every platform subtree + all media. Flat module root at its top level. | [Client overview](/slop-docs/client/overview/) |
 | `Minecraft.Server/` | 102 | **Vanilla** dedicated-server C++ target (no plugin host). | [Server overview](/slop-docs/server/overview/) |
 | `Minecraft.Server.FourKit/` | 149 | **FourKit** dedicated server: C# (.NET 10) plugin host + C++ exe target. | [FourKit](/slop-docs/server/fourkit/) |
 | `cmake/` | 16 | Shared CMake modules (server recipe, asset-copy, codegen, toolchains). | [Building](/slop-docs/overview/building/) |
