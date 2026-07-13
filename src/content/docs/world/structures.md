@@ -163,11 +163,15 @@ the `OceanMonumentPieces::loadStatic()` call) is new in commit `720e1a77`.
 > `a4c746be TU43 Structures, bug fixes & minor changes` adds **Igloo and Fossil**
 > generation — both are `Feature` subclasses (`IglooFeature`, `FossilFeature`, each
 > `: public Feature`) run directly from the chunk-source decoration pass
-> (`RandomLevelSource::postProcess` places them with a per-chunk probability roll —
-> `1/64` fossil, `1/48` igloo — just before `biome->decorate()`), **not** new
-> `StructureFeature` starts, so the six-entry `StructureFeatureIO` registry above is
-> unchanged. See the
-> [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
+> (`RandomLevelSource::postProcess` places them just before `biome->decorate()`),
+> **not** new `StructureFeature` starts, so the six-entry `StructureFeatureIO`
+> registry above is unchanged. Fossils use a `1/64` per-chunk roll. Igloos landed
+> at `a4c746be` on a flat `1/48` per-chunk roll, but the TU43 bug-fix commit
+> `f61aa677` (upstream `237dc7d3`, past v1.1.0b) reworked igloo placement to vanilla
+> `MapGenScatteredFeature` spacing — at most one scattered feature per 32×32-chunk
+> region, deterministically seeded — rather than a per-chunk roll. See the
+> [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current) and the
+> [Past v1.1.0b note](/slop-docs/features/changelog/#past-v110b).
 
 ## Ocean Monument (new)
 

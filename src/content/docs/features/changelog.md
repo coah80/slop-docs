@@ -138,6 +138,49 @@ rewritten for the release. Highlights, with source commits:
 - Build-failure fixes (`6148d850 (#44)`, `f0a86841`) and CI support for `TUXX` branches
   (`f32ce319`).
 
+### Past v1.1.0b {#past-v110b}
+
+Upstream `main` has advanced **10 commits** past the `245cbb18` (v1.1.0b) tag, to `237dc7d3` (a
+`Merge branch 'main'`, 2026-07-13). Alongside CI/artifact housekeeping (`e8e2e44e chore: bump server
+version` — the `BUILD_NUMBER` 570→571 bump noted [above](#network-protocol-build-number-570); `977a7496`/
+`8bdad8e9 ci: windows runner`; `2fcba506`, `61218fed`, `fd8aeb2b` artifact cleanup), two content
+changes land in the final four commits (`fd8aeb2b → 237dc7d3`):
+
+**PackGraphics**
+
+- Three **pack-selection graphics** (the tile art shown on the DLC/texture-pack picker) were added to
+  `Minecraft.Client/Common/Media/MediaWindows64/Graphics/PackGraphics/`: `1036.png`, `549.png`, and
+  `556.png` (`e183dca2` / `87dca773 Adding 3 missing PackGraphics (#48)`). The commit message notes
+  `549`/`556` are logo-less replacements and flags an open question about keeping the Sony/PSX menu
+  packs separate. No IDs or registries change — these are new image assets filling gaps in the
+  existing numbered `PackGraphics` set.
+
+**TU43 Bug fixes** (`f61aa677`)
+
+A single commit fixing regressions in the v1.1.0b TU43 structures/blocks and elytra work:
+
+- **Igloo spawn reworked** — `RandomLevelSource::postProcess` no longer uses a flat `1/48` per-chunk
+  roll; igloos now follow vanilla `MapGenScatteredFeature` spacing (at most one scattered feature per
+  32×32-chunk region, deterministically seeded, min ~8 chunks apart). See
+  [Structures & Features](/slop-docs/world/structures/) and [World Generation](/slop-docs/world/worldgen/).
+- **Fossil spawn buried** — `FossilFeature::place` now ignores the caller's `y` and drops the fossil
+  15–24 blocks below the lowest surface over its footprint (floored at y=10), skips liquids, and uses a
+  per-block 0.9-bone / 0.1-coal / ~10%-gap integrity roll instead of an all-or-nothing coal flag. The
+  `CustomLevelSource` fossil roll also changed from `if(true)` to `1/64`.
+- **Magma-block Y range** — `HellRandomLevelSource` magma placement widened from Y 27–35 to
+  **Y 27–36** (vanilla 1.10).
+- **Igloo basement zombie-villager** — the captured NPC now calls `setPersistenceRequired()` so it
+  can't despawn.
+- **Cape / elytra** — the cape is hidden while an elytra is equipped, and creative-flight cape rotation
+  is eased toward horizontal so it no longer swings over the head (`PlayerRenderer.cpp`); elytra flight
+  physics no longer apply in water/lava (`Player::travel`).
+- **Classic Crafting blank screen** — `UIScene::needsReloaded` only requests a 1080p upgrade if a
+  `…1080.swf` asset actually exists, so 720-only movies (e.g. classic crafting) stop looping forever at
+  1080p.
+- **Server-side loot tables** — `cmake/ServerTarget.cmake` (+17 lines) gains an `AssetLootTablesCopy`
+  target that copies the loot-table XMLs into the dedicated-server build; without it the server had no
+  loot tables and mobs/chests/fishing dropped nothing. See [Deployment](/slop-docs/server/deployment/).
+
 ## History root caveat
 
 `git log --reverse` reports the earliest commit as `def8cb41 "first commit"` by `daoge_cmd` on

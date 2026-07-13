@@ -38,6 +38,8 @@ VS_DEBUGGER_COMMAND_ARGUMENTS "-port 25565 -bind 0.0.0.0 -name DedicatedServer"
 
 - Wires asset-copy sub-targets (`Common/res`, `Common/Media/MediaWindows64`), localization copy (`Windows64Media/loc`), redist copy, and the `GameHDD` dir.
 
+> **Changed past v1.1.0b:** the TU43 bug-fix commit `f61aa677` (upstream `237dc7d3`) adds a `+17`-line `AssetLootTablesCopy_${target}` custom target to `ServerTarget.cmake`. The shared asset copy excludes `*.xml` (which is every loot table), so this step copies `Structures/loot_tables/` in explicitly, mirroring the client's `AssetLootTablesCopy`. Without it the dedicated server ships no loot tables on disk and mobs/chests/fishing drop nothing. At snapshot `47e5cba3` this target does not exist.
+
 ### FourKit managed build
 
 `Minecraft.Server.FourKit/CMakeLists.txt`:
