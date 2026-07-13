@@ -212,7 +212,7 @@ Because console DLC archives are big-endian, `DLCManager` provides the
 > packs — 511 binary files) were deleted (commit `8cfce8ee`, "chore: delete
 > dlcs"). This is an asset-only removal: the `DLCManager` / `DLCPack` code, the
 > `EDLCType` set, and the built-in resource-tree packs under
-> `Common/res/TitleUpdate/DLC/` (182 `.pck` files, unchanged) all remain. The
+> `Common/res/TitleUpdate/DLC/` (28 `.pck` files, unchanged) all remain. The
 > pipeline documented here is intact; only the shipped downloadable payloads are
 > gone.
 
