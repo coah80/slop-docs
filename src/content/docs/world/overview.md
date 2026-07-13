@@ -82,7 +82,8 @@ Tile::stone = (new StoneTile(1))
     ->setBaseItemTypeAndMaterial(Item::eBaseItemType_structblock, Item::eMaterial_stone)
     ->setDestroyTime(1.5f)->setExplodeable(10)
     ->setSoundType(Tile::SOUND_STONE)
-    ->setIconName(L"stone")->setDescriptionId(IDS_TILE_STONE);
+    ->setIconName(L"stone")->setDescriptionId(IDS_TILE_STONE)
+    ->setUseDescriptionId(IDS_DESC_STONE);
 ```
 
 The same shape recurs across the module: `Item::staticCtor()` (`Item.cpp:282`),

@@ -138,8 +138,9 @@ tag->putInt(L"z", z);
 ```
 
 If the class isn't in `classIdMap` the save is skipped (the Java
-`IllegalArgumentException` is commented out — a recurring "TODO 4J Stu" pattern
-throughout the port). `load()` (`TileEntity.cpp:72`) reads back `x/y/z`.
+`RuntimeException` — "is missing a mapping! This is a bug!" — is commented out, a
+recurring "TODO 4J Stu" pattern throughout the port). `load()`
+(`TileEntity.cpp:72`) reads back `x/y/z`.
 
 Deserialization goes through the static `loadStatic(CompoundTag*)`
 (`TileEntity.cpp:98`): it reads the `id` string, looks up the factory in

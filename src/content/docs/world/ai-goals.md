@@ -229,9 +229,9 @@ goalSelector.addGoal(7, new TakeFlowerGoal(this));
 goalSelector.addGoal(8, new PlayGoal(this, 0.32));
 ```
 
-Goals sharing a priority number (the two prio-1 villager goals, the prio-6/9
-look goals) are all eligible in that tier and coexist or contend purely on their
-control flags.
+Goals sharing a priority number (the three prio-1 villager goals, or the two
+prio-6 creeper look goals) are all eligible in that tier and coexist or contend
+purely on their control flags.
 
 ### Custom subclassed goals
 

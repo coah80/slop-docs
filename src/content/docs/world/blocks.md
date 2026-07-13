@@ -26,7 +26,7 @@ integer ID through a raw array:
 | `lightBlock[]` | `static int lightBlock[TILE_NUM_COUNT];` (`:214`) | opacity (0–255) |
 | `transculent[]` | `static bool transculent[TILE_NUM_COUNT];` (`:215`) | [sic] translucency, `!material->blocksLight()` |
 | `lightEmission[]` | `static int lightEmission[TILE_NUM_COUNT];` (`:216`) | emitted light 0–`MAX_BRIGHTNESS` |
-| `_sendTileData[]` | `static unsigned char _sendTileData[TILE_NUM_COUNT];` (`:217`) | per-tile net-sync bitfield (see [`sendTileData`](#net-sync-sendtiledata)) |
+| `_sendTileData[]` | `static unsigned char _sendTileData[TILE_NUM_COUNT];` (`:217`) | per-tile net-sync bitfield (see [`sendTileData`](#net-sync--sendtiledata)) |
 | `propagate[]` | `static bool propagate[TILE_NUM_COUNT];` (`:218`) | light propagation |
 | `mipmapEnable[]` | `static bool mipmapEnable[TILE_NUM_COUNT];` (`:212`) | 4J-added texture-mipmap flag |
 
