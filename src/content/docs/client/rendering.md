@@ -222,6 +222,121 @@ block-shaped items in the hand or on a head. It reads the tile's render shape
 geometry vs. a flat sprite (used e.g. by `CustomHeadLayer`, see
 [Entity Renderers & Models](/slop-docs/client/entity-rendering/)).
 
+## Worked trace: one frame, platform loop to pixels
+
+This walks a single Windows64 frame from the top of the platform loop to the swap,
+citing every hop. It is the concrete version of the [`renderLevel` 7-pass](#gamerenderer--camera-and-frame-orchestration) above — that table lists the
+passes; this trace shows how the frame reaches and leaves them.
+
+**1 — Frame start (platform loop).** The Windows64 main loop opens the frame with
+`RenderManager.StartFrame()` (`Windows64_Minecraft.cpp:1856`) and clears to black
+if a game is running (`:1854`). Everything below runs once per frame, off the
+20 Hz world tick.
+
+**2 — Per-frame mouse look, then the world.** If `app.GetGameStarted()`
+(`Windows64_Minecraft.cpp:1945`), the loop calls `pMinecraft->applyFrameMouseLook()`
+(`:1947`, the [per-frame look path](/slop-docs/client/input/#in-world-look-applyframemouselook-windows64))
+and then `pMinecraft->run_middle()` (`:1948`) — the god-object's per-frame body
+(see [Overview §run split](/slop-docs/client/overview/#the-run-split-run--run_middle--run_end)).
+`run_middle()` iterates the occupied pads and, for each, sets the D3D viewport for
+`player->m_iScreenSection` and calls `gameRenderer->render(timer->a, bFirst)`.
+
+**3 — Camera + chunk drain (GameRenderer::render → renderLevel).**
+`GameRenderer::render` (`GameRenderer.cpp:1220`) places the camera, then — inside a
+deferred command-buffer block — drains dirty chunks up to `MAX_DEFERRED_UPDATES = 10`
+times per frame: `minecraft->levelRenderer->updateDirtyChunks()`
+(`GameRenderer.cpp:1391`, `do { … } while(shouldContinue && count < 10)`). This is
+where the [chunk-rebuild trace](#worked-trace-one-chunk-rebuild-dirty-mark-to-drawn)
+below lands. It then enters `renderLevel(a, until)` (`GameRenderer.cpp:1468`), the
+master world-draw sequence.
+
+**4 — The 7 passes.** `renderLevel` runs the ordered passes: sky
+(`renderSky`, +`renderHaloRing` only on texture-pack id `1026`,
+`GameRenderer.cpp:1514-1515`), `cull(frustum, a)`, layer-0 opaque terrain
+(`render(cameraEntity, 0, …)`), `renderEntities(cameraPos, frustum, a)` (the
+[zombie-draw trace](/slop-docs/client/entity-rendering/#worked-trace-one-zombie-drawn)),
+`renderHit`, the three transparent terrain layers `render(cameraEntity, 1..3, …)`,
+and the first-person hand. **Particles** render mid-sequence: opaque list right
+after entities (`particleEngine->render(cameraEntity, a, OPAQUE_LIST)`,
+`GameRenderer.cpp:1603`) and the translucent list among the blended layers
+(`:1695`) — the tail of the [crit-particle trace](/slop-docs/client/particles/#worked-trace-one-crit-particle-attack-to-billboard).
+
+**5 — Terrain draw = replaying compiled chunks.** Inside a terrain layer,
+`LevelRenderer::render` walks the culled `visibleLists_layer0..3` and replays each
+chunk's compiled GL display list (built in the trace below) via
+`renderChunks(from, to, layer, alpha)` — no per-face work at draw time; the geometry
+was baked at rebuild.
+
+**6 — UI on top, then present.** Back in the platform loop, after `run_middle()`
+returns, the live scenes composite over the 3D world: `ui.tick()` then `ui.render()`
+(`Windows64_Minecraft.cpp:1999-2000`), then `gameRenderer->ApplyGammaPostProcess()`
+(`:2002`). Finally the frame is presented: with VSync off outside the menu the loop
+calls `g_pSwapChain->Present(0, 0)` directly (`:2052`, real tearing via direct
+scanout), otherwise it falls through to `RenderManager.Present()` (`:2056/2060`,
+`SyncInterval=1`). That swap is what puts the frame on screen.
+
+## Worked trace: one chunk rebuild, dirty-mark to drawn
+
+This follows one terrain chunk from the block change that dirties it to the frame
+that draws its new geometry, citing every hop. The key structural fact: the
+**mark** happens on whatever thread mutated the world, the **rebuild** happens on a
+render/worker thread, and the **draw** happens a frame or two later — the three
+stages are decoupled.
+
+**1 — Mark dirty (world mutation → lock-free stack).** When the world changes a
+block it notifies `LevelRenderer` as a `LevelListener`: `tileChanged(x,y,z)`
+(`LevelRenderer.cpp:2561`) → `setDirty(x-1..z+1, nullptr)` (`:2563`). Bulk changes
+arrive through `setTilesDirty(x0..z1, level)` (`:2571`, 4J added the `level` param)
+→ `setDirty(...)` (`:2573`). `setDirty` (`LevelRenderer.cpp:2480`) converts the
+block box to a chunk box (`Mth::intFloorDiv(.., CHUNK_XZSIZE)`, `:2486-2491`) and,
+for each chunk, computes a global chunk index and **pushes it onto a lock-free
+stack** rather than touching the flags directly:
+`dirtyChunksLockFreeStack.Push((int *)(index + 2))` (`:2545`). The `+2` bias
+reserves `1` as the "some un-listed chunk went dirty" sentinel and `0`/`nullptr` as
+the stack's empty marker (comment `:2503-2507`). This is a 4J change: it avoids
+locking `m_csDirtyChunks` on the mutation thread.
+
+**2 — Drain the stack (per frame, main render thread).** Once per frame, step 3 of
+the [frame trace](#worked-trace-one-frame-platform-loop-to-pixels) calls
+`updateDirtyChunks()` (`LevelRenderer.cpp:1957`). Under `m_csDirtyChunks` it pops
+every pushed index and folds it into the real flags:
+`setGlobalChunkFlag(index - 2, CHUNK_FLAG_DIRTY)` (`:2007`); the sentinel `1` just
+sets `dirtyChunkPresent` (`:1993`). It then scans for the nearest dirty chunks,
+snapshots each with `makeCopyForRebuild(chunk)` (`:2206`, taken *inside* the
+critical section so the copy is consistent while the rebuild runs *outside* it).
+
+**3 — Rebuild (parallel workers).** On `_LARGE_WORLDS` the drained batch is rebuilt
+across worker threads: `updateDirtyChunks` signals `s_activationEventA[index-1]`
+(`:2250`) and the nearest chunk is done on the main thread
+(`permaChunk[index].rebuild()`, `:2235`). Each worker sits in
+`rebuildChunkThreadProc` (`LevelRenderer.cpp:4044`), waits on its activation event
+(`:4060`), and calls `permaChunk[index + 1].rebuild()` (`:4063`). The pool is
+`MAX_CHUNK_REBUILD_THREADS = 7` threads rebuilding up to
+`MAX_CONCURRENT_CHUNK_REBUILDS = 8` chunks (`LevelRenderer.h:300-301`); the producer
+blocks on `s_rebuildCompleteEvents->WaitForAll(INFINITE)` (`:2255`) until the batch
+is done. Each worker gets its own thread-local `Tesselator`
+(`Tesselator::CreateNewThreadStorage(1024*1024)`, `:4049`) so there is no shared
+vertex buffer to contend on.
+
+**4 — Bake geometry into a display list (`Chunk::rebuild`).** `Chunk::rebuild`
+(`Chunk.cpp:182`) grabs the thread's tesselator (`:195`), and for each render layer
+opens a GL display list — `glNewList(lists + currentLayer, GL_COMPILE)`
+(`Chunk.cpp:391`), `t->useCompactVertices(true)` (`:395`), `t->begin()` (`:405`) —
+then walks the chunk's tiles and emits every visible face through the tile renderer:
+`tileRenderer->tesselateInWorld(tile, x, y, z)` (`Chunk.cpp:434`), plus the
+slime-inner pass (`:428`). It closes the batch with `t->end()` (`:457`) and
+`glEndList()` (`:460`). The result is a **compiled** per-layer display list keyed by
+the chunk's global index (`lists = getGlobalIndexForChunk(...) * CHUNK_RENDER_LAYERS
++ chunkLists`, `:218-219`). No per-face work remains for draw time.
+
+**5 — Drawn next frame.** With the flag cleared (`chunk->clearDirty()`, `:2202`) and
+the list compiled, the chunk is now visible to `cull()`, which files it into
+`visibleLists_layer{0..3}`. Step 5 of the frame trace replays that compiled list via
+`renderChunks(...)` — so the block change becomes visible one to a few frames after
+the mutation, which is exactly why `DestroyedTileManager`
+([above](#destroyedtilemanager-4j)) keeps a temporary collision AABB for a
+freshly-mined block until its chunk's geometry catches up.
+
 ## Lighting and camera
 
 `Lighting` (`Lighting.cpp`) is the classic two-directional-light GL setup.

@@ -249,6 +249,66 @@ interfaces added"). `ItemInHandRenderer` also owns the `Minimap`
 (`ItemInHandRenderer.h:34`), because the in-hand map item and the minimap share a
 render surface.
 
+## Worked trace: one zombie drawn
+
+This follows a single zombie from the entity-render pass through cull, dispatch, and
+the living-entity draw sequence, citing every hop. It is the concrete version of the
+[`LivingEntityRenderer` hierarchy](#the-entityrenderer-hierarchy) above, and it is
+the pass invoked as step 4 of the [frame trace](/slop-docs/client/rendering/#worked-trace-one-frame-platform-loop-to-pixels).
+
+**1 — The pass (`renderEntities`).** `renderLevel` calls
+`LevelRenderer::renderEntities(cam, culler, a)` (`LevelRenderer.cpp:546`). It first
+`prepare()`s both dispatchers with the level, textures, font and camera entity
+(`EntityRenderDispatcher::instance->prepare(...)`, `:558`), sets the interpolated
+camera offsets `EntityRenderDispatcher::xOff/yOff/zOff` (`:576-578`), turns on the
+entity light layer (`:583`), and pulls every entity in the player's level
+(`getAllEntities()`, `:585`).
+
+**2 — Cull.** For each entity it computes
+`shouldRender = entity->shouldRender(cam) && (entity->noCulling || isPlayerVehicle ||
+culler->isVisible(entity->bb))` (`LevelRenderer.cpp:597`). The `culler` is one of the
+three [cullers](/slop-docs/client/rendering/#cullers) — a `ViewportCuller` in
+split-screen, a `FrustumCuller` fullscreen — so a zombie behind the camera or outside
+the frustum is dropped here. A leashed mob whose *leash holder* is visible is kept
+even when the mob itself is culled (`:600-608`). Surviving that, and not being the
+first-person camera target (`:616`) or in an unloaded chunk (`:618`), it calls
+`EntityRenderDispatcher::instance->render(entity, a)` (`LevelRenderer.cpp:623`).
+
+**3 — Interpolate + set light (`dispatcher::render`).** The one-arg
+`EntityRenderDispatcher::render(entity, a)` (`EntityRenderDispatcher.cpp:263`)
+interpolates the zombie's position with the partial-tick `a` (`:270-272`), unwraps
+its body rotation across the 0/360 seam (`:276-288`), packs its light color into
+`GL_TEXTURE1` (`:290-297`), and forwards to the positional overload
+`render(entity, x-xOff, y-yOff, z-zOff, r, a)` (`:300`).
+
+**4 — Dispatch by `eINSTANCEOF` (`getRenderer`).** The positional
+`render(...)` (`EntityRenderDispatcher.cpp:303`) resolves the renderer:
+`EntityRenderer *renderer = getRenderer(entity)` (`:305`), which is
+`getRenderer(entity->GetType())` (`:220-222`) — an `unordered_map<eINSTANCEOF,
+EntityRenderer*>` lookup. For a zombie `eTYPE_ZOMBIE` → the `ZombieRenderer` registered
+at boot (`EntityRenderDispatcher.cpp:103-184`; `eTYPE_PIGZOMBIE` maps to a *separate*
+`ZombieRenderer`). It then calls `renderer->render(entity, x, y, z, rot, a)` (`:310`)
+and `renderer->postRender(...)` for the shadow (`:311`).
+
+**5 — The living-entity draw (`LivingEntityRenderer::render`).**
+`ZombieRenderer::render` (`ZombieRenderer.h:34`) does its own prep —
+`swapArmor(mob)` — then chains up: `HumanoidMobRenderer::render(...)` →
+`MobRenderer` → `LivingEntityRenderer::render` (`LivingEntityRenderer.h:8`,
+`LivingEntityRenderer.cpp:50`), the shared draw body. In order: `setupRotations(mob, bob, bodyRot, a)`
+(`:99`, applies body/head yaw and death-tilt), `renderModel(mob, wp, ws, bob,
+headRot-bodyRot, headRotx, fScale)` (`:119`) — which **binds the texture**
+(`bindTexture(mob)` → `getTextureLocation(...)`, `:259`) and renders the humanoid
+`Model`'s bones (`resModel->render(...)`, `:262`) — and then the **armor / held-item
+layers**: the `HumanoidMobRenderer` armor passes (`armor->render(...)`, `:127`,
+`:162`), with a foil `ENCHANT_GLINT_LOCATION` bind for enchanted armor (`:141`).
+
+**6 — Back to the batch.** Each `Model`/`ModelPart::render` emits its cube quads into
+the shared `Tesselator` and flushes them, so the zombie's pixels land in the same
+frame's terrain-adjacent draw. Name tags (`renderName`, `:404`) and arrows sticking
+in the mob (`renderArrows`, `:328`, which recurses back through the dispatcher for
+each arrow, `:369`) are drawn as trailing overlays. Control returns to
+`renderEntities`, which advances to the next surviving entity.
+
 ## Deltas from vanilla LCE TU19
 
 - **`eINSTANCEOF`-keyed dispatch** replaces Java's `Class`-keyed

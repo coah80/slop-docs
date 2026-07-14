@@ -7,19 +7,30 @@ Input on console splits cleanly along the [two-GUI-stacks](/slop-docs/client/ove
 line. **Menu input** flows through the live `UIController` and lands in each
 `UIScene::handleInput`. **In-world look/movement** is applied to the
 `MultiplayerLocalPlayer` — on Windows64 there is an extra per-frame mouse-look
-path that bypasses the 20 Hz tick. The classic Java `Input`/`KeyMapping` classes
-still compile but are essentially dead.
+path that bypasses the 20 Hz tick. Of the two classic Java classes, `KeyMapping`
+is dead, but `Input` is **not**: it was repurposed as the per-player movement-intent
+object and its `tick()` runs live every player tick (see
+[the vestigial classes](#the-vestigial-classic-classes-input-and-keymapping) below).
 
 Files: `Input.h`/`.cpp`, `KeyMapping.h`/`.cpp`, `Common/UI/UIController.cpp`,
 `Common/UI/UIScene.h`, `Common/UI/UIGroup.cpp`, `Minecraft.cpp`
 (`applyFrameMouseLook`).
 
-## The vestigial classic classes: Input and KeyMapping
+## The classic classes: Input (live) and KeyMapping (dead)
 
 `class Input` (`Input.h`) is the Mojang movement-intent object — `xa`, `ya`,
 `jumping`, `sneaking`, `sprinting`, and `virtual void tick(LocalPlayer *player)`.
-`class KeyMapping` (`KeyMapping.h`) is the name/key binding record. The header is
-blunt about its status:
+Despite being a Java port, **it is live**: each `LocalPlayer` owns an `Input *input`
+(`LocalPlayer.h:28`), constructed per pad (`Minecraft.cpp:1097`,
+`localplayers[idx]->input = new Input()`), and `LocalPlayer::aiStep` calls
+`input->tick(this)` (`LocalPlayer.cpp:230`) every player tick. `Input::tick`
+(`Input.cpp:27`) is where mouse-look and the jump/movement intent are actually
+computed — its own comment says *"4J Stu - Assume that we only need one input class …
+based on the ControllerInput class in the Java"* (`Input.cpp:29-30`). See the
+[keypress trace](#worked-trace-one-keypress-to-a-jump-and-the-menu-fork) below.
+
+`class KeyMapping` (`KeyMapping.h`) is the one that is genuinely dead — the name/key
+binding record. The header is blunt about its status:
 
 ```cpp
 // KeyMapping.h
@@ -36,9 +47,9 @@ public:
 `Options` still holds a `KeyMapping *keyMappings[14]` table
 (`Options.h:74-90`) — `keyUp`, `keyJump`, `keyAttack`, `keyUse`, etc. — because
 it is a straight port of the Java options file, but the console build does not
-route input through it. Real binding lives in the platform `InputManager` and the
-`ACTION_*` enum below. Do not document `Input`/`KeyMapping` as the live input
-path; they are kept for source parity with the Java codebase.
+route input through it. Real *binding* lives in the platform `InputManager` and the
+`ACTION_*` enum below; `KeyMapping` is kept only for source parity with the Java
+codebase. (`Input` is the exception — it is repurposed and live, as above.)
 
 ## Menu input: UIController::tickInput → UIScene::handleInput
 
@@ -229,6 +240,66 @@ Key behaviours:
 > special cases, falling back to the base spawn-egg aux via
 > `EntityIO::idsSpawnableInCreative`) into the hotbar. See the
 > [Changelog v1.1.0b section](/slop-docs/features/changelog/#v110b-current).
+
+## Worked trace: one keypress to a jump (and the menu fork)
+
+This follows a single Windows64 keypress from the OS message to its effect, citing
+every hop, and shows the **`GetMenuDisplayed` fork** that sends the same physical key
+to either a menu action or player movement — the two never both consume it, because
+the fork is gated on whether the mouse is grabbed.
+
+**1 — Capture (`WndProc`).** Every OS key event enters
+`WndProc(hWnd, message, wParam, lParam)` (`Windows64_Minecraft.cpp:612`). A
+`WM_KEYDOWN` (`:660`) is normalized and stored via `g_KBMInput.OnKeyDown(vk)`
+(`:687`); `WM_KEYUP` → `OnKeyUp` (`:700`); text goes to `OnChar` (`:657`); mouse
+buttons/move/wheel to `OnMouseButtonDown/OnMouseMove/OnMouseWheel` (`:705-728`); and
+raw relative mouse deltas to `OnRawMouseDelta` (`:743`). Nothing is *acted on* here —
+`g_KBMInput` (a `KeyboardMouseInput`) is just the edge/held-state buffer, drained
+once a frame by `g_KBMInput.Tick()` (`:1836`).
+
+**2 — The grab decides the fork.** Whether the key becomes a menu action or a move
+intent is decided entirely by **mouse grab**, which tracks whether a menu is up. The
+loop sets `shouldCapture = app.GetGameStarted() && !ui.GetMenuDisplayed(0) &&
+pMinecraft->screen == nullptr` (`Windows64_Minecraft.cpp:2068`) and grabs the mouse
+only when that holds (`SetMouseGrabbed(true)`, `:2082`); pressing Escape in-world
+releases it (`Input.cpp:203-205`). So `IsMouseGrabbed()` is a live proxy for "no menu
+displayed."
+
+**3a — Menu branch (menu up → `UIController`).** When a menu is displayed the mouse
+is *not* grabbed, and `ui.tick()` (`UIController.cpp:559`) runs `tickInput()`
+(`:998` — see [menu input](#menu-input-uicontrollertickinput--uiscenehandleinput)),
+which for KBM translates the key to an abstract `ACTION_*` (e.g. `VK_RETURN` →
+`ACTION_MENU_OK`, `UIController.cpp:1651-1662`) and routes it through
+`UIGroup::handleInput` → `UIScene::handleInput`. In this branch a Space press does
+**not** reach the player.
+
+**3b — Gameplay branch (no menu → `Input::tick`).** When the mouse *is* grabbed, the
+key feeds movement instead. Each player tick, `LocalPlayer::aiStep` calls
+`input->tick(this)` (`LocalPlayer.cpp:230`). `Input::tick` (`Input.cpp:27`) reads the
+jump intent from two sources OR'd together (`Input.cpp:188-194`):
+
+```cpp
+unsigned int jump = InputManager.GetValue(iPad, MINECRAFT_ACTION_JUMP);   // pad
+bool kbJump = (iPad == 0) && g_KBMInput.IsMouseGrabbed()
+              && g_KBMInput.IsKBMActive()
+              && g_KBMInput.IsKeyDown(KeyboardMouseInput::KEY_JUMP);       // keyboard
+if( (jump > 0 || kbJump) && localgameModes[iPad]->isInputAllowed(MINECRAFT_ACTION_JUMP) )
+    jumping = true;
+```
+
+The keyboard leg is explicitly re-gated on `IsMouseGrabbed()` (`:191`) — belt-and-
+braces so a keystroke can never drive movement while a menu is up. The same tick pulls
+mouse-look deltas (again gated on grab, `Input.cpp:167`) and applies them via
+`player->interpolateTurn(turnX, turnY)` (`:184`).
+
+**4 — Effect.** `Input::tick` leaves the result on the `Input` object's fields
+(`jumping`, `xa`, `ya`). Back in `LocalPlayer::aiStep`, the physics step reads
+`input->jumping`/`input->xa`/`input->ya` (`LocalPlayer.cpp:225-234`) and turns
+`jumping` into upward velocity — the player leaves the ground. Discrete action
+presses (inventory, attack, use) take a parallel path: they are gathered into the
+player's `ullButtonsPressed` bitmask each tick (`Minecraft.cpp:1476-1480`), with the
+KBM legs folded in for pad 0 (e.g. left-mouse → `MINECRAFT_ACTION_ACTION`,
+`Minecraft.cpp:3662`; right-mouse → `MINECRAFT_ACTION_USE`, `:3696`).
 
 ## Server-side command input
 

@@ -254,6 +254,67 @@ When active, it scatters up to `667 × 2` sample points across a 16- and
 `BarrierParticle` at the centre of every barrier block found. This mirrors the
 vanilla Java barrier-particle behaviour that never shipped in stock LCE TU19.
 
+## Worked trace: one crit particle, attack to billboard
+
+This follows a single crit star from the melee hit that spawns it to the frame that
+draws it, citing every hop. It also shows the **one path that bypasses the
+[`LevelRenderer` factory](#the-particle-factory-levelrenderer)** — crit particles are
+constructed directly, not through `addParticle`.
+
+**1 — The hit (`GameMode` → `Player::attack`).** A left-click that lands on a mob
+reaches `MultiPlayerGameMode::attack(player, entity)`, which sends the
+`InteractPacket::ATTACK` and calls `player->attack(entity)`
+(`MultiPlayerGameMode.cpp:438`). `Player::attack`
+(`Minecraft.World/Player.cpp`) computes damage and knockback and, if the swing
+qualified as a critical hit, calls the virtual `crit(entity)`
+(`Minecraft.World/Player.cpp:1710`, inside `if (bCrit)`). `crit` is declared
+`virtual` on `Player` (`Player.h:291`), so on the client the override that runs is
+`LocalPlayer::crit` (`LocalPlayer.h:127`).
+
+**2 — Spawn (direct construction, no factory).** `LocalPlayer::crit`
+(`LocalPlayer.cpp:798`) does **not** call `LevelRenderer::addParticle`. It builds the
+particle itself and hands it straight to the engine (`LocalPlayer.cpp:800-802`):
+
+```cpp
+shared_ptr<CritParticle> critParticle = std::make_shared<CritParticle>(
+    reinterpret_cast<Level*>(minecraft->level), e);
+critParticle->CritParticlePostConstructor();
+minecraft->particleEngine->add(critParticle);
+```
+
+(`magicCrit` (`:806`) is the same call with `eParticleType_magicCrit`, producing a
+`CritParticle2`-style variant.) The factory `switch`'s `eParticleType_crit` case
+(`LevelRenderer.cpp:3024`) exists for *world-event* crits routed by enum; the
+player's own melee crit takes this shorter direct path.
+
+**3 — Bucketing (`ParticleEngine::add`).** `ParticleEngine::add(p)`
+(`ParticleEngine.cpp:35`) files the particle into the
+`particles[dim][tex][list]` deque. The dimension slot comes from
+`Level::dimension->id` (overworld `0`, nether `1`, End `2`); the blend list is chosen
+by alpha — `p->getAlpha() != 1.0f ? TRANSLUCENT_LIST : OPAQUE_LIST`
+(`ParticleEngine.cpp:55`); and the per-type cap keyed off `p->GetType()` pops the
+oldest particle when the bucket is full (default `MAX_PARTICLES_PER_LAYER = 200`).
+
+**4 — Per-tick physics.** Once per world tick (not per frame),
+`Minecraft.cpp:4281` calls `particleEngine->tick()` when not paused.
+`ParticleEngine::tick` (`ParticleEngine.cpp:63`) walks every `[dim][tex][list]`
+bucket and calls `p->tick()` on each (`:81`), swap-removing any whose `removed` flag
+is set or whose level went stale (`:82-87`). The crit particle's own `tick()`
+advances its `age`, applies `gravity` to `yd`, moves it, and marks itself `removed`
+once `age >= lifetime`.
+
+**5 — Render (blend-list batch → Tesselator).** During the frame,
+`GameRenderer::renderLevel` calls the engine twice by blend list — the opaque list
+right after entities (`particleEngine->render(cameraEntity, a, OPAQUE_LIST)`,
+`GameRenderer.cpp:1603`) and the translucent list among the blended terrain layers
+(`:1695`). `ParticleEngine::render(player, a, list)` (`ParticleEngine.cpp:94`) sets
+the camera-relative `Particle::xOff/yOff/zOff` from the interpolated player position
+(`:113-115`), sets the GL blend/alpha state (`:118-120`), and for each non-entity
+texture slot batches every particle in that bucket into the shared `Tesselator` as a
+camera-facing billboard quad — emitting the crit star's four vertices with its tint
+and current UV cell, then flushing. That flush is what puts the crit on screen, in the
+same frame's [render sequence](/slop-docs/client/rendering/#worked-trace-one-frame-platform-loop-to-pixels).
+
 ## GUI particles (menu background)
 
 Separate from the world particle engine, the classic menu screens have their own
