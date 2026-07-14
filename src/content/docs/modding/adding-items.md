@@ -210,20 +210,32 @@ the whole chain down ~8 lines (`Item::staticCtor` there is line 51).
 
 See [Items](/slop-docs/world/items/) for the full tool/weapon hierarchy.
 
-## Step 5 — Creative menu / sort category
+## Step 5 — Creative menu placement
 
-neoLegacy does **not** maintain a hand-written creative-inventory list in
-`Minecraft.World`; there is no `fillCreativeModeInventory` array to edit. Items
-sort into their creative tab from the `setBaseItemTypeAndMaterial(baseType,
-material)` call — the `eBaseItemType_*` and `eMaterial_*` enums in `Item.h`. Food
-items typically skip it (Beetroot does), which places them with the other
-uncategorized consumables; tools and blocks set it explicitly (see the table in
-Step 3). If your item needs a specific creative grouping, copy the
-`eBaseItemType_*` value from the most similar existing item.
+The creative inventory is a **hand-written list**, not registry-driven. The tabs
+are filled by explicit `ITEM(id)` / `ITEM_AUX(id, aux)` macro lines in
+`Minecraft.Client/Common/UI/IUIScene_CreativeMenu.cpp` — the same file blocks use.
+Beetroot is in there by hand at `IUIScene_CreativeMenu.cpp:571`
+(`ITEM(Item::beetroot_Id)`), beetroot soup at `:572`, elytra at `:439`. There is
+**no** loop over `Item::items` anywhere that builds the creative contents;
+`Minecraft.Client/CreativeMode.cpp` only fills the survival-swap hotbar
+(`CreativeMode.cpp:42`), it does not enumerate the registry.
 
-The creative-menu *rendering* is client-side (`Minecraft.Client/CreativeMode.cpp`)
-and iterates the registry, so a correctly registered item shows up automatically
-— no client edit needed just to make it appear.
+The consequence: **a correctly registered item does *not* appear in creative on
+its own.** Add a line for yours to the group that fits (the macros are defined at
+`IUIScene_CreativeMenu.cpp:22`; groups are opened with `DEF(...)` at `:24`):
+
+```cpp
+    ITEM(Item::roasted_chestnut_Id)
+```
+
+Use `ITEM_AUX(id, aux)` for a data-variant (as the enchanted golden apple does at
+`IUIScene_CreativeMenu.cpp:538`). Sorting *within* a tab still comes from the
+`setBaseItemTypeAndMaterial(baseType, material)` call (the `eBaseItemType_*` /
+`eMaterial_*` enums in `Item.h`), so set that on tools/blocks; a plain food item
+can skip it. But the item only shows up at all because of the explicit `ITEM(...)`
+line. An item you don't add here is still obtainable via `/give` (Step 6) — it is
+just invisible in creative.
 
 ## Step 6 — `/give` support is automatic (ItemNameMap codegen)
 
@@ -318,10 +330,81 @@ override `registerIcons` and `getIcon(int auxValue)` on your subclass —
 `ElytraItem` does exactly this (`ElytraItem.h`, `registerIcons` /
 `getLayerIcon` / `getIcon` overrides). A plain food item needs none of that.
 
+If the sprite name doesn't resolve (typo in `setIconName`, or the PNG isn't in
+`textures/items/`), the atlas is the `items` `PreStitchedTextureMap` built with a
+`missingNo` fallback (`Textures.cpp:314`). What you actually see depends on the
+build: `PreStitchedTextureMap::registerIcon` (`PreStitchedTextureMap.cpp:279`)
+prints `Could not find uv data for icon <name>` and hits `DEBUG_BREAK()` on a
+debug build (`:299-301`), and on a release build falls through to
+`missingPosition` — the `missingno` icon (`NAME_MISSING_TEXTURE = L"missingno"`,
+`PreStitchedTextureMap.cpp:22`) mapped to UV `(0,0,1,1)`. So a misnamed icon
+**breaks into the debugger** in debug and renders the missingno placeholder in
+release, rather than crashing outright.
+
+## What can go wrong
+
+Item registration has almost no runtime guards, so most mistakes fail either at
+link time or *silently* — the item exists but is wrong. The verified behaviours:
+
+### Duplicate item index → CONFLICT logged, then overwritten
+
+`Item::Item(int id)` (`Item.cpp:624`) does **not** reject a taken slot. It checks
+`if (items[256 + id] != nullptr)` and, if so, prints `CONFLICT @ <id>` via
+`app.DebugPrintf` (`Item.cpp:645`) — then unconditionally writes
+`items[256 + id] = this;` on the next line, **overwriting** the earlier item.
+So a collision does not crash; whichever `staticCtor` line runs last wins, and
+every existing save that stored the old item silently reads the new one. The only
+warning is that one `CONFLICT @ N` line in the debug log — grep both `Item.cpp`
+(ctor numbers) and `Item.h` (the `_Id` block) *before* choosing rather than
+relying on it.
+
+### Forgot the `_Id` constant → no `/give`, and no build error
+
+`GenerateItemNameMap.cmake` scrapes `static const int NAME_Id = NUMBER;` lines to
+build the name→id map (Step 6). If you skip the `_Id` constant, the field still
+registers and works in-world, but the name map never learns it, so
+`/give <you> roasted_chestnut` fails with an unknown-item error while the build
+stays green. The build log tell is the map showing "up-to-date" instead of
+re-emitting — your `_Id` line never landed in `Item.h`.
+
+### Forgot the CMake source entry → unresolved external at link
+
+If your item is its own subclass (a new `FoodItem` derivative, a tool, etc.) and
+you don't add its `.cpp`/`.h` to `Minecraft.World/cmake/sources/Common.cmake`,
+the file is never compiled, but `Item::staticCtor` still `new`s the class — the
+linker fails with an unresolved external for its ctor and vtable, e.g.
+`unresolved external symbol "public: __cdecl RoastedChestnutItem::...(int)"`.
+(A plain `new FoodItem(181, ...)` with no new class avoids this entirely — you're
+only touching existing translation units.)
+
+### Forgot the string entry → renders the literal `IDS_` key
+
+`setDescriptionId(IDS_ROASTED_CHESTNUT)` is just a table key. A missing
+`stringsGeneric.xml` entry follows the loc fallback:
+`StringTable::getString(const wstring&)` (`StringTable.cpp:463`) returns **the
+literal key string** when it isn't found, so the inventory shows the raw text
+`IDS_ROASTED_CHESTNUT` where the name should be. (The numeric-id overload,
+`getString(int)` at `:478`, instead returns an empty string for an out-of-range
+id — a *blank* name — so the two failure shapes differ by which lookup path the
+UI took.) Add the XML entry before testing.
+
+### Forgot the creative line → item is `/give`-only
+
+Per Step 5, an item not added to `IUIScene_CreativeMenu.cpp` never appears in the
+creative inventory — but `/give` still works, so it's easy to think the item is
+"broken" when it's merely absent from a hand-written list.
+
+### Forgot the icon → missingno (release) or debugger break (debug)
+
+See Step 8: a bad `setIconName` or missing `textures/items/*.png` breaks into the
+debugger on a debug build (`PreStitchedTextureMap.cpp:299-301`) and renders the
+`missingno` placeholder in release — it does not crash the game.
+
 ## Testing checklist
 
 - [ ] **Build is clean** — no duplicate `_Id` or constructor-index collisions
-  (grep both `Item.cpp` and `Item.h`).
+  (grep both `Item.cpp` and `Item.h`); a collision only logs `CONFLICT @ N`
+  (`Item.cpp:645`) and overwrites, it does not fail the build.
 - [ ] **`ItemNameMap.h` regenerated** — build log shows
   `GenerateItemNameMap: wrote .../ItemNameMap.h`; if it says "up-to-date" your
   `_Id` line did not land in `Item.h`.
@@ -329,9 +412,9 @@ override `registerIcons` and `getIcon(int auxValue)` on your subclass —
   registry slot + name map).
 - [ ] **Correct display name and tooltip** in-inventory (proves the
   `stringsGeneric.xml` entries and the generated `strings.h`).
-- [ ] **Icon renders** (not the magenta `missingNo` placeholder from
-  `Textures.cpp:314`) — confirms the `textures/items/` sprite matches
-  `setIconName`.
+- [ ] **Icon renders** (not the `missingno` placeholder;
+  `PreStitchedTextureMap.cpp:22`) — confirms the `textures/items/` sprite matches
+  `setIconName`. On a debug build a bad name breaks into the debugger instead.
 - [ ] **Behaviour works** — for the chestnut, eating restores the nutrition you
   passed to `FoodItem`; for a tool, mining speed/durability match the `Tier`.
 - [ ] **Save/reload round-trip** — place the item in a chest, exit, reload; it is

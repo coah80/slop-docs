@@ -90,6 +90,32 @@ for the current bootstrap. The *ordering* is unchanged.
 Each subsystem also has a reference page under [`/slop-docs/world/`](/slop-docs/world/overview/)
 documenting its full registry.
 
+### How mistakes show up
+
+Because there is no mod loader and no validation pass, most modding mistakes here
+**do not raise a friendly error** — they fail the way hand-written C++ registries
+fail. Four shapes recur across every guide's "What can go wrong" section, worth
+internalising up front:
+
+- **Silent overwrite on an ID collision.** The tile registry writes
+  `Tile::tiles[id] = this;` with the occupancy check commented out
+  (`Tile.cpp:721-728`) — no warning at all. The item registry is barely louder: it
+  logs `CONFLICT @ N` (`Item.cpp:645`) then overwrites anyway. A collision corrupts
+  every existing save silently, so grep before you pick an ID.
+- **Unresolved external at link** when you add a new `.cpp` but forget its line in
+  `cmake/sources/Common.cmake` (the modules list sources explicitly, never glob),
+  or forget the out-of-line `static` definition in the `.cpp`. The symbol named in
+  the error is your class's constructor or vtable.
+- **Literal `IDS_` key rendered** when a loc entry is missing — the string table
+  returns the key itself (`StringTable::getString`, `StringTable.cpp:463`) rather
+  than crashing.
+- **Missing-texture / missing-renderer** paths that `DEBUG_BREAK()` on a debug
+  build but fall back (to a `missingno` icon) or crash (a bad renderer pointer) on
+  release.
+
+Each how-to guide documents the exact behaviour for its subsystem. The theme:
+verify by grepping the source, not by waiting for an error message.
+
 ## The registration idiom (`staticCtor`)
 
 Every registry in the codebase follows the same shape, and every modding guide

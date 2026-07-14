@@ -431,6 +431,57 @@ flips a flag, a `Goal` reads the flag and changes movement, and `tick()` acts on
 the result. To add your own "trigger" behavior, follow the same three-part split
 rather than cramming logic into one method.
 
+## What can go wrong
+
+Goals have no registry and no validation pass, so a broken goal doesn't error —
+it just does nothing, or fights another goal. The mechanics behind each symptom:
+
+### `canUse()` never returns true → the goal silently does nothing
+
+The selector only starts a goal when `canUseInSystem()` **and** `canUse()` are both
+true (`GoalSelector.cpp:82`). A `canUse()` that always returns false (wrong
+distance test, target-type mismatch, a null-check that always trips) means the
+goal is installed but never runs — no log, no crash. Log or breakpoint `canUse()`
+in the situation you expect it to fire; a goal that never returns true is the most
+common "my AI does nothing" cause.
+
+### Wrong / missing control flags → two goals fight over navigation
+
+`canCoExist` is a pure bitmask test: two goals coexist iff their control masks are
+disjoint (`(A->getRequiredControlFlags() & B->getRequiredControlFlags()) == 0`,
+`GoalSelector.cpp:146-148`). If your goal moves the mob but you forgot
+`setRequiredControlFlags(Control::MoveControlFlag)`, the selector believes it's
+compatible with `RandomStrollGoal` — **both run and issue competing navigation
+targets**, and the mob jitters or freezes. Conversely, over-declaring flags makes
+your goal needlessly exclude compatible goals. Declare exactly the controls you
+drive. A goal with no flags coexists with everything.
+
+### Priority ties / bad numbers → the wrong goal wins the control
+
+Priority is just a sort key, **lower = more important** (`addGoal(int prio, ...)`,
+`GoalSelector.h:31`); the selector re-plans only every `newGoalRate` ticks
+(default `3`, `GoalSelector.cpp:16` — roughly 6–7×/sec, not every frame). Two
+goals that share a control resolve by priority number, so a circling goal numbered
+*above* the melee goal will never preempt melee for the Move+Look controls. If a
+goal must not be cut off mid-action, override `canInterrupt()` to `false` (it
+defaults to `true`, `Goal.cpp:14-16`) — otherwise a higher-priority goal preempts
+it the next planning tick.
+
+### `stop()` doesn't clean up → the mob keeps moving
+
+`stop()` defaults to a no-op (`Goal.cpp`). If your goal drove navigation and its
+`stop()` doesn't call `mob->getNavigation()->stop()`, the mob keeps walking toward
+the last target after the goal ends. The `GoalSelector` owns and deletes the goal
+(`GoalSelector.cpp:23`), so there's no leak — but the movement state is yours to
+reset.
+
+### Interaction override that ignores the client/server split → desyncs
+
+For `mobInteract`-style overrides (the creeper-ignition pattern), mutating state
+without gating on `!level->isClientSide` runs the side effect twice (once per
+side) and can desync the client's view of the mob. Follow the creeper split:
+sound + arm-swing on both sides, state change and item damage server-only.
+
 ## Testing checklist
 
 - [ ] The mob compiles and spawns with your goal installed (no missing include /

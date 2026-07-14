@@ -293,6 +293,64 @@ Every recipe's first argument is the output `ItemInstance`. Pick the constructor
 The stone variants use the `_Id`+data form (diorite is stone data
 `StoneTile::DIORITE`); the dyes use the item+aux form (`DyePowderItem::RED`).
 
+## What can go wrong
+
+Recipes are the one subsystem with almost no static safety net — both DSL entry
+points are true C `varargs` (`va_list`/`va_arg`), so the compiler cannot check
+your call. The failure modes:
+
+### Type string doesn't match the arguments → reads stack garbage at runtime
+
+`addShapedRecipy(ItemInstance*, ...)` (`Recipes.cpp:1276`) walks the type-code
+string and pulls one `va_arg` per code (`va_start` at `Recipes.cpp:1295`). The
+type string is the **only** thing telling the parser how many arguments follow and
+what each is. If it has one too many codes, or a `t` where you passed an `Item*`,
+the parser reads **whatever happens to be next on the stack** as a `Tile*` /
+`Item*` / `wchar_t*` — the build is clean, but at registration time you get a
+garbage ingredient, a wrong pattern, or a crash dereferencing a junk pointer.
+There is no error message. Count your codes against your arguments one-for-one:
+`L"sczg"` = exactly one row string, one key char, one `ItemInstance*`, one group
+char, in that order.
+
+### Row lengths / `s`-count wrong → misshaped or truncated recipe
+
+For shaped recipes the width is taken from the **last** row parsed
+(`Recipes.cpp:1329`) and the height from the number of `s` codes. Rows of unequal
+length, or an `s` count that doesn't match the row strings you passed, produce a
+grid the game will never match against — the recipe silently never crafts. Keep
+every row string the same length and one `s` per row.
+
+### Unrecognised group char → dumped into Decoration
+
+The trailing `g` char is decoded by a switch that ends in `default:
+eGroupType_Decoration` (`Recipes.cpp:1391-1392`, shaped; the shapeless parser
+mirrors it at `:1487-1488`). Any char that isn't `S/T/F/A/M/V/D` silently lands the recipe in
+the Decoration tab instead of erroring — so a typo'd group means "my recipe isn't
+where I put it," not a build failure.
+
+### Inserting mid-handler → shifts an existing tab's layout
+
+Handler order is preserved into the menu grid (Step 5's caution). Inserting into
+the middle of a handler renumbers everything after it visually; append instead
+unless you specifically need the position.
+
+### Smelting: plain-ID vs instance overload → data-variants collide
+
+`addFurnaceRecipy(int inputId, ...)` keys on the raw id (`recipies[itemId]`,
+`FurnaceRecipes.cpp:56`); the instance overload packs the aux value in
+(`itemId | (data << 12)`, `:62`). Use the **plain-ID** overload for a
+data-specific input (e.g. raw salmon) and it keys on the base id, colliding with
+the sibling variant's recipe — one of them wins. Use the instance overload when
+the input's data matters.
+
+### Referencing an item by a stale `_Id` → wrong or missing input
+
+Smelting inputs and many ingredients reference items by `_Id`
+(`FurnaceRecipes.cpp:27` uses `Item::rabbit_Id`). If the `_Id` constant is wrong
+or renamed (see [Adding Items → Step 2](/slop-docs/modding/adding-items/)), the
+recipe compiles but keys on the wrong item and never triggers for the input you
+intended.
+
 ## Testing checklist
 
 - [ ] **Build is clean** — the varargs are unchecked at compile time, so a

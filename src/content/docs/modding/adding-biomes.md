@@ -336,6 +336,78 @@ the client localization files (the mesa strings live there). This is the same
 `IDS_*` / string-table pattern used for blocks and items — see
 [Adding Blocks → Localization](/slop-docs/modding/adding-blocks/).
 
+## What can go wrong
+
+Every failure below is grounded in how the biome system actually behaves at this
+snapshot — the array is raw pointers with no registration guard, so most mistakes
+surface as a crash or a *silently wrong* biome rather than a build error.
+
+### Forgot the `cmake/sources/Common.cmake` entry → link error
+
+`AshlandBiome.cpp` is listed explicitly, not globbed (`MesaBiome.cpp` sits in the
+same list). Omit it and `AshlandBiome.cpp` is never compiled, but
+`Biome::staticCtor()` still calls `new AshlandBiome(44)` — so the linker fails
+with an unresolved external for the ctor and vtable, e.g.
+`unresolved external symbol "public: __cdecl AshlandBiome::AshlandBiome(int)"`
+and `"const AshlandBiome::``vftable'"`. That is the same class-symbol shape any
+missing-source-file omission produces.
+
+### Registered the biome but never wired the layer → it never generates
+
+`Biome::staticCtor()` only fills `Biome::biomes[44]`; it does **not** make the id
+reachable by world-gen. If you skip [Step 6](#step-6--slot-it-into-the-biome-selection-layer),
+`BiomeInitLayer` never emits id 44, so no chunk ever asks for it and Ashland
+simply does not appear — no error, no crash, the world just never contains it.
+This is the most common "my biome compiles but I can't find it" cause.
+
+### Layer emits an *unregistered* id → ocean, or a world-gen crash
+
+The dangerous inverse: you edit a layer pool to output an id whose
+`new XxxBiome(id)` you forgot (or mistyped). `Biome::biomes[257]` is a static
+array default-initialised to null, and there are **two** lookup paths with
+opposite behaviour:
+
+- Through `Biome::getBiome(id)` (`Biome.cpp:560`), which null-checks and returns
+  **`Biome::ocean`** as a fallback (`Biome.cpp:570`). Layers like `BiomeEdgeLayer`
+  and `Layer.cpp:194` go this way — so the terrain generates as **ocean** where
+  your biome should have been. Wrong, but no crash.
+- Through a **raw `Biome::biomes[id]->...` deref with no null check** — e.g.
+  `DownfallLayer.cpp:17` (`Biome::biomes[b[i]]->getDownfallInt()`) and
+  `DownfallMixerLayer.cpp:20`. An unregistered id here is a **null-pointer
+  dereference that crashes during world generation**, not at startup.
+
+So an id mismatch between your `staticCtor` registration and your layer pool is
+either an invisible "everything's ocean" bug or a hard chunk-gen crash, depending
+on which layer touches it first. Keep the id in Step 3 and the id you slot into
+Step 6 identical, and make sure `new AshlandBiome(44)` actually ran.
+
+### Duplicate biome id → last registration silently wins
+
+`Biome::_init`/the ctor does `biomes[id] = this;` (`Biome.cpp:181`) with **no
+occupancy check** — nothing warns you that slot 44 was already taken. Two biomes
+sharing an id means whichever `staticCtor` line runs last overwrites the array
+entry; the first biome's pointer leaks and it becomes unreachable. Grep
+`Biome.cpp` for `new .*Biome(44` before committing an id.
+
+### Forgot the colour enum / colour table → falls back, or a client crash
+
+`setLeafFoliageWaterSkyColor` takes `eMinecraftColour` enum values the client
+resolves against its colour table. Reusing existing enum values (as Ashland does
+with the mesa ones) is safe. Inventing a *new* enum entry but not adding its
+row in the client `ColourTable.cpp` (the half of the mesa commit that lives in
+`Minecraft.Client`) means the client looks up an index the table doesn't have —
+you get whatever that out-of-range/unpopulated slot resolves to, not your
+intended tint. Reuse an existing colour until you have the client half wired.
+
+### Forgot the biome-name string → renders the literal key
+
+Player-visible biome names come from the client string tables, not
+`setName(L"...")` (which is debug-only). A missing entry follows the same
+string-table fallback the block/item guides describe: the wide-string lookup
+`StringTable::getString(const wstring&)` (`StringTable.cpp:463`) returns **the
+literal `IDS_*` key** when the entry is absent, so the biome banner shows the raw
+key text instead of "Ashland".
+
 ## Testing checklist
 
 - [ ] `AshlandBiome.cpp` is listed in `cmake/sources/Common.cmake`; project builds clean.

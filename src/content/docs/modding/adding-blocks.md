@@ -466,6 +466,76 @@ Use `ITEM_AUX` if your block has data-value variants (like `stone` with its
 granite/diorite/andesite aux values). A block you don't add here is still
 obtainable via `/give` by its item id, but won't show in creative.
 
+## What can go wrong
+
+The tile registry has fewer guards than the item registry, so several of these
+fail *silently*. Verified behaviours at this snapshot:
+
+### Duplicate block ID → silent overwrite (no log at all)
+
+Unlike items, a tile collision produces **no warning whatsoever**. `Tile::_init`
+(`Tile.cpp:701`) does `Tile::tiles[id] = this;` (`Tile.cpp:728`) with the
+occupancy check left as a dead 4J comment — the original Java
+`throw new IllegalArgumentException("Slot ... already occupied")` is commented out
+just above it (`Tile.cpp:721-725` region). So whichever `new XxxTile(id)` runs
+last wins, the earlier tile's pointer leaks, and every saved world that stored the
+old block reads the new one. (Contrast the item side, which at least logs
+`CONFLICT @ N` — `Item.cpp:645`.) Grep `Tile.cpp` for `new .*Tile(198` and
+`Tile.h` for the `_Id` block before committing an id.
+
+### Forgot the CMake source entry → unresolved external at link
+
+`Minecraft.World` lists every source explicitly (Step 3); it does not glob. Omit
+`CushionTile.cpp` from `Common.cmake` and it's never compiled, but
+`Tile::staticCtor` still calls `new CushionTile(198)` — so the linker fails with
+an unresolved external for the ctor and vtable, e.g.
+`unresolved external symbol "public: __cdecl CushionTile::CushionTile(int)"` and
+`"const CushionTile::``vftable'"`. This is a *different* failure from the next one.
+
+### Forgot the out-of-line statics → also unresolved external
+
+The `static Tile *Tile::cushion` handle and the `const int Tile::cushion_Id`
+constant each need one out-of-line definition in `Tile.cpp` (`Tile *Tile::cushion
+= nullptr;` and `const int Tile::cushion_Id;`, alongside slime's at `Tile.cpp:72`
+and the `_Id` block near the bottom). Declaring them in `Tile.h` without defining
+them in `Tile.cpp` links fine *until* something references the symbol, then fails
+with an unresolved external for `Tile::cushion` / `Tile::cushion_Id`. Add both.
+
+### Forgot the string entry → the block name is the literal `IDS_` key
+
+`setDescriptionId(IDS_TILE_CUSHION)` is a loc-table key. If the entry is missing,
+the wide-string lookup `StringTable::getString(const wstring&)`
+(`StringTable.cpp:463`) returns **the key string itself** — the item name renders
+as the literal text `IDS_TILE_CUSHION`. (The numeric-id overload
+`getString(int)` at `:478` returns an empty string for an out-of-range id, i.e. a
+*blank* name — so which one you see depends on the lookup path.) Add both the
+`IDS_TILE_*` and `IDS_DESC_*` entries before testing.
+
+### Forgot the `ADD_ICON` entry → missingno, or a debugger break
+
+The block draws from the terrain atlas by icon name. No `ADD_ICON(row, col,
+L"cushion")` (Step 7), or a name that doesn't match `setIconName`, means the
+lookup misses: `PreStitchedTextureMap::registerIcon` (`PreStitchedTextureMap.cpp:279`)
+prints `Could not find uv data for icon cushion` and `DEBUG_BREAK()`s on a debug
+build (`:299-301`), and on release falls back to `missingPosition` — the
+`missingno` icon (`NAME_MISSING_TEXTURE`, `PreStitchedTextureMap.cpp:22`) at UV
+`(0,0,1,1)`. The block is fully functional; only its texture is wrong.
+
+### Forgot the creative-menu line → obtainable only by `/give`
+
+The creative inventory is the hand-written `ITEM(...)` list in
+`IUIScene_CreativeMenu.cpp` (Step 9); nothing enumerates the tile registry to
+populate it. A block you don't add there simply won't show in any creative tab —
+but `/give @p <id>` (item form = block id + 256) still works.
+
+### Wrong / missing render shape → renders as a plain cube
+
+`getRenderShape()` routes through the switch in `TileRenderer.cpp:294`. If you
+return an unknown constant, or forget to add the `case` for a *new* shape, the
+dispatch has no matching branch and your block draws with the default plain-cube
+path — no crash, just the wrong geometry. Reusing an existing shape (as the
+cushion reuses `SHAPE_SLIME`) avoids this entirely.
+
 ## Testing checklist
 
 - [ ] `CushionTile.cpp` and `CushionTile.h` are listed in `cmake/sources/Common.cmake` — the project configures and compiles them.

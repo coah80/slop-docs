@@ -36,10 +36,14 @@ There is no `EntityIO::setId(...)->setX()` chain. Instead each entity class:
    `EntityRenderDispatcher::staticCtor()` on the client
    (`EntityRenderDispatcher.cpp:98`).
 
-Miss any one of these and you get a hard crash: an unregistered type falls
-through `EntityRenderDispatcher::getRenderer` to a `DEBUG_BREAK()`
-(`EntityRenderDispatcher.cpp:207`), and an unregistered `create` fn means the
-mob never spawns or loads.
+Miss any one of these and you get a crash or a silently wrong mob — see
+[What can go wrong](#what-can-go-wrong) for the exact per-step behaviour. The
+short version: an unregistered renderer type dead-ends in
+`EntityRenderDispatcher::getRenderer` (`EntityRenderDispatcher.cpp:197`) — it
+`DEBUG_BREAK()`s on debug (`:205-207`) and then, with **no early return**,
+dereferences the end iterator, so a release build hands the caller a garbage
+pointer and crashes in `render()`. An unregistered `create` fn means the mob
+never spawns or loads, and an unregistered save-ID string **loads back as a Pig**.
 
 ## Step 1 — Add the `eINSTANCEOF` type
 
@@ -88,17 +92,29 @@ eTYPE_TERMITE = eTYPE_MONSTER | eTYPE_VALID_IN_SPAWNER_FLAG | 0x12,
 
 ### Register the derivation checker entry (`_WINDOWS64` only)
 
-On the Windows64 debug build there is a self-test that verifies the bitmask
-derivations match a hand-written parent table (`Class.h:401`, `checkDerivations()`).
-If you add a type you should add a matching line, next to Endermite's
+`Class.h` carries a self-test, `checkDerivations()`, that verifies the bitmask
+derivations match a hand-written parent table. It has two definitions guarded by
+`#if !(defined _WINDOWS64)`: an empty stub on non-Windows64 builds (`Class.h:357`)
+and the real checker on Windows64 (`Class.h:401`), which prints
+`[Class.h] Error: '<x>' doesn't derive '<y>'.` and `DEBUG_BREAK()`s (`Class.h:611`,
+`:616`) on a mismatch. If you add a type, add a matching line next to Endermite's
 (`Class.h:497`):
 
 ```cpp
 classes->push_back( SUBCLASS(eTYPE_TERMITE)->addParent(eTYPE_MONSTER)->addParent(eTYPE_VALID_IN_SPAWNER_FLAG) );
 ```
 
-If the bitmask and this table disagree the debug build hits `DEBUG_BREAK()`
-(`Class.h:616`) at startup — a fast way to catch a bad discriminator.
+:::caution[The checker is not wired up at this snapshot]
+`checkDerivations()` is **never called anywhere** in the tree today (grep the
+whole source — there is no call site). So a bad discriminator will *not* trip a
+startup `DEBUG_BREAK()`; the table is dead code you keep in sync only so it's
+correct if a future build re-enables the call. The real consequence of a
+duplicate or wrong low-nibble discriminator is a silently wrong runtime
+`instanceof`: `eTYPE_DERIVED_FROM` (`Class.h:339`) short-circuits to exact
+equality whenever the super-type has any low bit set (`(super & 0x3F) != 0`), so
+two monsters sharing a discriminator make `instanceof` checks and targeting
+misbehave with no crash and no log. Pick a genuinely unused low nibble.
+:::
 
 :::note[Changed in v1.1.0b]
 `Class.h` gained a few lines on `origin/main` (v1.1.0b), so its citations shift by
@@ -478,6 +494,72 @@ enum value, **not** a raw path. To add a texture:
 
 Until you have art, reusing `TN_MOB_ENDERMITE` (as the skeleton does) renders
 your mob with the endermite texture — fine for a first spawn test.
+
+## What can go wrong
+
+A mob spans six subsystems and each omission fails differently — some crash, some
+silently degrade. All grounded in the source at this snapshot:
+
+### Forgot the renderer entry → crash on first draw
+
+The step people actually forget. With no `renderers[eTYPE_TERMITE] = ...` line,
+`EntityRenderDispatcher::getRenderer(eINSTANCEOF)` (`EntityRenderDispatcher.cpp:197`)
+does `renderers.find(e)`, gets `end()`, prints
+`Couldn't find renderer for entity of type <N>` and `DEBUG_BREAK()`s
+(`:205-207`) — but there is **no early return**: control falls straight to
+`return it->second;` on the end iterator. On a debug build you stop at the break;
+on release (where `DEBUG_BREAK` compiles out) it returns a garbage `EntityRenderer*`,
+and the caller `render()` only guards `if (renderer != nullptr)`
+(`EntityRenderDispatcher.cpp:307`) — a garbage-non-null pointer passes that check
+and `renderer->render(...)` dereferences it → crash the instant the mob enters
+view. Reusing an existing renderer/model/texture (as the Termite skeleton reuses
+Endermite's) is enough to avoid it while prototyping.
+
+### Forgot the `EntityIO::setId` line → doesn't spawn, and loads back as a Pig
+
+`setId` populates every name/num/class map the factory needs. Skip it and:
+
+- `/summon Termite` and natural spawning find no `create` fn, so nothing spawns.
+- More insidiously on **load**: `EntityIO::getId(const wstring&)` (`EntityIO.cpp:278`)
+  maps an unknown save-ID string to `return 90;` — the comment literally says
+  `// defaults to pig...` (`:283-284`). So a saved Termite whose registration you
+  removed (or renamed) reloads as a **Pig**, silently, rather than erroring.
+
+Keep the `L"Termite"` save-ID string stable once a world has saved it.
+
+### Duplicate discriminator or numeric ID → silent misbehaviour
+
+The low-nibble discriminator in `Class.h` and the numeric ID in `setId` are both
+hand-picked with no collision guard. A duplicate discriminator makes
+`eTYPE_DERIVED_FROM` (`Class.h:339`) resolve `instanceof` wrong (see the caution
+in Step 1) — targeting, spawner eligibility, and Bane-of-Arthropods checks
+misfire with no crash. A duplicate numeric ID collides in the num→class/num→fn
+maps and one mob's network/save id shadows the other. Grep
+`EntityIO::staticCtor` for the ID and `Class.h` for the highest low nibble first.
+
+### Forgot the `Class.h` type entry, or the CMake source entry → won't build
+
+`GetType()` returns `eTYPE_TERMITE`, so the enum value must exist in `Class.h` or
+`Termite.cpp` won't compile. And the new `Termite.cpp`/`TermiteRenderer.cpp` must
+be added to their `cmake/sources/Common.cmake` lists (the module doesn't glob) —
+omit them and `EntityIO`/the dispatcher reference `Termite::create` /
+`TermiteRenderer` with nothing to link against, an unresolved-external at link.
+
+### Forgot the biome spawn list → exists but never spawns naturally
+
+Registration makes the mob *summonable*, not *natural*. Without a
+`MobSpawnerData` entry in a biome's `enemies`/`friendlies` vector (Step 4b), the
+mob simply never appears in world-gen — `/summon` and spawn eggs still work, so
+it's easy to mistake for a spawn-rule bug. Which vector you push into also decides
+the spawn cap and rules via `Biome::getMobs` (`Biome.cpp:289`).
+
+### Forgot the name string / `getEntityName` case → shares Endermite's name
+
+Passing `IDS_ENDERMITE` (or any placeholder) as the `nameId`, and not adding a
+`case eTYPE_TERMITE:` to `getEntityName`, means the spawn egg and death messages
+show the *reused* name. No crash — the mob just isn't called "Termite" until you
+add the `IDS_*` entry and the switch case (Step 5). A missing string key follows
+the usual loc fallback (the wide-string lookup returns the literal `IDS_*` text).
 
 ## Testing checklist
 
