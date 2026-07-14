@@ -206,8 +206,16 @@ IggyResult out = IggyPlayerCallMethodRS(
 
 Every HUD setter follows this shape — `SetFood`, `SetAir`, `SetArmour`,
 `SetExpBarProgress`, `SetPlayerLevel`, `ShowHealth` — all in
-`UIScene_HUD.cpp:357-692`. Root-level scene methods (`slideLeft`, `slideRight`,
+`UIScene_HUD.cpp:357-692`, pumped with live player state every update from
+`IUIScene_HUD.cpp:219-220`. Root-level scene methods (`slideLeft`, `slideRight`,
 `doHorizontalResizeCheck`) go through the same call at `UIScene.cpp:767-783`.
+
+> **The Iggy HUD is not the whole HUD.** The classic `Gui` class
+> (`Minecraft.Client/Gui.cpp`) still renders every frame alongside this movie —
+> crosshair, hotbar, vignette, and pumpkin overlay come straight off the
+> `gui.png`/`icons.png` atlases, and the classic chat renderer is `#if 0`'d
+> "in favor of iggy chat" (`Gui.cpp:934`). The full division of labor is
+> documented in [Classic Screens & HUD](/slop-docs/client/screens/#who-draws-the-hud--gui-vs-the-iggy-uiscene_hud).
 
 ### Property poke/peek
 

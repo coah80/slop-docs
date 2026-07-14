@@ -130,6 +130,36 @@ and read back through `getJukeboxMessage`/`getJukeboxOpacity`. Two 4J static
 blend factors, `Gui::currentGuiBlendFactor` and `Gui::currentGuiScaleFactor`
 (`Gui.h:36`), let the HUD fade/scale in sync with the console UI.
 
+### Who draws the HUD — `Gui` vs the Iggy `UIScene_HUD`
+
+Both HUD systems run at once, and the split is worth knowing before you mod
+either:
+
+- **`Gui::render` runs every frame** — called from `GameRenderer.cpp:1291` and
+  ticked at `Minecraft.cpp:2345`. It draws the vignette (`Gui.cpp:247`), the
+  pumpkin-helmet overlay (`:258`), and — gated only on the
+  `eGameSetting_DisplayHUD` setting (`:230`) — the hotbar block, binding the
+  classic atlases directly: `TN_GUI_GUI` (`gui.png`, `:328`) and `TN_GUI_ICONS`
+  (`icons.png`, `:352`). An atlas-based heart-row path (with the
+  regeneration-wave `heartOffsetIndex` logic, `:460-502`, and mount hearts,
+  `:584`) lives in the same block.
+- **The Iggy `UIScene_HUD` movie is the data-driven layer**: `IUIScene_HUD.cpp`
+  pumps live player state into the movie every update — `SetHealth(...)` at
+  `IUIScene_HUD.cpp:219`, `SetHealthAbsorb` at `:220`, horse-jump progress just
+  below — each landing in `UIScene_HUD.cpp` as an `IggyPlayerCallMethodRS`
+  invoke (`UIScene_HUD.cpp:426`).
+- **Chat is decided**: the classic `Gui` chat renderer is compiled out with
+  `#if 0 // defined(_WINDOWS64) // Temporarily disable this chat in favor of
+  iggy chat until we have better visual parity` (`Gui.cpp:934`) — chat you see
+  in-game is the Iggy `UIComponent_Chat`.
+
+In short: `Gui` owns the immediate-mode world overlays (crosshair, hotbar,
+vignette, pumpkin, debug graphs) straight off the atlases, while the SWF HUD
+owns the widget-like elements fed through the Iggy API. See
+[Iggy: the UI Runtime](/slop-docs/modding/iggy-overview/) for the movie side and
+[UI Movies & Textures](/slop-docs/modding/iggy-assets/) for both texture
+sources.
+
 ## Text: Font & StringTable
 
 ### Font
