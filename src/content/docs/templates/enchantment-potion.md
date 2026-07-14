@@ -88,7 +88,7 @@ that does the actual per-tick world effect. Its effect is *driven from
 `LivingEntity`*, not from the enchantment object:
 
 ```cpp
-// LivingEntity.cpp:290-298 (server-side, once per tick, inside baseTick)
+// LivingEntity.cpp:291-299 (server-side, once per tick, inside baseTick)
 if (!level->isClientSide && isAlive())
 {
     int frostWalkerLevel = EnchantmentHelper::getFrostWalker(dynamic_pointer_cast<LivingEntity>(shared_from_this()));
@@ -126,7 +126,7 @@ We follow that exact pattern: a small `Enchantment` subclass + a helper + a
 | `Enchantment.h` | declare `static Enchantment *soulStrider;` | `Enchantment.h:57` |
 | `Enchantment.cpp` | define + register it in `staticCtor()` | `Enchantment.cpp:52` / `:92` |
 | `EnchantmentHelper.h` / `.cpp` | add `getSoulStrider(...)` | `EnchantmentHelper.h:84` / `.cpp:242` |
-| `LivingEntity.cpp` | call the effect each tick | `LivingEntity.cpp:290` |
+| `LivingEntity.cpp` | call the effect each tick | `LivingEntity.cpp:291` |
 | `Minecraft.Client/Windows64Media/loc/stringsGeneric.xml` | the enchantment name | near `IDS_ENCHANTMENT_FROST_WALKER` |
 | `cmake/sources/Common.cmake` | add the two new files | near `FrostWalkerEnchantment.cpp`, `Common.cmake:1276` |
 
@@ -278,7 +278,7 @@ int EnchantmentHelper::getSoulStrider(shared_ptr<LivingEntity> source)
 
 ### Step A6 — drive it from `LivingEntity`
 
-Extend the Frost Walker block already at `LivingEntity.cpp:290-298`. Add our call
+Extend the Frost Walker block already at `LivingEntity.cpp:291-299`. Add our call
 inside the same `!level->isClientSide && isAlive()` guard:
 
 ```cpp
@@ -601,7 +601,7 @@ bottle ("Potion **of Striding**").
    Strider should appear in the pool (frequency `FREQ_RARE`). Wear them, stand on
    soul sand, and you keep near-full walk speed.
 4. **Enchantment, tick path:** confirm the effect only runs server-side (the
-   `!level->isClientSide` guard at `LivingEntity.cpp:290`) — in singleplayer the
+   `!level->isClientSide` guard at `LivingEntity.cpp:291`) — in singleplayer the
    embedded server ticks it; in multiplayer the host applies it and syncs motion.
 5. **Potion, brewing:** put your ingredient in the brewing-stand fuel/ingredient
    slot over an Awkward potion (nether-wart base). It should yield **Potion of
@@ -620,7 +620,7 @@ bottle ("Potion **of Striding**").
 |-------|-----------|
 | Enchantment registry / pool | `Enchantment.cpp:13` / `:94` |
 | Enchantment boot template | `WaterWalkerEnchantment.cpp`, `FrostWalkerEnchantment.cpp:9` |
-| Per-tick enchant hook | `LivingEntity.cpp:290` |
+| Per-tick enchant hook | `LivingEntity.cpp:291` |
 | Enchant level lookup | `EnchantmentHelper.cpp:242` |
 | Effect registry | `MobEffect.cpp:47`, array `MobEffect.h:41` |
 | Reserved effect slots 24–31 | `MobEffect.cpp:73-80` |

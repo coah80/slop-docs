@@ -419,7 +419,7 @@ build on it.
   (`929b32ff`, fixed in `1c936577`, landed via `042ee0a2` #37), readable at `upstream/main:tools/wiiU2Windows.py`. The
   `.mcs` **naming** logic exists at both refs (`ConsoleSaveFileOriginal.cpp:1033`).
 - **`AssetTitleUpdateColourOverride`** — this is a **CMake custom target**, not a
-  C++ symbol: `CMakeLists.txt:166-174` deletes the stale
+  C++ symbol: `CMakeLists.txt:164-174` deletes the stale
   `Common/res/TitleUpdate/res/colours.col` from the build output and copies
   `colours.xml` next to each executable, so shipped builds take the XML path. At
   runtime `AbstractTexturePack.cpp:364-368` still reads `.col` first with

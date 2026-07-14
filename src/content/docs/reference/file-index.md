@@ -258,7 +258,7 @@ the *full client* because host/world logic is entangled with client render code
 | `Console/` | The server CLI (linenoise-backed): `ServerCli`/`ServerCliEngine`/`ServerCliParser`/`ServerCliRegistry` + `commands/<name>/`. | [Console](/slop-docs/server/console/) |
 | `Console/commands/` | One dir per built-in command: help, stop, list, ban, ban-ip, pardon, pardon-ip, ban-list, whitelist, revoketoken, tp, time, weather, give, enchant, kill, gamemode, defaultgamemode, experience (19). | [Console](/slop-docs/server/console/) |
 | `Common/` | Server utilities (`FileUtils`, `StringUtils`, `NetworkUtils`, `AccessStorageUtils`). | [Server overview](/slop-docs/server/overview/) |
-| `cmake/sources/` | `Common.cmake` (714 lines) — the shared server source list + grouped variables. | [Building](/slop-docs/overview/building/) |
+| `cmake/sources/` | `Common.cmake` (719 lines) — the shared server source list + grouped variables. | [Building](/slop-docs/overview/building/) |
 | `vendor/` | Bundled `linenoise` (line editing) + `nlohmann/json.hpp`. | [Server overview](/slop-docs/server/overview/) |
 | `docs/` | `DEVELOPMENT.en.md` / `DEVELOPMENT.ja.md` (bilingual dev notes). | — |
 

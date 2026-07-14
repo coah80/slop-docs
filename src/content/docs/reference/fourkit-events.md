@@ -92,7 +92,7 @@ entity id in the registry after respawn.
 
 `NONE=0`, `QUITTING=1`, `CLOSED=2`, `LOGIN_TOO_LONG=3`, `ILLEGAL_STANCE=4`, `ILLEGAL_POSITION=5`,
 `MOVED_TOO_QUICKLY=6`, `NO_FLYING=7`, `KICKED=8`, `TIME_OUT=9`, `OVERFLOW=10`, `END_OF_STREAM=11`,
-`SERVER_FULL=12`, `OUTDATED_SERVER=13`, `OUTDATED_CLIENT=14` (mirrors `DisconnectPacket::eDisconnectReason`).
+`SERVER_FULL=12`, `OUTDATED_SERVER=13`, `OUTDATED_CLIENT=14` (plus further donor entries `UNEXPECTED_PACKET=15`…`NAT_MISMATCH=27` in the enum; mirrors `DisconnectPacket::eDisconnectReason`).
 
 ### LoginType values (`Enums/LoginType.cs`)
 
