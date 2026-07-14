@@ -36,7 +36,7 @@ From `README.md` and `COMPILE.md`.
 2. Clone the repo.
 3. In VS: **File > Open > Folder** on the repo root. VS reads `CMakePresets.json` automatically.
 4. Pick a configuration from the dropdown — e.g. **Windows64 - Debug** (Release also works but omits some debug features).
-5. Build All (F7). The VS startup project is `Minecraft.Client` (`CMakeLists.txt:314`); launch with F5.
+5. Build All (F7). The VS startup project is `Minecraft.Client` (`CMakeLists.txt:312`); launch with F5.
 
 Available build targets: `Minecraft.Client`, `Minecraft.Server` (vanilla), `Minecraft.Server.FourKit` (which also builds `Minecraft.Server.FourKit.Managed`).
 
@@ -108,7 +108,7 @@ Install `xwin` with `cargo install xwin`. Wine is needed to run the DirectX `fxc
 The launchers set `WINEARCH=win64`, enable esync/fsync, copy the game into a temp prefix, symlink a persistent `GameHDD` + `server.properties`/`banned-*.json`, start `Xvfb :99` for headless servers, and `exec wine …`. Env knobs: `MC_PORT`, `MC_BIND`, `MC_DATA_DIR`, `WINEPREFIX`.
 
 :::note[FXC shaders through Wine]
-On a UNIX cross build for Windows64, `CMakeLists.txt:103-141` locates `fxc.exe` (under `Minecraft.Client/Windows64/Shaders/` or the 4JLibs Render shaders dir), requires `wine`, and configures a wrapper (`cmake/FxcWineWrapper.sh.in`) at `${CMAKE_BINARY_DIR}/tools/fxc` that runs FXC through Wine and post-processes the generated shader headers (CRLF normalize, `#endif` fixups). If it finds `fxc.exe` but not `wine`, configure fails with a clear message.
+On a UNIX cross build for Windows64, `CMakeLists.txt:101-139` locates `fxc.exe` (under `Minecraft.Client/Windows64/Shaders/` or the 4JLibs Render shaders dir), requires `wine`, and configures a wrapper (`cmake/FxcWineWrapper.sh.in`) at `${CMAKE_BINARY_DIR}/tools/fxc` that runs FXC through Wine and post-processes the generated shader headers (CRLF normalize, `#endif` fixups). If it finds `fxc.exe` but not `wine`, configure fails with a clear message.
 :::
 
 ## Nix / NixOS — `flake.nix`
