@@ -157,6 +157,92 @@ chunk has a `"Level"` compound containing `"Blocks"` (`McRegionChunkStorage.cpp:
 separately (`saveEntities`/`loadEntities`), keyed by a packed
 `(x << 32) | z` chunk index.
 
+### Worked trace: a chunk save → load round-trip
+
+This follows one chunk column from the dirty flag through the region-file sector
+allocator and back out on load, citing every hop. The path splits on the save
+version: modern saves stream the *compressed storage form* directly, older ones
+build NBT.
+
+**1 — Dirty gate (`shouldSave`).** A chunk is only written if it has unsaved
+changes. `LevelChunk::shouldSave(force)` (`LevelChunk.cpp:1751`) returns early on
+`dontSave`, then reports `m_unsaved` (set whenever a block/tile-entity mutates),
+with a 30-second entity re-save window (`:1751-1766`):
+
+```cpp
+if (dontSave) return false;
+if (force) { if ((lastSaveHadEntities && level->getGameTime() != lastSaveTime) || m_unsaved) return true; }
+else       { if (lastSaveHadEntities && level->getGameTime() >= lastSaveTime + 20 * 30) return true; }
+return m_unsaved;
+```
+
+**2 — Serialize (`McRegionChunkStorage::save`).**
+`McRegionChunkStorage::save` (`McRegionChunkStorage.cpp:174`) checks the session,
+grabs a per-chunk output stream from the region cache
+(`RegionFileCache::getChunkDataOutputStream`, `:186`), and branches on version
+(`:189`):
+
+- **`>= SAVE_FILE_VERSION_COMPRESSED_CHUNK_STORAGE`** (v8): `OldChunkStorage::save`
+  streams the compressed block/data/light form straight to the stream (`:192`),
+  and the stream is handed to a background **save queue** `s_chunkDataQueue`
+  (`:197`) drained by up to three `s_saveThreads` — the producer never blocks on
+  disk.
+- **older**: build a `CompoundTag` with a `"Level"` child, `OldChunkStorage::save`
+  into it, `NbtIo::write` to the stream inline, then free (`:205-227`).
+
+Either way the actual bytes land in a `RegionFile` chunk slot.
+
+**3 — Sector allocation (`RegionFile::write`).** `RegionFile` is a McRegion sector
+store inside the console container: **4096-byte sectors** (`SECTOR_BYTES`,
+`RegionFile.h:20`), sector 0 the chunk offset table, sector 1 the timestamp table
+(`RegionFile.cpp:91-92`). `RegionFile::write(x,z,data,length)`
+(`RegionFile.cpp:276`) compresses first — with LCE's **`CompressLZXRLE`**, not
+zlib/GZIP despite the leftover `VERSION_GZIP`/`VERSION_DEFLATE` constants
+(`:281`) — sizes the run in sectors (`:283`), and either overwrites in place when
+the allocation still fits or scans `sectorFree` for a new run (`:306-329`):
+
+```cpp
+int sectorsNeeded = (compLength + CHUNK_HEADER_SIZE) / SECTOR_BYTES + 1;
+if (sectorsNeeded >= 256) return;                         // 1 MB hard cap
+int offset = getOffset(x, z);
+int sectorNumber = offset >> 8, sectorsAllocated = offset & 0xFF;
+if (sectorNumber != 0 && sectorsAllocated == sectorsNeeded)
+    write(sectorNumber, compData, length, compLength);    // overwrite in place
+else { /* free old sectors, zero them, scan sectorFree for a run, then: */
+    setOffset(x, z, (sectorNumber << 8) | sectorsNeeded); // pack start<<8 | count
+}
+```
+
+The offset word is `(startSector << 8) | sectorCount`, so a 24-bit start plus an
+8-bit length live in one int per chunk — exactly the McRegion layout. Freed sectors
+are zeroed so the surrounding container compresses better (`:324-325`, a 4J
+addition).
+
+**4 — Which region file (the format branch).** Both save and load resolve the
+region file through `RegionFileCache::_getRegionFile` (`RegionFileCache.cpp:21`),
+which — **at this snapshot** — still gates the split-vs-`.mcr` layout on
+`useSplitSaves(saveFile->getSavePlatform())` **and** the presence of a
+`region_format_16` marker file (`:32-34`). Split (`region_format_16`) saves index
+chunks by `x & 15, z & 15` into 16×16 region files; legacy `.mcr` saves use
+`x & 31, z & 31` (`:100-107`, `:115-122`). This platform gate is what the
+v1.1.0b drift note (below) removes — do not confuse the two: the code *in the
+snapshot* still branches on platform.
+
+**5 — Load (`McRegionChunkStorage::load`).** Loading is the mirror. The store gets a
+`RegionFileCache::getChunkDataInputStream` for the chunk (`McRegionChunkStorage.cpp:75`),
+which resolves the same region file and reads the offset word, seeks to
+`sectorNumber * SECTOR_BYTES`, and returns a decompressing stream over the sector
+run (`RegionFile.cpp:173`+). The store then reads the NBT (`NbtIo::read`), verifies a
+`"Level"` compound containing `"Blocks"` (`McRegionChunkStorage.cpp:122`, `:130`),
+and hands off to `OldChunkStorage::load` to repopulate the
+[`LevelChunk`](#levelchunk) storage objects. Entities are a separate
+`loadEntities` pass keyed by the packed `(x << 32) | z` index.
+
+So a dirty chunk becomes: `shouldSave` → `save` → (queued) `RegionFile::write` →
+LZX-RLE compress → sector-run allocate → offset-table update; and a requested chunk
+becomes: offset-table lookup → sector seek → decompress → NBT parse →
+`OldChunkStorage::load`.
+
 ### The storage stack
 
 Several decorator/alternative stores exist around the same `ChunkStorage` /

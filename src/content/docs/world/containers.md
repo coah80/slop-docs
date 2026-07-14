@@ -100,6 +100,104 @@ scalar fields (`:69`) — furnace lit time, anvil cost, beacon levels — separa
 from item contents. `needsRendered()` (`:99`) is a 4J-added client-side dirty-flag
 poll used by the XUI renderer.
 
+### Worked trace: one click's full round-trip
+
+This follows a single left-click on a chest slot from the on-screen cursor to the
+refreshed scene, citing every hop. The client is **optimistic**: it applies the
+click locally *first*, sends the packet, and the server either confirms (silence)
+or corrects.
+
+**1 — Input (scene → gameMode).** `AbstractContainerScreen::mouseClicked`
+(`AbstractContainerScreen.cpp:168`) is reached when the cursor/controller commits a
+click over the container GUI. It resolves the hovered `Slot` with `findSlot(x,y)`
+(`:173`), maps it to a `slotId` (or the clicked-outside sentinel if the click
+landed off the panel, `:182-185`), reads shift for a quick-move, and calls
+`minecraft->gameMode->handleInventoryMouseClick(menu->containerId, slotId, buttonNum, quickKey, player)`
+(`:190`).
+
+**2 — Optimistic apply + send (client).**
+`MultiPlayerGameMode::handleInventoryMouseClick` (`MultiPlayerGameMode.cpp:448`)
+snapshots the inventory for rollback with `backup(...)` (which returns the rolling
+`changeUid`, `:450`), runs the **same** `clicked()` the server will run so the GUI
+updates instantly (`:452`), then wires the result and uid into a
+`ContainerClickPacket` and enqueues it (`:453`):
+
+```cpp
+short changeUid = player->containerMenu->backup(player->inventory);
+shared_ptr<ItemInstance> clicked = player->containerMenu->clicked(
+    slotNum, buttonNum, quickKeyHeld ? AbstractContainerMenu::CLICK_QUICK_MOVE
+                                     : AbstractContainerMenu::CLICK_PICKUP, player);
+connection->send(std::make_shared<ContainerClickPacket>(
+    containerId, slotNum, buttonNum, quickKeyHeld, clicked, changeUid));
+```
+
+The packet copies the carried item so it owns its own data
+(`ContainerClickPacket.cpp:32`) and serializes as
+`byte containerId, short slotNum, byte buttonNum, short uid, byte clickType, item`
+(`:51`).
+
+**3 — Server authority (`handleContainerClick`).** The server's
+`PlayerConnection::handleContainerClick` (`PlayerConnection.cpp:2028`) first gates
+on the window matching and being synched (`:2031`), re-runs the authoritative
+`clicked()` (`:2047`), and **diffs the result against the client's claim**:
+
+```cpp
+shared_ptr<ItemInstance> clicked =
+    player->containerMenu->clicked(packet->slotNum, packet->buttonNum, packet->clickType, player);
+if (ItemInstance::matches(packet->item, clicked)) {          // client guessed right
+    player->connection->send(std::make_shared<ContainerAckPacket>(packet->containerId, packet->uid, true));
+    player->ignoreSlotUpdateHack = true;
+    player->containerMenu->broadcastChanges();               // -> §4
+    player->broadcastCarriedItem();
+    player->ignoreSlotUpdateHack = false;
+} else {                                                     // desync -> full refresh
+    expectedAcks[player->containerMenu->containerId] = packet->uid;
+    player->connection->send(std::make_shared<ContainerAckPacket>(packet->containerId, packet->uid, false));
+    player->containerMenu->setSynched(player, false);
+    player->refreshContainer(player->containerMenu, &items); // whole window resent
+}
+```
+
+The `ignoreSlotUpdateHack` flag is the key to the optimistic model: when the client
+predicted correctly, the server broadcasts changes but **suppresses** the per-slot
+packets for that click (see §5) — the client already applied them, so re-sending
+would double-apply. On a WINDOWS64 server build a `FourKitBridge::FireInventoryClick`
+mod hook can also veto or force-refresh the click before `clicked()` runs
+(`:2033-2046`), a neoLegacy addition.
+
+**4 — Broadcast diff (`broadcastChanges` → listener).**
+`AbstractContainerMenu::broadcastChanges` (`AbstractContainerMenu.cpp:77`) diffs
+each slot against `lastSlots` and, for every changed slot, notifies its listeners —
+the connected player is a `ContainerListener` (`:93`):
+
+```cpp
+for (auto& it : containerListeners)
+    it->slotChanged(this, i, expected);
+```
+
+**5 — Slot packet (server → client).** The player's listener is `ServerPlayer`, so
+`slotChanged` lands in `ServerPlayer::slotChanged` (`ServerPlayer.cpp:1586`). It
+drops result-slot updates (a `ResultSlot` recomputes client-side, `:1588`), honors
+`ignoreSlotUpdateHack` by returning early for a correctly-predicted click
+(`:1593-1601`), and otherwise sends the one changed slot
+(`ServerPlayer.cpp:1603`):
+
+```cpp
+connection->send(std::make_shared<ContainerSetSlotPacket>(container->containerId, slotIndex, item));
+```
+
+**6 — Client apply (`handleContainerSetSlot`).**
+`ClientConnection::handleContainerSetSlot` (`ClientConnection.cpp:3342`) routes by
+`containerId`: `CONTAINER_ID_CARRIED` sets the cursor item, `CONTAINER_ID_INVENTORY`
+writes the player inventory menu (with the 4J Stu creative-menu pickup fix at
+`:3353-3364`), and the live window id writes `player->containerMenu->setItem(...)`
+(`:3369`) — refreshing the scene.
+
+So a correctly-predicted click is nearly silent on the wire — one
+`ContainerClickPacket` up, one `ContainerAckPacket` down, and (thanks to
+`ignoreSlotUpdateHack`) **no** `ContainerSetSlotPacket` echo. A mispredicted click
+costs a rejecting ack plus a full `refreshContainer` resend of the window.
+
 ### Container packet family
 
 Sync rides on a fixed set of packets (`getId()` values read from each header):

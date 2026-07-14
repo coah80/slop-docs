@@ -205,6 +205,64 @@ So "run from chat" and "run from the server console" collapse into the same
 `GameCommandPacket` → `handleGameCommand` → `performCommand` → `execute` pipeline.
 The only difference is who constructs the packet.
 
+### Worked trace: `/give`, entry to feedback
+
+Making the pipeline concrete with `GiveItemCommand`, and following the feedback
+message all the way back to the issuer.
+
+**1 — Marshal (client).** The give/creative screen calls
+`GiveItemCommand::preparePacket(player, item, amount, aux, tag)`
+(`GiveItemCommand.cpp:43`). It writes the target UID and fields into a byte buffer
+and wraps them in a `GameCommandPacket` tagged `eGameCommand_Give` (`:50-56`):
+
+```cpp
+dos.writePlayerUID(player->getXuid());
+dos.writeInt(item);  dos.writeInt(amount);  dos.writeInt(aux);  dos.writeUTF(tag);
+return std::make_shared<GameCommandPacket>(eGameCommand_Give, baos.toByteArray());
+```
+
+That packet flows through the general pipeline above (send → `handleGameCommand`
+re-auth → `performCommand`).
+
+**2 — Execute (server).** `performCommand` calls `GiveItemCommand::execute`
+(`GiveItemCommand.cpp:19`), which decodes the *same* byte layout it wrote, validates
+the item id, and drops the stack onto the target player (`:19-40`):
+
+```cpp
+PlayerUID uid = dis.readPlayerUID();
+int item = dis.readInt(), amount = dis.readInt(), aux = dis.readInt();
+wstring tag = dis.readUTF();
+shared_ptr<ServerPlayer> player = getPlayer(uid);
+if (player != nullptr && item > 0 && Item::items[item] != nullptr) {
+    shared_ptr<ItemInstance> itemInstance = std::make_shared<ItemInstance>(item, amount, aux);
+    shared_ptr<ItemEntity> drop = player->drop(itemInstance);   // spawns the item
+    drop->throwTime = 0;
+    logAdminAction(source, ChatPacket::e_ChatCustom, L"commands.give.success", item, player->getAName());  // -> §3
+}
+```
+
+Note the item is given by **dropping** it at the player (`player->drop(...)`), not by
+inserting into a slot.
+
+**3 — Feedback (`logAdminAction` → `sendMessage` → chat).** The confirmation path is
+the command *logger*. `Command::logAdminAction` (`Command.cpp:20`) forwards to the
+registered logger (`:29`), which is the `ServerCommandDispatcher` itself
+(`Command::setLogger(this)` in its constructor). `ServerCommandDispatcher::logAdminCommand`
+(`ServerCommandDispatcher.cpp:55`) would broadcast to other OPs (that branch is
+commented out, `:65-66`) and, unless suppressed, sends the message to the issuer
+(`:72`):
+
+```cpp
+if ((type & LOGTYPE_DONT_SHOW_TO_SELF) != LOGTYPE_DONT_SHOW_TO_SELF)
+    source->sendMessage(message, messageType, customData, additionalMessage);
+```
+
+For a `ServerPlayer` source, `sendMessage` emits a `ChatPacket` back down that
+player's connection, which the client renders as the `commands.give.success`
+localized line. So the round-trip is: creative screen →
+`GameCommandPacket(eGameCommand_Give)` → server `execute` (drop the stack) →
+`logAdminAction` → `source->sendMessage` → `ChatPacket` back to the issuer.
+
 ### neoLegacy server-side hardening
 
 On the dedicated Windows server build, `handleGameCommand` adds a **live OP

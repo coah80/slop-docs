@@ -98,14 +98,77 @@ if (!level->getGameRules()->getBoolean(GameRules::RULE_KEEPINVENTORY))
     // ... drop the player's items ...
 ```
 
-## Sync: there is no GameRules packet
+## Sync: the host-options bitset, not GameRules
 
-Because rule values are **derived from host options at read time**, `GameRules`
-itself is never serialized and never sent over the network. There is no
-"gamerule value" NBT and no `GameRules` write path — the `GameRule::set()` inner
-method exists but is not wired to any persistence.
+`GameRules` itself is **never serialized** — no "gamerule value" NBT, no `GameRules`
+write path, and the `GameRule::set()` inner method is not wired to any persistence.
+But that does *not* mean rule changes stay host-only. Because every rule read routes
+to the host-options bitset (`app.GetGameHostOption(...)`), the sync that matters is
+the sync of **that bitset**, and it *does* travel to clients — via
+`ServerSettingsChangedPacket` (packet **id 153**), not via anything named
+"GameRules".
 
-Do not confuse this with `UpdateGameRuleProgressPacket` (packet id 158). Despite
+### Worked trace: host changes a rule → clients see it
+
+**1 — Host toggles a setting.** The host flips a rule in the pause/host XUI menu.
+That fires an `eXuiServerAction_ServerSettingChanged_*` action into
+`MinecraftServer` (`MinecraftServer.cpp:2132`+). For the in-game gameplay rules the
+action broadcasts the *whole* bitset (`MinecraftServer.cpp:2136`):
+
+```cpp
+case eXuiServerAction_ServerSettingChanged_BedrockFog:
+    players->broadcastAll(std::make_shared<ServerSettingsChangedPacket>(
+        ServerSettingsChangedPacket::HOST_IN_GAME_SETTINGS,
+        app.GetGameHostOption(eGameHostOption_All)));       // the full host-option word
+    break;
+```
+
+`ServerSettingsChangedPacket` (`ServerSettingsChangedPacket.cpp`) is a two-field
+packet — `char action, unsigned int data` — with actions `HOST_DIFFICULTY = 0`,
+`HOST_OPTIONS = 1`, `HOST_IN_GAME_SETTINGS = 2` (`:10-12`). It is registered
+`map(153, true, true, false, ...)` (`Packet.cpp:117`): received on both ends, sent
+to one player per machine (not broadcast-to-anyone).
+
+**2 — Server relay + re-check.** When a *client* asks to change settings, the
+server's `PlayerConnection::handleServerSettingsChanged`
+(`PlayerConnection.cpp:1825`) re-authorizes before applying. On a WINDOWS64
+dedicated server it rejects any non-host and logs it (`:1830-1838`); otherwise, for
+host/moderator, it copies each gameplay bit out of the packet into the local host
+options and **re-broadcasts** the canonical bitset to everyone
+(`PlayerConnection.cpp:1842-1852`):
+
+```cpp
+app.SetGameHostOption(eGameHostOption_FireSpreads,  app.GetGameHostOption(packet->data, eGameHostOption_FireSpreads));
+app.SetGameHostOption(eGameHostOption_MobGriefing,  app.GetGameHostOption(packet->data, eGameHostOption_MobGriefing));
+app.SetGameHostOption(eGameHostOption_KeepInventory, app.GetGameHostOption(packet->data, eGameHostOption_KeepInventory));
+// ... one per gameplay rule ...
+server->getPlayers()->broadcastAll(std::make_shared<ServerSettingsChangedPacket>(
+    ServerSettingsChangedPacket::HOST_IN_GAME_SETTINGS, app.GetGameHostOption(eGameHostOption_All)));
+```
+
+**3 — Client apply.** Each client's `ClientConnection::handleServerSettingsChanged`
+(`ClientConnection.cpp:4082`) writes the received word straight into its own host
+options (`:4086`):
+
+```cpp
+if (packet->action == ServerSettingsChangedPacket::HOST_IN_GAME_SETTINGS)
+    app.SetGameHostOption(eGameHostOption_All, packet->data);   // whole bitset
+else if (packet->action == ServerSettingsChangedPacket::HOST_DIFFICULTY)
+    /* per-level difficulty */ ;
+```
+
+**4 — Read site.** After that, any `level->getGameRules()->getBoolean(RULE_*)` on the
+client reads the freshly-synced bitset through the same
+`app.GetGameHostOption(...)` switch documented above — so the client's fire spread,
+mob griefing, keep-inventory, etc. now match the host. No `GameRules` object was
+serialized at any point; the *bitset it reads* was the thing on the wire.
+
+So the accurate statement is: **`GameRules` has no packet of its own, but the
+host-option values that back it sync via `ServerSettingsChangedPacket` (153).**
+
+### Not the same as UpdateGameRuleProgressPacket
+
+Do not confuse either of the above with `UpdateGameRuleProgressPacket` (packet id 158). Despite
 the name, that packet does **not** carry `GameRules` values — it belongs to a
 separate console system, `ConsoleGameRules`, and its payload is a
 `ConsoleGameRules::EGameRuleType` plus a progress/message tuple
@@ -130,4 +193,5 @@ separate console system, `ConsoleGameRules`, and its payload is a
 ## Related pages
 
 - [Minecraft.World Overview](/slop-docs/world/overview/) — module layout and bootstrap
+- [Networking & Packets](/slop-docs/world/networking/) — `ServerSettingsChangedPacket` (153) syncs the host-option bitset the rules read from.
 - [Materials](/slop-docs/world/materials/)

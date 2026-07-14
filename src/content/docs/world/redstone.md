@@ -154,6 +154,97 @@ off around its own `getBestNeighborSignal` call to avoid counting itself.
 
 `isSignalSource()` returns `shouldSignal` (`:330`).
 
+## Worked trace: a lever flip, end to end
+
+This follows one lever toggle from the right-click to a door swinging open, citing
+every hop. It is the concrete version of the "each tile answers power queries"
+model — there is no graph, just a fan-out of `neighborChanged` calls and lazy
+`getSignal` reads.
+
+**1 — Use (`LeverTile::use`).** Right-clicking the lever reaches
+`LeverTile::use` (`LeverTile.cpp:241`). The client and server run different arms:
+the **client** side only plays the click sound and returns (`:252-261`) — it does
+**not** change state, because power is server-authoritative. On the **server** it
+flips the "open" bit in the data byte and commits with the neighbor+client flags
+(`LeverTile.cpp:262-266`):
+
+```cpp
+int data = level->getData(x, y, z);
+int dir  = data & 7;
+int open = 8 - (data & 8);                 // toggle bit 3
+level->setData(x, y, z, dir + open, Tile::UPDATE_ALL);
+```
+
+`UPDATE_ALL` (`UPDATE_NEIGHBORS | UPDATE_CLIENTS`, see [Blocks](/slop-docs/world/blocks/#update-flags))
+means the data change both syncs to clients and triggers a neighbor fan-out.
+
+**2 — Fan-out (`updateNeighborsAt`).** `use` then explicitly notifies its own six
+neighbors *and* the block it is mounted on (`LeverTile.cpp:271-295`) — the mount
+call is direction-dependent so a wall lever also re-powers the block behind it:
+
+```cpp
+level->updateNeighborsAt(x, y, z, id);       // the lever's own 6 neighbors
+if (dir == 1)      level->updateNeighborsAt(x - 1, y, z, id);   // + the mount face
+else if (dir == 2) level->updateNeighborsAt(x + 1, y, z, id);
+// ... one branch per mount direction ...
+```
+
+`Level::updateNeighborsAt` (`Level.cpp:1125`) is just six `neighborChanged` calls,
+one per face:
+
+```cpp
+neighborChanged(x - 1, y, z, tile);  neighborChanged(x + 1, y, z, tile);
+neighborChanged(x, y - 1, z, tile);  neighborChanged(x, y + 1, z, tile);
+neighborChanged(x, y, z - 1, tile);  neighborChanged(x, y, z + 1, tile);
+```
+
+**3 — The client-side guard.** `Level::neighborChanged` (`Level.cpp:1145`)
+short-circuits on the client:
+
+```cpp
+void Level::neighborChanged(int x, int y, int z, int type) {
+    if (isClientSide) return;                 // clients never run redstone logic
+    int id = getTile(x, y, z);
+    Tile *tile = Tile::tiles[id];
+    if (tile != nullptr) tile->neighborChanged(this, x, y, z, type);
+}
+```
+
+This is the reason the whole redstone simulation only runs host-side; clients see
+the *result* via the `UPDATE_CLIENTS` block-change packet, not by re-simulating.
+
+**4 — A reacting tile (`DoorTile::neighborChanged`).** Say a wooden door is
+adjacent. Its `DoorTile::neighborChanged` (`DoorTile.cpp:241`) reads whether it is
+powered by *either* of its two halves and opens accordingly (`:270-274`):
+
+```cpp
+bool signal = level->hasNeighborSignal(x, y, z) || level->hasNeighborSignal(x, y + 1, z);
+if ((signal || (type > 0 && Tile::tiles[type]->isSignalSource())) && type != id)
+    setOpen(level, x, y, z, signal);
+```
+
+`hasNeighborSignal` bottoms out in the six `getSignal` queries from the
+[power API](#power-propagation--the-level-signal-api) above; the lever answers
+`SIGNAL_MAX` on `getSignal` while its data bit 3 is set (`LeverTile.cpp:334-336`).
+The lower half of the door forwards notifications to the upper half and back
+(`DoorTile.cpp:279-286`) so the two-block door acts as one.
+
+### Update-order caveats
+
+Two subtleties fall out of this fan-out model, both visible in the trace:
+
+- **`type != id` self-exclusion.** The door checks `type != id` (`DoorTile.cpp:271`)
+  so a door updating its *own* neighbor half doesn't re-trigger itself into an
+  infinite loop. Tiles that power themselves (redstone dust) instead toggle a
+  `shouldSignal` flag around their own `getBestNeighborSignal` call
+  (`RedStoneDustTile.cpp:127-129`) to avoid counting their own output.
+- **Depth-first, immediate recursion.** `neighborChanged` runs the reacting tile's
+  logic *synchronously* inside the originating `setData`. A wire that repowers on
+  the lever flip calls `updatePowerStrength` (`RedStoneDustTile.cpp:107`), which
+  itself defers its follow-up neighbor notifies into a `toUpdate` set and drains
+  them *after* the strength walk (`:111-117`) rather than recursing mid-walk — the
+  neoLegacy way of keeping the wire spread from exploding into deep recursion.
+
 ## Comparator (TU31)
 
 The comparator is a **TU31 backport** — not present in the TU19 base.

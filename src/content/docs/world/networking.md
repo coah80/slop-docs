@@ -165,6 +165,98 @@ The main methods are `send(packet)` / `queueSend(packet)`, `flush()`, `tick()`
 (`Connection.h:103-132`). Disconnect reasons are the `DisconnectPacket::eDisconnectReason`
 enum.
 
+### Worked trace: a packet's full journey, both directions
+
+This follows one packet out and one packet in, citing every hop across the thread
+boundaries. The `Connection` is a three-thread machine: the game thread produces
+into (and consumes out of) lock-guarded queues, while a dedicated **write thread**
+and **read thread** own the socket.
+
+#### Outbound: `send()` → write thread → wire
+
+**1 — Enqueue (game thread).** `Connection::send(packet)` (`Connection.cpp:167`)
+runs on whatever thread built the packet. It takes `writeLock`, bumps the pending
+byte estimate, and pushes onto either the normal `outgoing` queue or, if the packet
+set `shouldDelay`, the low-priority `outgoing_slow` queue (`:173-188`):
+
+```cpp
+EnterCriticalSection(&writeLock);
+estimatedRemaining += packet->getEstimatedSize() + 1;
+if (packet->shouldDelay) { packet->shouldDelay = false; outgoing_slow.push(packet); }
+else                       outgoing.push(packet);
+LeaveCriticalSection(&writeLock);
+```
+
+`queueSend` (`:193`) is the same but always uses `outgoing_slow`. `send` returns
+immediately — it never touches the socket.
+
+**2 — Drain (write thread).** `Connection::runWrite` (`Connection.cpp:668`) is the
+thread body: it sets up per-thread compression storage
+(`Compression::UseDefaultThreadStorage()`, `:679`) and loops `while (writeTick())`
+until the queues drain, then sleeps on `m_hWakeWriteThread` until `flush()` wakes it
+(`:691-697`). `writeTick` (`:202`) pops one packet under `writeLock` and serializes
+it (`:223`):
+
+```cpp
+packet = outgoing.front(); outgoing.pop();
+Packet::writePacket(packet, bufferedDos);   // ID byte + payload -> §wire format
+```
+
+It also drains `outgoingRaw` (pre-serialized fast-path buffers, `:254-278`) and one
+throttled `outgoing_slow` packet per `slowWriteDelay` tick (`:280`+). The bytes go
+through `bufferedDos`/`byteArrayDos` to the platform socket layer (QNet on console).
+
+#### Inbound: read thread → `incoming` → `tick()` → listener
+
+**3 — Read (read thread).** `Connection::runRead` (`Connection.cpp:618`) mirrors the
+writer: it loops `while (readTick())` and sleeps on `m_hWakeReadThread` (`:642-651`).
+`readTick` (`:369`) pulls one packet off the socket via `Packet::readPacket`, which
+reads the ID byte, checks it against the endpoint's accept-list, and constructs +
+`read`s the payload (`:379`). Valid packets are pushed onto `incoming` under a
+*separate* lock (`incoming_cs`, `:384-389`):
+
+```cpp
+shared_ptr<Packet> packet = Packet::readPacket(dis, packetListener->isServerPacketListener());
+if (packet != nullptr) {
+    EnterCriticalSection(&incoming_cs);
+    if (!quitting) incoming.push(packet);
+    LeaveCriticalSection(&incoming_cs);
+}
+```
+
+A `nullptr` (bad/unaccepted ID, EOF) is dropped silently — the Java exception paths
+are commented out (`:392-406`).
+
+**4 — Dispatch (game thread).** `Connection::tick()` (`Connection.cpp:496`) runs on
+the game loop. It first bails to `close(eDisconnect_Overflow)` if the send backlog
+exceeds 1 MB (`:498-501`), sends a `KeepAlivePacket` every 20 ticks
+(`:527-530`), then drains up to `max = 1000` packets out of `incoming` under
+`incoming_cs` into a local vector, releases the lock, and **only then** dispatches
+each (`:542-559`):
+
+```cpp
+for (size_t i = 0; i < packetsToHandle.size(); i++)
+    packetsToHandle[i]->handle(packetListener);      // -> listener->handleXxx(...)
+flush();                                             // wakes both threads
+```
+
+Handling is done *outside* `incoming_cs` deliberately: a handler can call
+`connection.close()`, which flags the read/write threads — doing that while holding
+`incoming_cs` would deadlock (the `// 4J-PB - NEEDS CHANGED!!!` note at `:535`). Each
+`handle()` runs the double-dispatch from above, landing on the right `handleXxx` on
+`PlayerConnection` (server) or `ClientConnection` (client).
+
+#### On encryption
+
+There is **no packet encryption or cipher** in this codebase. The two thread bodies
+set up *compression* (`Compression::UseDefaultThreadStorage()`,
+`Connection.cpp:631`/`:679`), and the region store compresses chunk blobs with LCE's
+`CompressLZXRLE` — but there is no per-packet stream cipher. Java LCE's key-exchange
+packets are present only as commented-out `map()` calls: `252` `SharedKeyPacket` and
+`253` `ServerAuthDataPacket` (`Packet.cpp:149-150`) are never registered, so the
+encryption handshake they would drive does not exist here. Transport confidentiality
+is left to the platform network layer, not the packet stream.
+
 ### Wire format
 
 `Packet::writePacket` writes a single byte ID then the payload
