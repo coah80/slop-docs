@@ -91,6 +91,17 @@ The per-tick loop interleaves game logic with **XUI tick/render** and **Iggy Fla
 
 > The other platform `main` files (`Xbox_Minecraft.cpp`, `Orbis_Minecraft.cpp`, `PS3_Minecraft.cpp`, `PSVita_Minecraft.cpp`, `Durango_Minecraft.cpp`) exist but their toolchains are unbuildable stubs — see [Platform Code](/slop-docs/platforms/overview/).
 
+## One action across the modules
+
+To see how the four modules cooperate, follow a single player action — breaking a block — from input to on-screen result. This stays high-level; the detailed hops live on the linked subsystem pages.
+
+1. **Input (`Minecraft.Client`).** A left-click on a targeted tile enters the per-tick input handling in `Minecraft.cpp`. With a `HitResult::TILE` and `button == 0`, it calls `gameMode->startDestroyBlock(x, y, z, face)` (`Minecraft.cpp:5127`) — and, held, `gameMode->continueDestroyBlock(...)` (`Minecraft.cpp:5053`). See [Input](/slop-docs/client/input/).
+2. **Game-mode → packet (`Minecraft.Client`).** In `MultiPlayerGameMode`, `startDestroyBlock` sends a `PlayerActionPacket(START_DESTROY_BLOCK, …)` to the server (`MultiPlayerGameMode.cpp:132`); when the break completes it sends `STOP_DESTROY_BLOCK` (`:228`). The server is authoritative over the shared world. See [Networking](/slop-docs/client/networking/).
+3. **World mutation (`Minecraft.World`).** `MultiPlayerGameMode::destroyBlock` (`MultiPlayerGameMode.cpp:68`) reads the old `Tile`, calls `level->removeTile(x, y, z)`, and — if it changed — `oldTile->destroy(level, x, y, z, data)`. `Level`/`Tile` live in the shared `Minecraft.World` static lib linked into the client and both servers, so this same mutation path runs server-side too.
+4. **Client render + inventory update (`Minecraft.Client`).** The same method fires `level->levelEvent(LevelEvent::PARTICLES_DESTROY_BLOCK, …)` for the break particles, and in survival calls `item->mineBlock(...)` (durability) and `player->removeSelectedItem()` when the held tool wears out — the inventory/HUD update. The break particles and the destroyed-tile re-mesh are drawn by the client render path (`LevelRenderer`/`TileRenderer`). See [UI System](/slop-docs/client/ui-system/) and [Entity Renderers & Models](/slop-docs/client/entity-rendering/).
+
+So one click threads `Minecraft.Client` (input, packet, render) around a mutation in the shared `Minecraft.World` lib, with the packet keeping the server's copy of that same world in sync.
+
 ## The three GUI stacks
 
 LCE's UI is not one system. When you change a menu you need to know which stack it lives in.

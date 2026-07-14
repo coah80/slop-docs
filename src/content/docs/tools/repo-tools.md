@@ -147,6 +147,38 @@ The output **overwrites the input `.arc` in place** (`outputPath = arcPath`), an
 
 Files: `tools/RebuildArc.java` (+`.class`), `tools/ListArc.java`, `tools/ExtractFromArc.java`
 
+### One `.arc` roundtrip, walked
+
+To edit a single SWF inside `MediaWindows64.arc` — say the HUD skin — the full extract → patch → rebuild loop with real commands:
+
+```bash
+# 0. Back up first — RebuildArc overwrites the archive in place.
+cp Common/Media/MediaWindows64.arc MediaWindows64.arc.bak
+
+# 1. Compile the tools once (JPEXS ffdec.jar on the classpath).
+javac -cp ffdec.jar tools/ListArc.java tools/ExtractFromArc.java tools/RebuildArc.java
+
+# 2. See what's inside (ListArc filters to logo/skin/Menu/platform names).
+java -cp ffdec.jar:tools ListArc Common/Media/MediaWindows64.arc
+
+# 3. Extract the one entry you want into a working dir by its EXACT name.
+mkdir media_work
+java -cp ffdec.jar:tools ExtractFromArc Common/Media/MediaWindows64.arc skinHDHud.swf media_work/skinHDHud.swf
+
+# 4. Patch the extracted SWF with one of the JPEXS tools (see the sections above).
+#    e.g. add hardcore hearts to the HUD skin:
+java -cp ffdec.jar:tools PatchHudABC media_work/skinHDHud.swf media_work/skinHDHud.swf
+
+# 5. Rebuild the archive, swapping the patched SWF back in.
+#    Naming the file explicitly replaces just it; omit it to replace every
+#    .swf in media_work/ that also exists in the archive.
+java -cp ffdec.jar:tools RebuildArc Common/Media/MediaWindows64.arc media_work skinHDHud.swf
+```
+
+Two things to know from the tool internals. First, `ExtractFromArc` matches the entry name **exactly** (`args[1]`, `ExtractFromArc.java:11`) — use the name as `ListArc` prints it, minus the `*` compression marker. Second, `RebuildArc` writes substituted SWFs **uncompressed** (`compressed.set(i, false)`) and recomputes every absolute offset (the header stores absolute offsets from file start, so any size change shifts them all), then **overwrites the input `.arc` in place** (`outputPath = arcPath`, `RebuildArc.java:145`) and exits non-zero if nothing was replaced. That in-place overwrite is why step 0 backs the archive up first.
+
+**Where the result goes:** the rebuilt `.arc` is the one you just overwrote — `Common/Media/MediaWindows64.arc`. At runtime the game loads assets relative to the exe, and the build's `AssetFolderCopy` target copies `Common/Media/` (including the `.arc`) next to `Minecraft.Client.exe` (see [Building](/slop-docs/overview/building/#4-asset-copy-targets-fire-during-after-build)). So either edit the source-tree `.arc` and rebuild, or drop the rebuilt `.arc` straight into a built `Common/Media/` next to the exe to test without recompiling.
+
 ## Audio & asset format scripts (Python)
 
 ### `msscmp_extract.py` — Miles Sound System banks

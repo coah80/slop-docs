@@ -75,6 +75,58 @@ The `configure_cmake.bat` helper in the repo root is a personal script: it sourc
 
 Each platform has `<platform>-debug` and `<platform>-release` build presets. The console presets exist for structure only — their toolchain files are empty stubs, so console builds are **aspirational, not functional**. Only `windows64` builds. See [Platform Code](/slop-docs/platforms/overview/).
 
+## One full build, walked
+
+Between `cmake --preset windows64` and a runnable `Minecraft.Client.exe`, the build does four code-generation passes, compiles the four targets, and copies the game assets next to each exe. Here is the whole sequence, in the order it fires — all grounded in the root `CMakeLists.txt` and `Minecraft.Client/CMakeLists.txt`.
+
+### 1. Configure — what the preset emits
+
+`cmake --preset windows64` reads `CMakePresets.json`, sets `PLATFORM_NAME=Windows64` / `PLATFORM_DEFINES=_WINDOWS64` / `IGGY_LIBS=iggy_w64.lib;iggyperfmon_w64.lib;iggyexpruntime_w64.lib`, and writes the Ninja Multi-Config build tree to `build/windows64/`. During configure the root `CMakeLists.txt` walks its subdirectories in a fixed order (`CMakeLists.txt:144-160`): `4JLibs` → `Minecraft.World` → `Minecraft.Client` → (Windows64 only) `Minecraft.Server.FourKit` → `Minecraft.Server`. It also declares the four codegen targets and wires them as `add_dependencies` of the compiled targets, so they must run **before** any translation unit that includes their output.
+
+### 2. The four codegen targets (fire before compile)
+
+At build time, four generators write headers into `build/windows64/generated/` (each writes to a `.tmp` then compares, so an unchanged output doesn't retrigger downstream compiles):
+
+| Order dep | Target | Writes | From | Purpose |
+|---|---|---|---|---|
+| feeds all three targets | `GenerateBuildVer` | `generated/Common/BuildVer.h` (`CMakeLists.txt:251`) | `git rev-parse` + hardcoded `BUILD_NUMBER 570` | version/protocol constants (`VER_NETWORK = VER_PRODUCTBUILD`) |
+| runs first of the string pair | `GenerateStringsHeader_Minecraft.Client` | `generated/Windows64Media/strings.h` (`Minecraft.Client/CMakeLists.txt:29`) | every `Windows64Media/loc/*.xml` | `#define IDS_* N` localization IDs |
+| depends on the strings header | `GenerateStringIdLookup` | `generated/StringIdLookup.generated.inc` (`CMakeLists.txt:207`) | the generated `strings.h` | `IDS_*` → name reverse lookup |
+| feeds World + Client (+ Server) | `GenerateItemNameMap` | `generated/ItemNameMap.h` (`CMakeLists.txt:286`) | `Minecraft.World/Item.h` then `Tile.h` | `g_ItemNameMap` + `GetItemIdByName()`; `Item.h` wins over `Tile.h` so the wheat *crop tile* doesn't shadow the wheat *item* |
+
+The two string generators are ordered: `GenerateStringIdLookup` `DEPENDS` on the strings header (`CMakeLists.txt:228`), because you can't build a reverse lookup until the `#define IDS_*` table exists. `Minecraft.World` is made to depend on `GenerateStringsHeader_Minecraft.Client` (`CMakeLists.txt:198-199`) so even the shared gameplay lib sees a fresh `strings.h`.
+
+### 3. Compile order
+
+Ninja compiles bottom-up along the dependency graph: `4JLibs` static libs (prebuilt `.lib`s linked in) and the generated headers first, then `Minecraft.World` (STATIC), then the three exes that link it — `Minecraft.Client`, `Minecraft.Server.FourKit`, `Minecraft.Server`. The client links `Minecraft.World`, the four `4JLibs.Windows64.*` libs, D3D11/DXGI/d3dcompiler, XInput, and the three Iggy libs (`Minecraft.Client/CMakeLists.txt` link block). `Minecraft.Client` is the VS startup project (`set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT Minecraft.Client)`, `CMakeLists.txt:312`).
+
+### 4. Asset-copy targets (fire during/after build)
+
+Compiling the exe is not enough — the game loads assets relative to the exe, so several `ALL` custom targets stage them into the output directory (`$<TARGET_FILE_DIR:Minecraft.Client>`):
+
+- **`AssetFolderCopy_Minecraft.Client`** copies four source trees next to the exe: `music/`, `Common/Media/`, `Common/res/`, and `Windows64Media/` (`Minecraft.Client/CMakeLists.txt:122-127`). `CopyAssets.cmake` excludes source/build files (`*.cpp`/`*.h`/`*.xml`/audio-source formats) and, critically, **every platform media folder except the current one** — so `MediaDurango`, `MediaOrbis`, etc. are skipped and only `MediaWindows64` ships.
+- **`AssetLocalizationCopy_Minecraft.Client`** copies the `Windows64Media/loc` XML into `Common/Localization/` and removes stale `strings.h`/`4J_strings.h` copies (`Minecraft.Client/CMakeLists.txt:130-149`).
+- **`AssetTitleUpdateColourOverride`** removes the binary `colours.col` and copies the XML `colours.xml` in its place (`CMakeLists.txt:163-173`), deliberately after `AssetFolderCopy`.
+- **`add_gamehdd_target`** ensures the persistent `GameHDD` save dir exists next to the exe (`cmake/Utils.cmake`); `add_copyredist_target` stages runtime redistributables. Both servers get their own `AssetTitleUpdateColourOverride_*` copy targets (`CMakeLists.txt:175-197`).
+
+### 5. The output tree you should see
+
+For a Release build, look under `build/windows64/Minecraft.Client/Release/`:
+
+```
+build/windows64/Minecraft.Client/Release/
+  Minecraft.Client.exe
+  music/
+  Common/
+    Media/            (incl. MediaWindows64.arc)
+    res/              (incl. TitleUpdate/res/colours.xml)
+    Localization/     (loc XML; strings.h removed)
+  Windows64Media/
+  GameHDD/            (persistent save dir)
+```
+
+The two servers land in parallel trees — `build/windows64/Minecraft.Server/Release/Minecraft.Server.exe` and `build/windows64/Minecraft.Server.FourKit/Release/Minecraft.Server.exe` (both exes are literally `Minecraft.Server.exe`; the FourKit one additionally has a `runtime/` .NET payload and an empty `plugins/`). Run any exe **from its own `Release/` directory** so the relative asset paths resolve.
+
 ## Linux cross-compile — `build-linux.sh`
 
 This is the canonical Linux path and what CI uses. It cross-compiles **Windows x64** binaries on Linux with LLVM/clang-cl plus a Windows SDK fetched by `xwin`.

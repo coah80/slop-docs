@@ -156,6 +156,36 @@ Each preset prompts for host/port then invokes `stress_test.py` with a fixed arg
 
 The two FourKit presets are meant to validate the plugin host's `HasHandlers` fast-path and Server GC at the 50-player target (see [FourKit Plugins](/slop-docs/server/fourkit-plugins/)). Both warn: set `require-secure-client=false` in `server.properties` first, because the 100-tick cipher-handshake grace cannot absorb 50 simultaneous bot joins. `test_fourkit_steady.bat` also documents an in-game routine (`/fktest scatter`, wait for the chunk-load wave to drain, `/fktest tps`).
 
+### One scenario, walked — `test_aggressive.bat`
+
+To see the whole loop concretely, take the aggressive preset. It hammers the player-list `players.erase()` path — the most race-prone path in the server — by keeping bots joining and leaving fast:
+
+```
+# after the host/port prompt, it runs:
+python stress_test.py <host> <port> --bots 12 --hold 0.5 2 --ramp 0.2
+```
+
+**What the bots do.** Up to **12** concurrent real protocol clients, spawned 0.2 s apart (`--ramp`). Each bot connects, holds for a random **0.5–2 s** (`--hold`), sends keepalives while connected, then disconnects — deliberately short holds so connect/disconnect churn stays high. The default **50 cycles** (`--cycles`, a *global* spawn counter, not per-bot) caps total spawns, so the run spawns 50 bots total, at most 12 alive at once, then drains and prints a final line.
+
+**What healthy output looks like.** Per-bot logs interleave with a stats line every 5 s (`_print_status`), and a `Final:` line at the end. The `Stats.summary()` format is fixed (`stress_test.py:118`):
+
+```
+[t] connect (entityId=…) / disconnecting after … hold   # per-bot
+[45s] connects=612 disconnects=600 rejections=0 errors=0 moves=0 keepalives=1830
+...
+Final: [50s] connects=640 disconnects=640 rejections=0 errors=0 moves=0 keepalives=1902
+```
+
+Healthy is: **`connects` ≈ `disconnects`** (every join cleanly left), **`errors=0`**, and **`rejections=0`** — and the *server stays up and keeps ticking* the whole time. Because this preset omits `--move`, `moves=0` is expected.
+
+**What unhealthy output looks like.** The tool increments three counters that flag trouble (all under `self.stats.lock`):
+
+- **`rejections`** climbs — the server refused connections during the handshake window. Expected if `require-secure-client=true` can't absorb the join rate (the FourKit presets warn about exactly this); otherwise a sign the accept path is saturated.
+- **`errors`** climbs — a bot hit an exception connecting, mid-write, or disconnecting (`[bot] error: <e>`). A burst of `errors` right as bots disconnect points at a **socket-write-during-disconnect race** on the server side, which is one of the four paths this tool targets.
+- **`connects` ≫ `disconnects` at the end**, or the server process **crashes / stops responding** — the player-list add/remove wasn't thread-safe under the churn. A server crash is the loudest failure: the tool keeps trying to connect and `errors` runs away while the `Final:` line shows far fewer clean disconnects than connects.
+
+The tool itself never asserts pass/fail — it is a load generator. The signal is the **counter balance plus a server that's still alive and at 20 TPS afterward**; a crashed or hung `Minecraft.Server.exe`, or a lopsided connect/disconnect count, is the bug this preset is designed to surface.
+
 ### Gotchas
 
 - Default ports differ between presets: the plain load presets prompt for **19132**, while the endurance and FourKit presets prompt for **25565** (the server's default). Confirm your server's actual port.
