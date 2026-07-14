@@ -241,9 +241,9 @@ static const int NAME_Id = NUMBER;
 
 strips the `_Id` suffix, and maps `"NAME" -> NUMBER`
 (`GenerateItemNameMap.cmake:25-30`). It is wired up in the top-level
-`CMakeLists.txt:287`, depends on `Tile.h` and `Item.h` (`CMakeLists.txt:294`),
+`CMakeLists.txt:287`, depends on `Tile.h` and `Item.h` (`CMakeLists.txt:292-293`),
 and is a hard build dependency of `Minecraft.World`, `Minecraft.Client`, and
-`Minecraft.Server` (`CMakeLists.txt:303-306`).
+`Minecraft.Server` (`CMakeLists.txt:301-305`).
 
 **The consequence:** the moment you add `roasted_chestnut_Id = 437` in Step 2,
 the next build regenerates the map and `/give <player> roasted_chestnut` works.
@@ -285,7 +285,7 @@ The build turns this XML into a generated `strings.h` (into
 `generated/Windows64Media/strings.h`) that `#define`s each `IDS_*` name to its
 numeric slot — that is where the `IDS_ROASTED_CHESTNUT` symbol you referenced in
 `Item.cpp` Step 3 comes from. The generation is a build dependency of
-`Minecraft.World` (`CMakeLists.txt:200-201`), so adding the XML entry and
+`Minecraft.World` (`CMakeLists.txt:198-200`), so adding the XML entry and
 rebuilding is all that is required; you never hand-edit `strings.h`. Elytra
 (`IDS_ITEM_ELYTRA` at `stringsGeneric.xml:9482`) is another one-line example.
 
