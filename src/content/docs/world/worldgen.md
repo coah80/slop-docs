@@ -237,6 +237,77 @@ The Nether and End instead use a **`FixedBiomeSource`** (a single biome
 everywhere): `FixedBiomeSource(Biome::hell, …)` and `FixedBiomeSource(Biome::sky,
 …)`, wired in `HellDimension::init` and `TheEndDimension::init`.
 
+## How a chunk is built — the two-pass model
+
+Generation is deliberately **two passes**, because a feature (a tree, a lake, a
+structure piece) may spill across a chunk boundary and must be able to write into
+neighbours that are already resident. neoLegacy keeps Java's split:
+
+| Pass | Method | Runs | Writes |
+|------|--------|------|--------|
+| **1 — shape** | `RandomLevelSource::create` → `getChunk` (`RandomLevelSource.cpp:397/402`) | when a chunk is first requested | this chunk's block + data arrays only (no neighbour writes) |
+| **2 — decorate** | `RandomLevelSource::postProcess` (`RandomLevelSource.cpp:714`) | after the chunk (and its neighbours) exist | scatters features, allowed to reach ±1 chunk |
+
+The offset-by-8 idiom (`+ 8` on every `random->nextInt(16)` in the decorators, and
+the `xo + 16, zo + 16` biome sample in `postProcess` at `:720`) exists precisely so
+a feature centred in this chunk lands inside the 2×2 block of already-generated
+chunks — the classic "decorate the +8,+8 quadrant" scheme.
+
+Pass 1 never calls `setTileAndData`: it fills the raw `blocks`/`blockData` byte
+arrays that become the `LevelChunk` at `RandomLevelSource.cpp:466`. Only pass 2
+(and everything it calls — `LakeFeature::place`, `biome->decorate`, structure
+`postProcess`) writes through the live `Level`.
+
+## Worked trace: one overworld chunk, request to decoration
+
+This follows chunk `(cx, cz)` from the server asking for it to the moment its trees
+and ores are placed, citing every hop.
+
+**1 — Request.** On the server the chunk cache drives generation:
+`level->cache->create(chunkX, chunkZ)` (`Minecraft.Server/FourKitNatives.cpp:1433`)
+lands on `RandomLevelSource::create` (`RandomLevelSource.cpp:397`), which just
+forwards to `getChunk(x, z)` (`:402`). *(The client's `ReadOnlyChunkCache::create`
+instead calls `storage->load` — clients receive finished chunks over the network
+and never run the generator; its `postProcess` is empty, `ReadOnlyChunkCache.cpp:68`.)*
+
+**2 — Shape (`getChunk`).** `getChunk` (`:402`) seeds the per-chunk RNG from the
+coordinates (`random->setSeed(xOffs * 341873128712 + zOffs * 132897987541)`, `:404`),
+physically allocs the block array (`:408`), then:
+- `prepareHeights(xOffs, zOffs, blocks)` (`:415`) — samples the Perlin noise bank at
+  the coarse 4×8×4 grid and trilinearly interpolates the terrain shell + stone/water
+  fill into `blocks`.
+- `getBiomeSource()->getBiomeBlock(biomes, xOffs*16, zOffs*16, 16, 16, true)` (`:419`)
+  — resolves the 16×16 biome grid for the chunk via the compiled GenLayer chain.
+- `buildSurfaces(xOffs, zOffs, blocks, blockData, biomes)` (`:426`).
+
+**3 — Surface (`buildSurfaces`).** `buildSurfaces` (`:371`) samples a surface-depth
+Perlin (`perlinNoise3->getRegion(...)`, `:376`) and, per column, calls
+`b->buildSurfaceAtDefault(level, random, blocks.data, blockData.data, …, depthBuffer[…])`
+(`:386`) — the post-`720e1a77` delegation into the biome. This is where grass caps
+dirt, deserts write sand, and **Mesa writes per-block terracotta data** into the
+`blockData` channel (the ChunkPrimer-equivalent, `:421`).
+
+**4 — Carve + structure shape.** Back in `getChunk`, the carvers run on the block
+array: `caveFeature->apply(...)` (`:430`) then `canyonFeature->apply(...)` (`:431`).
+If `generateStructures`, the five structure generators `apply` in fixed order —
+`mineShaftFeature`, `villageFeature`, `strongholdFeature`, `scatteredFeature`,
+`oceanMonument` (`:434-438`) — each stamping any of its pieces that intersect this
+chunk's raw arrays. The finished arrays are packed to nibbles (`:444-462`) and wrapped
+into `new LevelChunk(level, blocks, xOffs, zOffs)` (`:466`).
+
+**5 — Decorate (`postProcess`).** Once resident, `postProcess` (`:714`) samples the
+`+16,+16` biome (`:720`), re-seeds a position-derived RNG (`:727-730`), then in order:
+structure `postProcess` (`:737-741`, which build any pieces intersecting this chunk
+via [StructureStart](/slop-docs/world/structures/#worked-trace-a-monument-from-grid-cell-to-guardians)),
+a water lake `1/4` outside deserts (`:748-756`), a lava lake `1/8` (`:761-771`),
+**8 dungeon attempts** (`MonsterRoomFeature`, `:774-783`), and finally
+`biome->decorate(level, pprandom, xo, zo)` (`:786`) — the ore/tree/flower scatter,
+traced in full on [Biomes](/slop-docs/world/biomes/#worked-trace-one-chunk-of-decoration).
+
+The two-pass split is why step 4's structures write into raw arrays while step 5's
+structures write live blocks: a structure that seeds in this chunk may only *finish*
+once its neighbours exist.
+
 ## Related pages
 
 - [Biomes](/slop-docs/world/biomes/) — the ~30 biome classes and their decorators

@@ -197,6 +197,54 @@ edits, and a broken/moved destination portal is re-resolved instead of silently
 mis-linking. This builds on the earlier `0631aefe` fix ("Fix portal cache key to
 use chunk coordinates"), which corrected the cache key so lookups actually hit.
 
+### Worked trace: standing in a Nether portal → arriving in the Nether
+
+This follows one player from stepping into the purple portal blocks to landing in
+the Nether, with the coordinate mapping made explicit.
+
+**1 — Contact (`handleInsidePortal`).** While the player's AABB overlaps a portal
+block, `PortalTile` runs `entity->handleInsidePortal()` (`PortalTile.cpp:232`, guarded
+so passengers/riders don't trigger). `Entity::handleInsidePortal` (`Entity.cpp:1761`)
+records the entry direction and sets `isInsidePortal = true` (`:1776`).
+
+**2 — Dwell counter (`Entity::tick`).** Each server tick, the portal block in
+`Entity::tick` (`Entity.cpp:553`) checks `isInsidePortal`. If the Nether is enabled
+and the entity isn't riding, `portalTime++` counts up; once it reaches
+`getPortalWaitTime()` (`:559`) it clamps, sets `changingDimensionDelay`, computes the
+target (`level->dimension->id == -1 ? 0 : -1`, `:566-573`), and calls
+`changeDimension(targetDimension)` (`:575`). If the entity steps out first,
+`portalTime` bleeds off at `-4/tick` (`:583`).
+
+**3 — Switch levels (`changeDimension`).** `Entity::changeDimension(i)`
+(`Entity.cpp:2065`) is server-only (`:2067`). It resolves `oldLevel`/`newLevel` from
+`MinecraftServer::getLevel` (`:2071-2072`), applies the 4J transit filters (falling
+tiles are destroyed `:2082`, entity/creature caps are checked `:2089-2092`), sets
+`dimension = newLevel->dimension->id` (`:2096`), removes the entity from the old level
+(`:2098`), then hands off to
+`server->getPlayers()->repositionAcrossDimension(entity, lastDimension, oldLevel, newLevel)`
+(`:2101`). A fresh entity copy is built via `EntityIO::newEntity` + `restoreFrom`
+(`:2102-2106`) and added to the new level (`:2116`).
+
+**4 — Coordinate mapping (`repositionAcrossDimension`).** `PlayerList::repositionAcrossDimension`
+(`PlayerList.cpp:1081`) does the Overworld↔Nether scale. Reading `hellScale` from the
+level data (`:1089`), going **Overworld→Nether** (`dimension == 0`) it multiplies
+`xt *= scale; zt *= scale` (`:1102-1103`); the reverse divides (`:1092-1093`). This is
+the LCE compression — the same `HELL_LEVEL_SCALE_*` constants from `ChunkSource.h`.
+Coordinates are clamped to the finite world (`:1143-1144`).
+
+**5 — Find/create the destination portal.** For non-End exits it flips
+`newLevel->cache->autoCreate = true` and calls
+`newLevel->getPortalForcer()->force(entity, xOriginal, yOriginal, zOriginal, yRotOriginal)`
+(`PlayerList.cpp:1154`). `PortalForcer::force` (`PortalForcer.cpp:28`) tries
+`findPortal(...)` (validating the cache against live `Tile::portal_Id`, the `b47c16b6`
+fix); on miss it `createPortal(...)` then `findPortal` again (`:63-68`), dropping the
+player in front of the frame. **Entering the End** short-circuits this — `force`
+*builds* an obsidian arrival platform under the entity and returns (`:30-59`), which
+is why step 5 is gated on `lastDimension != 1` (`PlayerList.cpp:1151`).
+
+The whole flow is server-authoritative; the client's `LocalPlayer::changeDimension`
+(`LocalPlayer.cpp:577`) only handles the local view swap.
+
 ## neoLegacy delta vs vanilla TU19
 
 - **Portal linkage now persists** and self-heals against stale/moved portals

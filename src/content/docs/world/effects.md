@@ -209,6 +209,49 @@ Un-brewed or nonsense brews get a flavor name from `DEFAULT_APPEARANCES[]`
 (`PotionBrewing.cpp:8-42`) — the classic "Mundane", "Thick", "Awkward" prefix
 table, selected via `getAppearanceValue` (5 named bits → 0–31 index).
 
+## Worked trace: drinking a potion, applied each tick, expiring
+
+This joins the two systems — `PotionBrewing` produces the effect set, `MobEffect`
+runs it per tick on the drinker.
+
+**1 — Drink completes.** When the drink animation finishes, `PotionItem::useTimeDepleted`
+(`PotionItem.cpp:78`) decrements the stack (`:80`) and, server-side (`:82`), resolves
+the potion's effects: `getMobEffects(instance)` (`:84`) → `getMobEffects(auxValue)`
+(`:65`), which caches `PotionBrewing::getEffects(auxValue, false)` (`:72`) — the
+bit-formula evaluation from above. For each result it calls
+`player->addEffect(new MobEffectInstance(effect))` (`:89`), then returns an empty
+glass bottle (`:97`).
+
+**2 — Store the effect (`addEffect`).** `LivingEntity::addEffect` (`LivingEntity.cpp:655`)
+first gates on `canBeAffected` (`:657`). If the effect id is already active it merges
+via `effectInst->update(newEffect)` + `onEffectUpdated` (`:665-667`); otherwise it
+inserts into `activeEffects` and calls `onEffectAdded` (`:671-672`) — which applies any
+attribute modifiers (speed, strength) immediately.
+
+**3 — Per-tick pump (`tickEffects`).** Every tick, `LivingEntity::baseTick`
+(`LivingEntity.cpp:201`) calls `tickEffects()` (`:287` → `:514`). It walks
+`activeEffects` and calls `effect->tick(self)` on each (`:521`).
+`MobEffectInstance::tick` (`MobEffectInstance.cpp:103`): if `duration > 0` and
+`MobEffect::effects[id]->isDurationEffectTick(duration, amplifier)` returns true
+(`:107`) — this is the `50 >> amp` / `25 >> amp` interval gate — it calls
+`applyEffect(target)` (`:109`), which dispatches
+`MobEffect::effects[id]->applyEffectTick(mob, amplifier)` (`:125`) (regen heals 1,
+poison deals 1, etc.). Then `tickDownDuration()` decrements (`:111/116`) and it
+returns `duration > 0`.
+
+**4 — Expiry.** When `tick` returns `false` (duration hit 0), `tickEffects` erases the
+entry, calls `onEffectRemoved(effect)` (which strips the attribute modifiers), and
+deletes it (`LivingEntity.cpp:525-527`). Every 30 s of remaining duration it instead
+fires `onEffectUpdated` to resync the client timer (`:531-535`).
+
+**5 — Particles / ambient path.** After the walk, if `effectsDirty` it recomputes the
+swirl colour and the ambient flag — `PotionBrewing::getColorValue` and
+`areAllEffectsAmbient` over the active set (`:560-561`) — stored in the entity's
+`DATA_EFFECT_COLOR_ID`/`DATA_EFFECT_AMBIENCE_ID` data watchers. Ambient effects
+(beacon range, the `ambient` flag) emit far fewer particles (`:587`). A beacon feeds
+this same path by re-`addEffect`ing its buff with the ambient flag each cycle, so the
+per-tick machinery above is identical whether the source is a drink or a beacon.
+
 ## Leaping and Water Breathing potions (TU31)
 
 Both are present in the simplified brewing table above:

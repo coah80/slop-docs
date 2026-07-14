@@ -220,6 +220,37 @@ so re-inserting the same item after a bookshelf change re-rolls. Books route to
 `Item::enchanted_book` and use `addEnchantment`; tools use `item->enchant(...)`
 (`EnchantmentMenu.cpp:241-254`).
 
+### Worked trace: inserting an item → three offers → applying one
+
+**1 — Offer computation (`slotsChanged`).** Putting an item in slot 0 fires
+`EnchantmentMenu::slotsChanged` (`EnchantmentMenu.cpp:98`). If the item isn't
+enchantable it broadcasts a reset packet and zeroes the costs (`:104-123`). Otherwise,
+server-side (`:126`), it counts bookshelves by walking the 3×3 ring and testing the
+outer shelf positions with a required air gap (`:129-171`), seeds the RNG from the
+player's stored seed (`random.setSeed(playerT->enchantmentSeed)`, `:173`), and fills
+the three slot costs: `costs[i] = EnchantmentHelper::getEnchantmentCost(&random, i, bookcases, item)`
+(`:177`), then `std::sort(costs, costs+3)` (`:179`).
+
+**2 — Pool build (`selectEnchantment`).** For each slot it caches the rolled result:
+`cachedEnchantments[i] = EnchantmentHelper::selectEnchantment(&random, item, costs[i])`
+(`EnchantmentMenu.cpp:185`). `selectEnchantment` (`EnchantmentHelper.cpp:368`) reads
+the item's enchantability (`getEnchantmentValue()`, `:372`), applies the TU7/1.3
+randomization (`:379-386`), builds the eligible list via
+`getAvailableEnchantmentResults(realValue, item)` (`:394`), and picks one by weight —
+`WeighedRandom::getRandomItem(random, &values)` (`:402`), the `frequency` constants
+acting as the weights. It then rolls extra compatible enchantments while
+`random->nextInt(50) <= bonusChance` (`:411`), pruning any that clash with an already
+chosen one via `isCompatibleWith` (`:423`).
+
+**3 — Apply (`clickMenuButton`).** Clicking offer `i` calls `clickMenuButton(player, i)`
+(`EnchantmentMenu.cpp:225`). It gates on `experienceLevel >= costs[i]` (or creative)
+and lapis count `>= i+1` (`:228-231`), then server-side (`:232`): spends the levels
+(`giveExperienceLevels(-(i+1))`, `:240`), and for each `EnchantmentInstance` in the
+cached pool applies it — books get `Item::enchanted_book->addEnchantment(item, e)`
+(`:249`), tools get `item->enchant(e->enchantment, e->level)` (`:254`). Finally it
+consumes lapis (`:263`) and **rerolls the seed** `player->enchantmentSeed = random.nextInt(1000000)`
+(`:265`), which is why the three offers change after any enchant.
+
 ## neoLegacy / 4J delta vs vanilla TU19
 
 - **Frost Walker** (`FrostWalkerEnchantment`, id 9) is a post-TU19 backport,

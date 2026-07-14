@@ -221,7 +221,81 @@ Counts (`flowerCount`, `grassCount`, `treeCount`, `doublePlantCount`,
 `waterlilyCount`, `reedsCount`, `cactusCount`, etc.) are tuned per biome. The base
 `Biome` constructor sets `flowerCount = 2`, `grassCount = 1` as defaults
 (`Biome.cpp:185-186`). The `TheEndBiomeDecorator` variant handles the featureless
-End.
+End. Every `Feature*` slot is `new`'d once in `BiomeDecorator::_init`
+(`BiomeDecorator.cpp:45`) — the ore features (`:50-61`), the flower set (`:63-79`),
+the shared `doublePlantFeature` (`:81`) — and the count defaults are set at the
+bottom (`:83-100`); a subclass constructor then bumps the counts it cares about.
+
+### The fixed decoration order
+
+`BiomeDecorator::decorate()` (`BiomeDecorator.cpp:103`) runs the same phases in the
+same order for every biome — only the *counts* differ. The order is load-bearing
+(ores must exist before caves would expose them, liquids come last):
+
+| Phase | Source | What runs |
+|-------|--------|-----------|
+| Ores | `decorateOres()` (`:388`) | the 11 ore/dirt/gravel veins below |
+| Sand / clay / gravel | `:110-129` | `sandCount` sand, `clayCount` clay, `gravelCount` gravel disks at the top-solid block |
+| Forests | `:132-145` | `treeCount` (+1 with `1/10` odds) — `biome->getTreeFeature(random)` per tree |
+| Flowers / grass | `:147-219` | `hugeMushrooms`, `flowerCount` via `biome->getFlowerFeature`, forced flower spots, `grassCount` via `biome->getGrassFeature` |
+| Bushes / lily / reeds / pumpkin / cactus | `:241-331` | `deadBushCount`, `waterlilyCount`, mushrooms, `reedsCount` **+ a forced 10 reeds** (`:307`), pumpkin `1/32`, `cactusCount` |
+| Liquids | `:334-357` | when `liquids`: **50** water springs (`:339`) + **20** lava springs (`:349`) |
+
+Note the double-plant loop (`:221-237`) is **commented out** in the snapshot — sunflowers
+and lilacs are placed by the chunk source's `TallGrass2`/`DoublePlantFeature` path,
+not the decorator here.
+
+### Ore veins (`decorateOres`)
+
+`decorateOres` (`BiomeDecorator.cpp:388`) is identical across all overworld biomes —
+the vanilla vein schedule, run under `level->setInstaTick(true)` (`:390`) so the
+ore blocks don't fire updates during bulk placement:
+
+| Feature | Veins/chunk | Height band |
+|---------|-------------|-------------|
+| dirt | 20 | full (`0..genDepth`) |
+| gravel | 10 | full |
+| coal | 20 | full |
+| iron | 20 | `0..genDepth/2` |
+| gold | 2 | `0..genDepth/4` |
+| redstone | 8 | `0..genDepth/8` |
+| diamond | 1 | `0..genDepth/8` |
+| lapis | 1 | depth-average `genDepth/8 ± genDepth/8` |
+| granite / diorite / andesite | 10 each | `0..80` |
+
+The three stone-variant veins (`:400-402`) are the neoLegacy/TU31 addition — the
+polished-stone ores absent from vanilla TU19.
+
+## Worked trace: one chunk of decoration
+
+This is the concrete `biome->decorate` hop referenced from
+[World Generation](/slop-docs/world/worldgen/#worked-trace-one-overworld-chunk-request-to-decoration).
+Take a **Forest** chunk at `(xo, zo)`.
+
+1. `RandomLevelSource::postProcess` calls `biome->decorate(level, pprandom, xo, zo)`
+   (`RandomLevelSource.cpp:786`). `Biome::decorate` (`Biome.cpp:344`) is a one-line
+   forward: `decorator->decorate(level, random, xo, zo)` (`:346`).
+2. `BiomeDecorator::decorate(level, random, xo, zo)` (`BiomeDecorator.cpp:24`) stashes
+   the level/random/offsets on the decorator (it re-entrancy-guards on a non-null
+   `level`, `DEBUG_BREAK`ing on overlap, `:28-32`) and calls the no-arg
+   `decorate()` (`:39`).
+3. `decorate()` (`:103`) runs the phase list above. Ores first: `decorateOres()`
+   (`:106`) lays 20 coal, 20 iron, 1 diamond … veins.
+4. Trees: `forests = treeCount` (+1 on `1/10`, `:133-134`); for each, it asks the
+   biome which tree to build — `Feature *tree = biome->getTreeFeature(random)`
+   (`:140`) — and `tree->place(level, random, x, level->getHeightmap(x,z), z)`
+   (`:142`) stamps it, then `delete tree` (`:143`). For plain Forest that is oak
+   (`TreeFeature`); Flower Forest overrides `getTreeFeature` to bias birch.
+5. Flowers: `Feature* selectedFlower = biome->getFlowerFeature(random, x, y, z)`
+   (`:162`) — `ForestBiome` returns one of the neoLegacy flower set (allium, orchid,
+   tulips) here — placed and deleted per pick (`:165-166`).
+6. Grass: `biome->getGrassFeature(random)` (`:211`) → `TallGrassFeature::place`.
+7. Reeds/liquids tail: `reedsCount` + a forced 10 reeds (`:299-313`), then 50 water
+   and 20 lava `SpringFeature` placements (`:338-356`).
+
+Each `Feature::place` that succeeds calls `level->setTileAndData(...)`, re-entering
+the [block placement pipeline](/slop-docs/world/blocks/#worked-trace-the-full-life-of-a-placed-block)
+at the world-write hop.
 
 ## BiomeSource & FixedBiomeSource
 

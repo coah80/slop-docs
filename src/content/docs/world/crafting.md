@@ -124,6 +124,53 @@ crafting grid to a result. Two special-cases precede the recipe scan:
 special recipes). `ANY_AUX_VALUE = -1` (`Recipes.h:70`) is the wildcard used when
 a mapping is made via an `Item *`/`Tile *` tag rather than an explicit instance.
 
+### How `ShapedRecipy::matches` scans the grid
+
+`ShapedRecipy::matches` (`ShapedRecipy.cpp:54`) slides the recipe's `width×height`
+pattern over the 3×3 grid at every offset (`:56-58`) and tries it both un-flipped and
+mirrored (`matches(..., true)` / `matches(..., false)`, `:60-61`) — so a recipe
+matches regardless of where in the grid it's laid and in either handedness. The inner
+overload (`:67`) compares all 9 cells: an empty cell must line up with an empty
+pattern slot (`:80`), ids must match (`:88`), and aux values must match **unless** the
+pattern slot is `ANY_AUX_VALUE` (`:92`) — the wildcard from an `i`/`t`-tagged
+ingredient. `ShapelessRecipy::matches` (`ShapelessRecipy.cpp:45`) instead just checks
+the multiset of ingredients ignoring position.
+
+## Worked trace: filling the grid → result appears → taking it
+
+**1 — Grid changes.** Every time a crafting slot changes, the menu recomputes the
+result: `CraftingMenu::slotsChanged` (`CraftingMenu.cpp:46`) calls
+`resultSlots->setItem(0, Recipes::getInstance()->getItemFor(craftSlots, level))`
+(`:48`). (The player-inventory 2×2 grid does the same from `InventoryMenu.cpp:70`.)
+
+**2 — Resolve (`getItemFor`).** `Recipes::getItemFor` (`Recipes.cpp:1498`) first
+scans the grid, counting non-null items (`:1503-1512`). Two fast paths precede the
+recipe scan:
+- **Tool repair** — exactly two identical damageable tools, count 1 each: merge into
+  one with combined remaining durability plus a `maxDamage*5/100` bonus (`:1514-1523`).
+  This is hard-coded, not a `Recipy`.
+- Otherwise it iterates `recipies` and returns the first `r->matches(craftSlots, level)`
+  → `r->assemble(craftSlots)` (`:1531-1534`).
+
+**3 — Assemble.** `ShapedRecipy::assemble` (`ShapedRecipy.cpp:101`) returns a copy of
+the result item (`:103`), optionally copying NBT when `_keepTag` is set (the
+`->keepTag()` recipes like carrot-on-a-stick). The result lands in the display slot;
+it is not yet consumed.
+
+**4 — Take (`onTake`).** Pulling the result out fires `ResultSlot::onTake`
+(`ResultSlot.cpp:57`), which first calls `checkTakeAchievements(carried)` (`:59`).
+That does the craft callback: `carried->onCraftedBy(player->level, player, removeCount)`
+(`ResultSlot.cpp:38`) → `ItemInstance::onCraftedBy` (`ItemInstance.cpp:627`) →
+`player->onCrafted(...)`, `awardStat(itemsCrafted(id), …)`, and the item's own
+`Item::items[id]->onCraftedBy(...)` hook (`:637`). The remaining lines award the
+specific build achievements (workbench, pickaxe, sword by base-item-type, …,
+`ResultSlot.cpp:41-54`).
+
+**5 — Consume the grid.** Back in `onTake` (`:61-90`), each ingredient is decremented
+by 1 (`craftSlots->removeItem(i, 1)`, `:66`); if the item has a crafting-remaining
+item (bucket → empty bucket, bottle) it is returned to the inventory, put back in the
+now-empty slot, or dropped (`:68-89`).
+
 ## Network sync
 
 Recipes are not fixed to the client — the whole list can be shipped over the

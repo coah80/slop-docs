@@ -184,6 +184,82 @@ the `OceanMonumentPieces::loadStatic()` call) is new in commit `720e1a77`.
 > grounding. A follow-up one-line `VillagePieces.cpp` fix (`f5b395b4`) restores wooden bridge/path
 > pieces. Piece geometry and the `Village` start table above are otherwise unchanged.
 
+## How a structure is scheduled and built
+
+A `StructureFeature` reaches the world through two of the `ChunkSource` passes
+([World Generation](/slop-docs/world/worldgen/#how-a-chunk-is-built-the-two-pass-model)):
+its **`apply`** runs in pass 1 (shape) to decide *where* structures seed and cache
+their starts, and its **`postProcess`** runs in pass 2 (decorate) to build the pieces
+that intersect the chunk being finished.
+
+| Step | Method | Job |
+|------|--------|-----|
+| Seed scan | `LargeFeature::apply` (`LargeFeature.cpp:18`) | for each chunk within `radius = 8` of the target, re-seed and call `addFeature` |
+| Seed test | `StructureFeature::addFeature` (`StructureFeature.cpp:25`) | skip if already cached; else `isFeatureChunk(x,z,flat)` → `createStructureStart(x,z)` → cache + save |
+| Build | `StructureFeature::postProcess` (`StructureFeature.cpp:49`) | for each cached start whose box intersects this chunk's 16×16, call `start->postProcess(level, random, chunkBB)` |
+| Piece build | `StructureStart::postProcess` (`StructureStart.cpp:41`) | walk pieces; each `piece->postProcess(level, random, chunkBB)`; erase pieces that report unplaceable |
+
+The cache (`cachedStructures`, keyed by `ChunkPos::hashCode`, `:33/44`) is why a
+structure that seeds in one chunk can keep building as each neighbouring chunk is
+decorated — `postProcess` is called many times, once per intersecting chunk, and
+only the pieces inside the current `chunkBB` are stamped (`:67-70`).
+
+### Worked trace: a monument from grid cell to Guardians
+
+**1 — Seed scan.** During chunk `(cx,cz)` shape, `oceanMonument->apply(...)` (from
+`RandomLevelSource.cpp:438`) runs `LargeFeature::apply` (`LargeFeature.cpp:18`),
+which loops the 17×17 chunk neighbourhood (`:27-35`) and calls `addFeature` for each.
+
+**2 — Grid test.** `StructureFeature::addFeature` (`StructureFeature.cpp:25`) skips
+cached cells (`:33`) and calls `isFeatureChunk(x, z, isFlat)` (`:41`).
+`OceanMonumentFeature::isFeatureChunk` (`OceanMonumentFeature.cpp:71`) snaps the
+chunk to the `spacing = 32` / `separation = 5` grid (`:81-91`), and only the one
+deterministic cell per region passes the `i == k && j == l` check (`:93`). That cell
+must have **`Biome::deepOcean` at its centre** (`:97`) and `containsOnly(...)` ocean/
+river biomes in a 29-block radius (`:107`) — so a monument only seeds in a large
+basin. On success it logs and returns true (`:109-112`).
+
+**3 — Start + pieces.** `addFeature` then calls `createStructureStart(x, z)`
+(`StructureFeature.cpp:43`) → `new MonumentStart(level, random, x, z)`
+(`OceanMonumentFeature.cpp:123`). The `MonumentStart` ctor (`:128`) re-seeds from the
+world seed + chunk coords (`:131-136`), picks a facing (`:141`), and pushes the root
+`MonumentBuilding(random, startX, startZ, facing)` piece (`:143-145`) — whose
+constructor recursively lays out the `RoomDefinition` graph. `calculateBoundingBox()`
+(`:147`) unions the piece boxes, and the start is cached (`StructureFeature.cpp:44`).
+
+**4 — Build.** As each intersecting chunk decorates, `oceanMonument->postProcess(...)`
+(`RandomLevelSource.cpp:741`) runs `StructureFeature::postProcess` (`:49`) → for the
+monument's cached start, `start->postProcess(level, random, bb)` (`:70`) →
+`StructureStart::postProcess` (`StructureStart.cpp:41`) walks the pieces and calls
+each `piece->postProcess(...)` for the portion inside `bb` (`:47`) — stamping
+prismarine, bricks, dark prismarine and sea lanterns.
+
+**5 — Guardians.** The monument doesn't place spawners; it carries a spawn list.
+`OceanMonumentFeature::getMonumentEnemies()` (`OceanMonumentFeature.cpp:16`) returns
+the Guardian `MobSpawnerData` built in `_init` (`:10`), and the chunk source hands it
+back for any spawn attempt inside the monument box (`isInsideFeature` check at
+`RandomLevelSource.cpp:855`, returning the Guardian list at `:857`).
+
+### Dungeons: the chest + spawner path
+
+The concrete "chest and spawner" placement is a `MonsterRoomFeature`, run 8× per
+chunk from `postProcess` (`RandomLevelSource.cpp:774-783`). After carving the room,
+it places a chest and fills it, then a spawner:
+
+```cpp
+level->setTileAndData(xc, yc, zc, Tile::chest_Id, 0, Tile::UPDATE_CLIENTS);           // :109
+WeighedTreasureArray wrapperArray(monsterRoomTreasure, TREASURE_ITEMS_COUNT);          // :110
+WeighedTreasure::addChestItems(random, treasure, chest, 8);                            // :115
+...
+level->setTileAndData(x, y, z, Tile::mob_spawner_Id, 0, Tile::UPDATE_CLIENTS);         // :123
+```
+
+The chest content is the hard-coded `monsterRoomTreasure` table
+(`MonsterRoomFeature.cpp:10-26` — saddle, horse armor, records, `golden_apple`) plus
+a random `enchanted_book` (`:111`). This is one of the tables that
+`54528fac feat: loot tables (#43)` (past the snapshot) moves to the data-driven
+`LootTableManager` — see the v1.1.0b note below.
+
 ## Ocean Monument (new)
 
 The Ocean Monument is the flagship neoLegacy structure addition
