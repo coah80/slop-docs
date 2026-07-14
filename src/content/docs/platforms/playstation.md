@@ -33,7 +33,7 @@ Files: `CMakePresets.json`, `Minecraft.Client/CMakeLists.txt:1-30`.
 Every Sony preset points at a toolchain file, but all of them are **0-byte stubs**
 (`cmake/toolchains/ps3.cmake`, `orbis.cmake`, `psvita.cmake`). A CMake configure with
 `--preset ps3` / `--preset orbis` / `--preset psvita` cannot succeed. And the top-level
-`CMakeLists.txt:146` does `add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")`, but only
+`CMakeLists.txt:144` does `add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")`, but only
 `Windows64/4JLibs/CMakeLists.txt` exists — `PS3/4JLibs/`, `Orbis/4JLibs/`, and `PSVita/4JLibs/` ship
 `libs`/`inc` but **no `CMakeLists.txt`**. `COMPILE.md` documents only the Windows path. So the Sony
 C++ is enumerated in the manifests and gated in (`Minecraft.Client/CMakeLists.txt:14-23`) but never

@@ -26,13 +26,13 @@ Files: `CMakeLists.txt:9-11` (guard), `CMakeLists.txt:13-15` (64-bit-only guard)
 
 Three things key off `PLATFORM_NAME`:
 
-1. **The platform-lib subtree.** `CMakeLists.txt:146` does
+1. **The platform-lib subtree.** `CMakeLists.txt:144` does
    `add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")` — it descends into that
    platform's `4JLibs/` folder expecting a `CMakeLists.txt` there.
 2. **The compiled source list.** `Minecraft.Client/CMakeLists.txt` includes every platform's
    source manifest (`cmake/sources/{Common,Durango,ORBIS,PS3,PSVita,Windows,Xbox360}.cmake`) but
    gates which one is actually compiled with generator expressions keyed on `PLATFORM_NAME`.
-3. **The server targets.** `CMakeLists.txt:160-163` wires `Minecraft.Server.FourKit` and
+3. **The server targets.** `CMakeLists.txt:159-160` wires `Minecraft.Server.FourKit` and
    `Minecraft.Server` **only** when `PLATFORM_NAME STREQUAL "Windows64"`.
 
 ```cmake
@@ -44,7 +44,7 @@ if(PLATFORM_NAME STREQUAL "Windows64") # Server is only supported on Windows for
 endif()
 ```
 
-Files: `CMakeLists.txt:158-163`.
+Files: `CMakeLists.txt:156-161`.
 
 ## The six presets
 
@@ -88,7 +88,7 @@ toolchain, find no cross-compiler, and fail. Files: `cmake/toolchains/*.cmake` (
 
 **2. Only `Windows64/4JLibs/CMakeLists.txt` exists.**
 
-`CMakeLists.txt:146` unconditionally does `add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")`.
+`CMakeLists.txt:144` unconditionally does `add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")`.
 That folder's `CMakeLists.txt` is present **only** for Windows64:
 
 | Path | Present? |
@@ -100,9 +100,9 @@ That folder's `CMakeLists.txt` is present **only** for Windows64:
 | `Minecraft.Client/Orbis/4JLibs/CMakeLists.txt` | Missing |
 | `Minecraft.Client/PSVita/4JLibs/CMakeLists.txt` | Missing |
 
-So even if a console toolchain existed, the `add_subdirectory` on line 146 would fail — the platform
+So even if a console toolchain existed, the `add_subdirectory` on line 144 would fail — the platform
 library subtree has no build script. And the server targets are gated behind
-`PLATFORM_NAME STREQUAL "Windows64"` anyway (`CMakeLists.txt:160`).
+`PLATFORM_NAME STREQUAL "Windows64"` anyway (`CMakeLists.txt:158`).
 
 **Aspirational vs functional.** The console C++ is real and complete — the per-platform source
 *manifests* under `Minecraft.Client/cmake/sources/` are full file lists (489-663 lines each), and the

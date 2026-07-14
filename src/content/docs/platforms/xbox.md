@@ -41,7 +41,7 @@ $ ls -la cmake/toolchains/
 ```
 
 A CMake configure with `--preset durango` or `--preset xbox360` therefore cannot succeed. Even if a
-toolchain were supplied, the top-level `CMakeLists.txt:146` does:
+toolchain were supplied, the top-level `CMakeLists.txt:144` does:
 
 ```cmake
 add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")
@@ -49,7 +49,7 @@ add_subdirectory("Minecraft.Client/${PLATFORM_NAME}/4JLibs")
 
 and **only `Windows64/4JLibs/CMakeLists.txt` exists** — `Xbox/4JLibs/` and `Durango/4JLibs/` ship
 `Media/`, `inc/`, and `libs/` but **no `CMakeLists.txt`**, so the platform-library subtree fails to
-configure. Server targets are additionally gated to Windows only (`CMakeLists.txt:160-163`,
+configure. Server targets are additionally gated to Windows only (`CMakeLists.txt:158-161`,
 `if(PLATFORM_NAME STREQUAL "Windows64")`). `COMPILE.md` documents only Windows x64 (MSVC / VS2022)
 and a Linux→Windows clang-cl cross-compile; no Xbox build path is documented.
 
