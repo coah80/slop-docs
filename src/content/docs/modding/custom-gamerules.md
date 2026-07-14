@@ -264,6 +264,39 @@ If you genuinely need a new mini-game verb:
 This path is only exercised by map/mini-game content; ordinary gameplay mods
 should use System 1.
 
+## What can go wrong
+
+Verified behaviours at this snapshot.
+
+### Reading an unmapped rule id → `assert(0)` in debug, silent `false` in release
+
+`GameRules::getBoolean` is a plain `switch(rule)` with no dynamic map
+(`GameRules.cpp:17-41`). Any id that isn't one of the eight mapped cases hits
+`default: assert(0); return false;` (`GameRules.cpp:37-39`). Two consequences worth
+knowing:
+
+- On a debug build, querying an id you declared but forgot to add a `case` for (or
+  the unmapped `RULE_COMMANDBLOCKOUTPUT = 6`, which is declared in the `.h` but
+  **commented out** in the `.cpp` at `GameRules.cpp:13`) trips the assert — a hard
+  stop that at least points at the omission.
+- On a release build (`NDEBUG`), `assert(0)` compiles to nothing, so the same query
+  **silently returns `false`** and your rule reads as "off" everywhere with no
+  diagnostic. So the "add the `case`" step is not optional: without it the rule is
+  either an assert or a silent false, never your host option.
+
+There is no "unknown rule *name*" path to worry about — rules are integer ids, not
+strings, and `getBoolean` never allocates or looks up a name. The name→id mapping
+is the `static const int RULE_*` constants, resolved at compile time.
+
+### Reordering `eGameHostOption` → cross-client desync (no error)
+
+The values ride to clients as the packed `eGameHostOption_All` bitfield
+(`PreLoginPacket` on join, `ServerSettingsChangedPacket` mid-game — see
+[Sync behavior](#sync-behavior)). Inserting your new option anywhere but the **end**
+of the enum shifts every later bit, so an unmodified peer reads your `mobGriefing`
+as someone else's rule. Nothing validates this — it just silently desyncs. Append
+only.
+
 ## Testing checklist
 
 For a System 1 boolean rule (`doWeatherCycle` above):

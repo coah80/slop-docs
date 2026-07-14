@@ -233,9 +233,12 @@ The type constant is the contract between server and client:
 | `BREWING_STAND` | 5 | | `BONUS_CHEST` | 13 (4J added) |
 | `TRADER_NPC` | 6 | | `LARGE_CHEST` | 14 (4J added) |
 | `BEACON` | 7 | | `ENDER_CHEST` | 15 (4J added) |
+| | | | `MINECART_CHEST` | 16 (4J added) |
+| | | | `MINECART_HOPPER` | 17 (4J added) |
 
 (Full list `ContainerOpenPacket.h:9-26`.) A **new** container type needs a new
-constant added here.
+constant added here — and, critically, a matching `case` on the client (below);
+the client switch has no `default`, so an unhandled type is a silent desync.
 
 ### 4. Client receives the packet and re-opens locally
 
@@ -369,6 +372,62 @@ Putting it together, a brand-new container ("`FooMenu`") requires:
    `Common/Media/MediaWindows64/` with clips named to match your `UI_MAP_ELEMENT`s
    (see [Custom UI Scenes](/slop-docs/modding/custom-ui/) and
    [Textures & Asset Pipeline](/slop-docs/modding/textures-assets/)).
+
+## What can go wrong
+
+Verified behaviours at this snapshot. Containers are two-sided, so the nastiest
+failures are *desyncs* where one end thinks a container is open and the other
+doesn't — none of them crash, which is what makes them hard to spot.
+
+### Unknown `ContainerOpenPacket::type` on the client → silent desync
+
+This is the trap when you add a container type on the server but the client build
+doesn't handle it (or the two builds disagree). `ClientConnection::handleContainerOpen`
+(`ClientConnection.cpp:3116`) initializes `bool failed = false` (`:3118`) and
+`switch(packet->type)` (`:3122`) — but the outer switch has **no `default:` case**;
+the last label is `ContainerOpenPacket::FIREWORKS` and the block closes right after
+(`:3312-3324`). So an unregistered/unknown type matches nothing, `failed` stays
+`false`, and control reaches the `if(failed)` cleanup (`:3326`) with the condition
+false — meaning **no scene opens and no `ContainerClosePacket` is sent back**. The
+server (which already built the menu and set `containerMenu`) believes the container
+is open; the client shows nothing. Every new type therefore needs its client `case`,
+not just the packet constant. (Note there *is* a `default: assert(false)` on the
+*inner* chest-name switch at `:3138`, but that only guards the chest-string lookup,
+not the type dispatch.)
+
+### Client-side `openFoo` fails → the client resyncs itself
+
+The recoverable counterpart: when a handled type's `player->openFoo(...)` returns
+false, the case sets `failed = true`, and the `if(failed)` block (`:3326-3339`)
+either closes the stale scene (`ui.CloseUIScenes`) or sends a `ContainerClosePacket`
+with the packet's `containerId` — so the client actively tells the server to drop
+the container. The desync above is dangerous precisely because it skips this path.
+
+### Client-sent slot index out of range → rejected by the server, no corruption
+
+The server is authoritative on clicks, and every entry point bounds-checks. The
+main handler `AbstractContainerMenu::clicked(slotIndex, ...)` returns immediately if
+`(slotIndex < 0 && slotIndex != SLOT_CLICKED_OUTSIDE) || slotIndex >= slots.size()`
+(`AbstractContainerMenu.cpp:164`); the `CLICK_QUICK_MOVE`, `CLICK_SWAP`,
+`CLICK_CLONE`, `CLICK_THROW`, and `CLICK_PICKUP_ALL` branches each re-guard the
+index before `slots.at(slotIndex)` (`:326`, `:483`, `:525`, `:536`, `:575`), and
+`quickMoveStack` guards too (`:147`). `slots.at()` is itself bounds-checked (throws
+rather than reads OOB). So a mispredicted or malicious slot index from a desynced
+client is dropped, not acted on — the container can't be driven into an
+out-of-bounds write this way.
+
+### Walking away / breaking the block → `stillValid` closes it next tick
+
+`stillValid` is not just a nicety — it is polled every server tick.
+`ServerPlayer::tick` calls
+`if (!containerMenu->stillValid(this)) { closeContainer(); containerMenu = inventoryMenu; }`
+(`ServerPlayer.cpp:406-412`; `Player::tick` has a parallel guard at
+`Player.cpp:332`). So a `HopperMenu::stillValid` that forwards to
+`hopper->stillValid(player)` (`HopperMenu.cpp:31`) — which typically checks distance
+and that the block still exists — is what auto-closes the GUI when the player leaves
+or the tile is destroyed. If you forget to override it, the pure-virtual
+(`AbstractContainerMenu.h:95`) won't compile; if you override it to always return
+`true`, the menu never auto-closes.
 
 ## Testing checklist
 

@@ -329,6 +329,51 @@ Putting it together, the round trip is:
    `listener->handleAnimate(...)`).
 5. The concrete `ClientConnection` / `PlayerConnection` override runs.
 
+## What can go wrong
+
+Verified behaviours at this snapshot. The networking layer trusts the caller far
+more than you'd expect — most of these fail in ways that corrupt the *stream*, not
+just the one packet.
+
+### Sending an unregistered / mis-flagged id → written raw, then desyncs the reader
+
+`writePacket` does **no validation at all**: it is literally
+`dos->write(packet->getId()); packet->write(dos);` (`Packet.cpp:382-387`). There is
+no assert that the id is registered, no check of the send flags, nothing. So if
+`getId()` returns an id you never `map(...)`ed — or one mapped for the other
+direction — the id byte and payload go straight onto the wire. The **receiver** is
+where it goes wrong: `readPacket` reads the id, and if it isn't in the decoding
+side's received-set it `return nullptr`s at `Packet.cpp:339-342` — **before**
+`packet->read(dis)` at `:351`. That means the payload bytes are **not consumed**.
+The next `readPacket` then reads a payload byte as the next packet's id, and the
+stream cascades into garbage. So a "silent drop" on the receive side is really a
+stream desync, not a clean skip. Register every id you send, with flags matching the
+direction you actually send it.
+
+### Oversized packet vs `SEND_BUFFER_SIZE` (5 KB) → the buffer grows, no overflow
+
+`SEND_BUFFER_SIZE = 1024 * 5` (`Connection.h:28`) is **not** a per-packet cap. It is
+the initial capacity of the send `ByteArrayOutputStream` and the chunk size of the
+`BufferedOutputStream` (`Connection.cpp:103-104`). The BAOS grows on demand —
+`write()` does `buf.resize(buf.length * 2)` when full (`ByteArrayOutputStream.cpp:37`,
+and the block-write path recomputes `newSize` at `:77`), and its own header comment
+says *"its buffer capacity is initially 32 bytes … its size increases if necessary"*
+(`:5`). So a packet larger than 5 KB serializes fine; the buffer reallocates and the
+buffered stream flushes in chunks. There is no overflow to handle here. The real
+size guard is per-*field*: `Packet::readUtf(dis, maxLength)` (`Packet.cpp:402`) caps
+string allocation to the bound you pass, so always pass a sane max when reading a
+string — that, not the buffer size, is what protects you from a hostile length
+field. (For reference, `BlockRegionUpdatePacket` deliberately handles multi-MB
+payloads: `MAX_COMPRESSED_CHUNK_SIZE = 5 * 1024 * 1024`,
+`BlockRegionUpdatePacket.cpp:108`.)
+
+### `read`/`write` order mismatch → wrong fields, silently
+
+`read` and `write` are hand-mirrored; nothing enforces that they agree. Swap two
+`readInt`s relative to the `write` order and the packet decodes to wrong values with
+no error (both are ints, so no type mismatch surfaces). The round-trip unit test in
+the checklist below is the cheapest guard.
+
 ## Testing checklist
 
 - [ ] `PlayerPingPacket.h` / `.cpp` created under `Minecraft.World/` and picked up

@@ -351,6 +351,44 @@ stale. See [Server / Console](/slop-docs/server/console/) and
 event hooks (`FourKitBridge::FirePlayerTeleport` etc.) that command executors
 fire.
 
+## What can go wrong
+
+Verified behaviours at this snapshot. Command dispatch fails *quietly* in most of
+these cases, so a command that "does nothing" is usually one of the first two.
+
+### Enum value with no `addCommand` registration → silent no-op (debug print only)
+
+This is the classic "I added the command but nothing happens." Dispatch is a map
+lookup: `CommandDispatcher::performCommand` does `commandsById.find(command)`
+(`CommandDispatcher.cpp:7`), and if the id isn't in the map — because you added
+`eGameCommand_SetSpawn` to the enum but forgot `addCommand(new SetSpawnCommand())`
+in `ServerCommandDispatcher` — it takes the `else` branch and only calls
+`app.DebugPrintf("Command %d not found!\n", command)` (`:24-26`), then returns 0.
+No error to the player, no crash: the packet arrives, the server shrugs. The enum
+edit and the `addCommand` line must both be present.
+
+### Permission denied → red message, but only on non-retail builds
+
+When `command->canExecute(sender)` is false, `performCommand` sends the sender
+`§cYou do not have permission to use this command.` (`CommandDispatcher.cpp:18-20`)
+— but that whole block is wrapped in `#ifndef _CONTENT_PACKAGE`, so on a
+`_CONTENT_PACKAGE` (retail) build the command is rejected with **no feedback at
+all**. Either way, execution does not happen. Remember `canExecute` for a
+`ServerPlayer` is just `hasPermission`, which is a bare op check
+(`ServerPlayer.cpp:2032`) — permission level is not consulted (see
+[Permissions](#permissions)) — so "denied" here means "not an op."
+
+### Payload decoded in the wrong order → garbage args, not a crash
+
+`execute()` gets a raw `byteArray`; you decode it with a `DataInputStream` in
+whatever order you read. Nothing checks that the order matches `preparePacket()`'s
+write order — mismatch just yields wrong values (a `readInt` over bytes meant for a
+`PlayerUID`, etc.). The `readUtf` helper does cap allocations by a max length
+(`Packet::readUtf`, see [Multiplayer & Packets](/slop-docs/modding/multiplayer-packets/)),
+so a corrupt length field won't blow up the heap, but every other field is on you.
+Decode in exactly the order you wrote, and null-check the resolved player
+(`players->getPlayer(...)` returns `nullptr` for an offline/unknown UID).
+
 ## Testing checklist
 
 - [ ] `eGameCommand_SetSpawn` added **before** `eGameCommand_COUNT` in

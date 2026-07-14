@@ -74,6 +74,22 @@ There are two macro variants beside `ADD_ICON`:
 - `ADD_ICON_SIZE(row, column, name, height, width)` (`:320`) — multi-cell icons
   (spans `width` columns × `height` rows).
 
+`ADD_ICON` expands to `texturesByName[name] = new SimpleIcon(...)`
+(`PreStitchedTextureMap.cpp:318`), and `texturesByName` is a
+`unordered_map<wstring, Icon *>` (`PreStitchedTextureMap.h:26-27`). That storage
+shape decides what "collision" means, and it is **not** what you'd expect from a
+2D grid:
+
+- **Two icons in the same `(row, column)` cell** (different *names*) is not a
+  collision at all — they are separate map keys whose UVs happen to point at the
+  same pixels. Both `SimpleIcon`s are created; both draw the same texel region.
+  Harmless (and occasionally intentional — several names alias one cell).
+- **Two `ADD_ICON` with the same *name*** (any cells) *is* the real collision:
+  the second `operator[]` assignment overwrites the entry, **leaks** the first
+  `SimpleIcon *` (nothing frees it), and the name now resolves to the
+  last-registered cell. No warning is printed. So it is the icon *name*, never the
+  cell, that must be unique.
+
 ### Icon flags (grass tinting fast-path)
 
 A few terrain icons get an extra `setFlags(...)` call so the tesselator can
@@ -114,10 +130,25 @@ for the full block workflow.
 
 The atlas texture is created with mipmaps enabled — the `true` mipMap arg on both
 maps flows into `TextureManager::createTexture(..., m_mipMap)`
-(`PreStitchedTextureMap.cpp:129`). Mipmapping bleeds neighbouring atlas cells into
-each other at distance, which is wrong for sharp cutout textures (plants,
-cross-shaped blocks, the slime overlay). The fix is per-tile: `Tile::disableMipmap()`
-(`Tile.h:738`), which flips `Tile::mipmapEnable[id]` (`Tile.h:212`) off. Almost
+(`PreStitchedTextureMap.cpp:129`). Mipmapping samples a downscaled level at
+distance, which for a *packed* atlas pulls in colour from neighbouring cells (there
+is no per-cell border), so sharp cutout textures (plants, cross-shaped blocks, the
+slime overlay) get coloured fringing and shimmer at range. The fix is per-tile:
+`Tile::disableMipmap()` (`Tile.h:738`), whose whole body is
+`mipmapEnable[id] = false;` (`Tile.cpp:858-862`) — the per-id flag lives in
+`Tile::mipmapEnable[TILE_NUM_COUNT]` (`Tile.h:212`, defined `Tile.cpp:51`, defaulted
+`true` in `Tile::_init` at `Tile.cpp:735`).
+
+The mechanism is **not** a texture-creation flag — the atlas is one mipmapped
+texture shared by every block. Instead the flag is read at tessellation time:
+`TileRenderer` does `t->setMipmapEnable(Tile::mipmapEnable[tt->id])`
+(`TileRenderer.cpp:291`, again `:8158`), and the `Tesselator::vertex` path then
+*encodes the choice into the U texture coordinate* — `float uu = mipmapEnable ? u :
+(u + 1.0f)` (`Tesselator.cpp:746`). Its own comment is explicit: *"Signal to pixel
+shader whether to use mipmapping or not, by putting u into > 1 range if it is to be
+disabled."* So a mipmap-disabled quad ships a U value pushed past 1.0, and the pixel
+shader reads `u > 1` as "sample the base level, no mip." Nothing about the atlas
+upload changes; it is purely a per-quad shader signal carried in the UVs. Almost
 every plant/rail/cutout block chains `->disableMipmap()` in its registration:
 
 ```cpp
@@ -312,6 +343,48 @@ To retune a biome tint, edit the hex value in `colours.xml` and rebuild — no c
 change and no `.col` regeneration is needed. See the
 [Colour table & biome tints](/slop-docs/world/biomes/) reference for the full name
 list.
+
+## What can go wrong
+
+Verified behaviours at this snapshot:
+
+### Duplicate icon *name* → silent overwrite + leak
+
+As above: `ADD_ICON` is `texturesByName[name] = new SimpleIcon(...)`
+(`PreStitchedTextureMap.cpp:318`). Registering the same `name` twice overwrites the
+map entry with no warning, leaks the first `SimpleIcon *`, and the tile/item that
+`setIconName(L"...")`s that name draws the *last* cell registered. Two `ADD_ICON`s
+pointing at the same **cell** under different names is fine; two under the same
+**name** is the bug. Grep the terrain/items branches for your name before adding it.
+
+### Icon name with no `ADD_ICON` (or a typo) → `missingno`, or a debugger break
+
+The tile/item→pixels link is the icon name and nothing else. If
+`registerIcon(name)` (`PreStitchedTextureMap.cpp:280`) finds no entry, on a
+non-`_CONTENT_PACKAGE` build it prints `Could not find uv data for icon <name>`
+(`:299`) and `DEBUG_BREAK()`s (`:300`); on a `_CONTENT_PACKAGE` (retail) build both
+are compiled out and it silently returns `missingPosition` (`:302`) — the
+`missingno` icon (`NAME_MISSING_TEXTURE = L"missingno"`, `PreStitchedTextureMap.cpp:22`)
+at UV `(0,0,1,1)` (`:33`). An empty name string hits the same fallback one branch
+earlier (`:283-291`). The block/item is fully functional; only its texture is wrong.
+
+### `RebuildArc` with a grown SWF → offsets are recomputed, not corrupted
+
+A common fear is that swapping in a larger `.swf` desyncs the archive's offset
+table. It does not: `RebuildArc` reads the old index, then **recomputes every
+offset from scratch** — it re-emits the header (which itself changes size, because
+a replaced entry loses its `*` compression prefix), takes `headerSize` as the first
+data offset, and walks `currentOffset += fileData[i].length` for the rest
+(`tools/RebuildArc.java`, the "compute real offsets" loop). Replaced files also get
+`sizes.set(i, newData.length)` and `compressed.set(i, false)`. So grown, shrunk, or
+same-size replacements all produce a consistent archive. The one caveat is the tool
+**overwrites the arc in place** (`outputPath = arcPath`) — back it up first.
+
+### Missing `IDS_*` string → the label renders as the raw key (or blank)
+
+Covered in §3: if the loc XML lacks your `IDS_*` name the codegen never emits it,
+and the runtime lookup returns the key text itself (wide-string overload) or an
+empty string (numeric overload) rather than crashing. Add the entry before testing.
 
 ## Testing checklist
 

@@ -273,6 +273,50 @@ switch that stores the value via `app.SetGameSettings`.
 Some settings also toggle scene components — e.g. `updateComponents()` shows/hides
 the logo and panorama via `m_parentLayer->showComponent(m_iPad, eUIComponent_Logo, ...)`.
 
+## What can go wrong
+
+Verified behaviours at this snapshot. The two failure modes below are the ones the
+checklist can't catch at compile time.
+
+### `UI_MAP_ELEMENT` name not in the movie → control silently unbound (no crash)
+
+The bind path is unguarded, so a typo'd or missing clip name fails *quietly*, not
+loudly. `UI_MAP_ELEMENT(var, name)` (`UIScene.h:28-29`) calls
+`var.setupControl(this, currentRoot, name)` and **discards the `bool` it returns** —
+the macro invokes it as a statement. Inside, `setupControl`
+(`UIControl.cpp:19-45`) builds a *name-ref path* with
+`IggyValuePathMakeNameRef(&m_iggyPath, parent, controlName)` and captures its result
+in `res`, but since the caller drops `res`, a name the movie doesn't contain is
+never detected. `m_iggyPath` is a value member (not a pointer), so the follow-up
+`IggyValueGetF64RS(getIggyValuePath(), ...)` calls for `x/y/width/height` (`:34-37`)
+don't crash — they just fail against the unresolved path and leave
+`m_x/m_y/m_width/m_height` at 0. Result: the control exists in C++ but is bound to
+nothing — invisible/zero-sized and unresponsive, with no log line. This is why the
+clip-name strings are a hard contract: there is no runtime error to lead you to the
+mismatch.
+
+### Movie file absent from the arc/loose tree → `FatalLoadError`, not a silent skip
+
+Getting `getMoviePath()` wrong (or shipping only some resolution variants) is a
+**hard fault**, not a no-op. `UIScene::loadMovie` (`UIScene.cpp:305`) appends the
+resolution suffix and checks `app.hasArchiveFile(moviePath)` (`:358`). On a miss it
+retries `720` then `1080` (`:362-373`); if all three are absent it prints
+`ERROR: Could not find any iggy movie for <name>!` (`:375`), `DEBUG_BREAK()`s on a
+non-`_CONTENT_PACKAGE` build (`:377`), then calls **`app.FatalLoadError()`**
+(`:379`). The same fatal path fires if the file loads but
+`IggyPlayerCreateFromMemory` returns null (`:386-396`). So "the SWFs must exist for
+every variant `getMoviePath()` can return" is not a nicety — a missing movie takes
+the game down at scene-open time. (Contrast an *unbound control* above, which is
+survivable.)
+
+### Missing `UILayer` factory case → navigation logs and returns false
+
+If the `EUIScene` enum exists but you forgot the `NavigateToScene` case (Step 4),
+the scene is never constructed: `UILayer::NavigateToScene` (`UILayer.cpp:201`) falls
+through to `app.DebugPrintf("WARNING: Scene %d was not created. Add it to
+UILayer::NavigateToScene\n", scene)` (`:442`) and returns without opening anything.
+No crash — the "open" action just does nothing, and the warning is the only trace.
+
 ## Testing checklist
 
 - [ ] All four scene files (`UIScene_*.cpp/.h`, `IUIScene_*.cpp/.h`) are in
@@ -282,7 +326,8 @@ the logo and panorama via `m_parentLayer->showComponent(m_iPad, eUIComponent_Log
       the scene — otherwise navigation silently does nothing.
 - [ ] `UI.h` includes the scene header.
 - [ ] `getMoviePath()` returns a base name whose SWFs exist under
-      `Common/Media/MediaWindows64/` (both normal and `...Split` for splitscreen).
+      `Common/Media/MediaWindows64/` (both normal and `...Split` for splitscreen) —
+      a missing movie is a `FatalLoadError` at open time, not a silent skip.
 - [ ] Every `UI_MAP_ELEMENT("Name")` matches a clip name in the movie — a mismatch
       leaves that control unbound (blank/unresponsive).
 - [ ] Any new `IDS_*` label is in the loc XML and regenerated into `strings.h`.
