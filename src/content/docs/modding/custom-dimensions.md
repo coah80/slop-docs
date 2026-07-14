@@ -282,6 +282,57 @@ colour-table entries — the same client-side work biomes need
 ([Adding Biomes → Localization](/slop-docs/modding/adding-biomes/#localization)).
 The world-logic side is what's documented here.
 
+## What can go wrong
+
+Dimensions are the least defensive subsystem here — an id is a raw integer
+threaded through a hand-written `if`-ladder and a binary portal toggle, with no
+registry to catch a gap. Verified behaviours at this snapshot:
+
+### `Dimension::getNew(unknown id)` → returns `nullptr` (the else is a bare `return nullptr`)
+
+The ladder has no `default`/fallback dimension — it is exactly
+`if (id == -1)… if (id == 0)… if (id == 1)…` then `return nullptr;`
+(`Dimension.cpp:194-201`). So `getNew(2)` before you add your `if (id == 2)`
+returns null, **not** an overworld fallback. Whether that null crashes depends on
+the caller: the normal `Level` construction path never passes an arbitrary id — it
+uses `fixedDimension` or `Dimension::getNew(0)` (`Level.cpp:686`/`:695`) and then
+dereferences unconditionally with `((Dimension *)dimension)->init(this)`
+(`Level.cpp:708`). A null from that path would be an immediate crash at `:708`,
+but that path can't produce one because it only ever asks for id 0. The danger is
+the *server-level* path (`server->getLevel(2)`, out of module): if it calls
+`getNew(2)` before your registration exists, the resulting null propagates to an
+`->init()` and crashes. Add the `if (id == 2)` line first — it is the one
+non-optional edit.
+
+### Portal to an unregistered dimension → you stay in the Nether/Overworld toggle
+
+The destination is chosen by a **binary** branch (`Entity.cpp:566`): id `-1`
+routes to `0`, everything else routes to `-1`. There is no id-2 branch. So even
+with `VoidDimension` fully registered in `getNew`, an unmodified portal from the
+overworld sends you to the Nether (`-1`), never to id 2 — the "portal to id 2"
+case doesn't error, it just **never targets your dimension**. Routing to a third
+id means editing this branch (key off the portal block/frame) *and* making
+`server->getLevel(2)` return a live `ServerLevel`; if that server-level lookup
+comes back null, `changeDimension` no-ops and the entity stays put.
+
+### Portal block isn't `Tile::portal_Id` → a fresh portal every trip
+
+`findPortal`'s post-`b47c16b6` cache validation checks the cached coordinate for
+`Tile::portal_Id` specifically (`PortalForcer.cpp` `findPortal`, quoted in Step 5).
+A custom portal block that isn't `Tile::portal_Id` fails that check every time, so
+the cached link is evicted and `force` carves a **new** portal on each traversal —
+no crash, just portals piling up and return trips that never land where you left.
+Either reuse `Tile::portal_Id` or generalize the block check.
+
+### Forgot the client colour-table entry → dimension renders with the default fog
+
+`getFogColor` reads a specific `eMinecraftColour` slot
+(`eMinecraftColour_Default_Fog_Colour`, `Dimension.cpp:177`; Hell uses
+`eMinecraftColour_Nether_Fog_Colour`, `HellDimension.cpp:21`). This is a client
+colour-table lookup, not a crash path: a new dimension that doesn't add its own
+`eMinecraftColour_*` entry simply renders with whatever default it inherits. The
+world logic works; only the sky/fog looks wrong.
+
 ## Testing checklist
 
 - [ ] `VoidDimension.cpp` is in `Minecraft.World/cmake/sources/Common.cmake`; builds clean.

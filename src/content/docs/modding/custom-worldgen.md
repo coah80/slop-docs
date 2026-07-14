@@ -292,6 +292,69 @@ block, that block is its own task — add it first following
 registration, texture/icon wiring, and localization), then reference its
 `Tile::xxx_Id` from your feature's `place`.
 
+## What can go wrong
+
+Worldgen is the quietest subsystem in the tree: a `Feature` only runs if some
+line of code calls `.place()` on it, and every write goes through `Level` guards
+that *return* rather than throw. So the usual failure is **nothing happens, no
+log** — verified behaviours at this snapshot:
+
+### Feature never wired into a decorator → silent no-place, no log
+
+A `Feature` subclass is inert until something invokes it. If you write
+`BasaltColumnFeature` but never add the `->place(...)` call (Idiom A's decorator
+loop or Idiom B's `Biome::decorate` override), **nothing references your class**,
+so nothing runs and nothing logs — the world generates exactly as before. There
+is no registry that enumerates `Feature` subclasses (contrast tiles/items), so a
+"registered but unused" feature is a contradiction: the *only* thing that makes a
+feature run is a literal call site. Grep for `new BasaltColumnFeature` /
+`BasaltColumnFeature(` before assuming it's live.
+
+### Count 0 vs. missing loop → both silent, differ only in construction
+
+The count-driven decorator idiom is `for (int i = 0; i < count; i++) …->place(...)`
+(e.g. `BiomeDecorator.cpp:245`). A `count` of **0** means the loop body never
+executes — no placement, no log — identical outward behaviour to omitting the
+loop entirely. The only difference is that dead bush guards construction too
+(`if (deadBushCount > 0) deadBushFeature = new DeadBushFeature(...)`,
+`BiomeDecorator.cpp:244`), so with count 0 the feature object is never even
+built. If your feature isn't appearing, a zeroed count in the biome's ctor looks
+exactly like a missing decorator loop — check both.
+
+### Placing outside the loaded chunk → the write is silently discarded (returns `true`!)
+
+This is the subtle one. `Level::setTileAndData` (`Level.cpp:917`) guards only the
+world-size box and `y` (`:919-924`), then calls `getChunk(x>>4, z>>4)`
+(`:925`) — it does **not** check that the chunk is loaded. For an unloaded chunk
+the `ChunkSource` hands back an **`EmptyLevelChunk`**, whose
+`setTileAndData` is a no-op that just **`return true;`** (`EmptyLevelChunk.cpp:53-56`).
+So a scatter feature whose `± nextInt(8)` offset (melon's idiom,
+`MelonFeature.cpp:64-68`) carries it across a chunk boundary into a
+not-yet-generated neighbour writes into limbo: **the block never lands, yet the
+call reports success** — no exception, and no log (the only `EmptyLevelChunk`
+warning, `[SETBLOCKS-BUG] … Data will be LOST`, is in the *bulk* `setBlocks`
+path at `Level.cpp:4247`, not in `setTileAndData`). Keep placement within the
+current chunk's already-populated neighbourhood, or expect sporadic missing
+decorations at chunk seams that leave no trace in the log.
+
+### Read past the world/height bounds → reads as air (0), not a crash
+
+The companion read, `Level::getTile` (`Level.cpp:779`), clamps: outside
+`±MAX_LEVEL_SIZE` or outside `[minBuildHeight, maxBuildHeight)` it returns **0**
+(air) (`:781-786`). So a ground-check like
+`getTile(x2, y2 - 1, z2) == Tile::stone_Id` at `y2 = 0` reads the cell below the
+world as air and fails the check safely — you won't crash reading out of bounds,
+but you also can't detect the world floor by a solid-block read there.
+
+### Non-deterministic RNG → world differs per regeneration
+
+Every placement must use the `random` passed into `decorate`/`place`, seeded
+per-chunk. Constructing a fresh `Random` (or pulling from a `GenLayer` without
+`initRandom(worldX, worldZ)`, `BiomeInitLayer.cpp:91`) breaks seed reproducibility
+— the same seed generates a different world each time. This fails no build and
+throws no error; it only shows up as a failed "regenerate the same seed twice"
+check.
+
 ## Testing checklist
 
 - [ ] `BasaltColumnFeature.cpp` is in `Minecraft.World/cmake/sources/Common.cmake`; builds clean.

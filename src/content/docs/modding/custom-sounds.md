@@ -236,17 +236,19 @@ should participate in the fade, route it through the streaming path above rather
 than the one-shot `play` path.
 :::
 
-:::note[Changed in v1.1.0b — jukebox now cross-fades]
-On `origin/main`, `SoundEngine::playStreaming` (`SoundEngine.cpp:821`) gained a
-**cross-fade on the jukebox path**: if a stream is already
-`Playing`/`Opening` (or `m_musicStreamActive`) when a new disc name comes in, it
-switches to a new `eMusicStreamState_Fading` state
-(`m_musicFadeSecondsRemaining = MUSIC_FADE_DURATION_SECONDS`) instead of hard-cutting,
-and a new `SoundEngine::stopStreamingNow()` was added to tear the stream down
-cleanly. The `Level::playStreamingMusic(name, …)` → `LevelRenderer` → `playStreaming`
-call chain you use to trigger music is **unchanged** — you get the fade for free
-by routing through the streaming path; you don't call the new state machine
-directly.
+:::note[Music cross-fade]
+`SoundEngine::playStreaming` (`SoundEngine.cpp:821`) already cross-fades in this
+snapshot: if the stream is `Playing` and the *custom-vs-vanilla* source changes
+(`bCurrentCustom != bNextCustom`, `SoundEngine.cpp:838`) it switches to
+`eMusicStreamState_Fading` with
+`m_musicFadeSecondsRemaining = MUSIC_FADE_DURATION_SECONDS` (`:840-841`) instead of
+hard-cutting; an already-`Opening` stream is cancelled via
+`eMusicStreamState_OpeningCancel` (`:847`). On `origin/main` (v1.1.0b) this was
+extended with a `SoundEngine::stopStreamingNow()` helper (not present at this
+snapshot) to tear the stream down cleanly. Either way, the
+`Level::playStreamingMusic(name, …)` → `LevelRenderer` → `playStreaming` call chain
+you use to trigger music is unchanged — route through the streaming path and you
+get the fade for free; you don't drive the state machine directly.
 :::
 
 ## Step 6 — no CMake change for the sound *event*
@@ -258,13 +260,73 @@ consumer would touch [CMake sources](/slop-docs/overview/building/). The audio
 files are copied next to the exe by the asset-copy step, which excludes
 audio-*source* formats but ships the shipped `Windows64Media/Sound/` tree.
 
+## What can go wrong
+
+Sound resolution is name-driven and file-system-probed, so the failure modes split
+between *table misalignment* (silent, corrupts every later sound) and *missing
+file* (which logs — but not the message you might expect, and a different one per
+playback path). Verified behaviours at this snapshot:
+
+### File absent at every probed path → `Failed to initialize sound from file`, not "No audio file found"
+
+`SoundEngine::play(iSound, …)` (`SoundEngine.cpp:482`) builds the base path from
+the dotted name, tries `.ogg`/`.wav`/`.mp3` (`:513-525`), then the numbered
+variants `<path>1..31` (`:531-544`; the loop is `for i = 1; i < 32`, so 1 through
+31). If **nothing** is found, `finalPath` is left holding a path that doesn't exist,
+and the miss surfaces only when miniaudio fails to open it:
+`ma_sound_init_from_file(...) != MA_SUCCESS` logs
+**`Failed to initialize sound from file: <path>`** (`SoundEngine.cpp:590`) and
+returns. Note this is *not* the string the other paths use — the
+`WARNING: No audio file found for music ID %d` message (`:1349`) is the **music
+streaming** path, and `No sound file found for UI sound` (`:776`) is the **UI**
+path. Grep the debug log for `Failed to initialize sound from file` when a
+positional block/entity sound is silent.
+
+### Enum / name-table misalignment → every later sound plays the wrong clip
+
+`eSOUND_TYPE` (`SoundTypes.h`) and `wchSoundNames[]` (`SoundNames.cpp:6`) are
+parallel arrays; `play` does `wstring name = wchSoundNames[iSound];`
+(`SoundEngine.cpp:494`) — a **direct index** with no cross-check that the name
+belongs to that enum. Add an enum entry but forget the name-table entry (or add
+them at different positions) and every entry after the insertion point is shifted
+by one: each `eSoundType_X` now indexes the *previous* entry's name, so a whole
+run of sounds plays the wrong clip. Nothing errors — the wrong file resolves and
+plays cleanly. This is why the Step 1/2 caution insists on adding both at the same
+relative position; the symptom is "some other sound changed," not "my sound is
+missing."
+
+### `iSound == -1` → early-out with a debug print, no playback
+
+`play` special-cases `-1`: it `DebugPrintf`s
+`"PlaySound with sound of -1 !!!!!!!!!!!!!!!"` and returns (`SoundEngine.cpp:486-490`).
+A getter that returns `-1` (e.g. a mob sound override left at the default) is
+therefore a silent no-sound, not a crash — worth knowing when a mob is mute.
+
+### Name not resolvable to a namespace/path → probes a directory that never exists
+
+The dotted name maps to a path by replacing `.` with `/`
+(`ConvertSoundPathToName`, `SoundEngine.cpp:1721`). A typo in the dotted name
+(`tile.chime.ring` vs the file at `tile/chime/ring.ogg`) doesn't error at
+registration — it just probes a path that has no file and lands in the
+`Failed to initialize sound from file` case above. The name string and the
+on-disk folder layout must match exactly.
+
+### Streaming vs. one-shot mismatch → music won't fade / disc won't stream
+
+Music must go through `Level::playStreamingMusic` →
+`SoundEngine::playStreaming` (`SoundEngine.cpp:821`), not the `play(iSound…)`
+one-shot path. Route a track through `play` and it plays once with no streaming,
+no loop, and no participation in the world enter/leave fade state
+(`m_musicFadeSecondsRemaining`, `SoundEngine.cpp:841`). No error — it just behaves
+like a sound effect instead of music.
+
 ## Testing checklist
 
 - [ ] The `eSOUND_TYPE` enum entry and the `wchSoundNames[]` entry are at the **same relative position** — verify a nearby existing sound still plays its own clip (misalignment shifts every later sound).
 - [ ] The audio file exists at `Windows64Media/Sound/Minecraft/<dotted/path>.ogg` (or numbered variants).
 - [ ] Trigger the sound in-game (interact with the block / hurt the mob) and confirm it plays at the right 3D position with the right volume/pitch.
 - [ ] Random variants (`ring1.ogg`, `ring2.ogg`, …) actually rotate — trigger repeatedly.
-- [ ] The OGG decodes (miniaudio/stb_vorbis) — no silent play, no `WARNING: No audio file found` in the debug log.
+- [ ] The OGG decodes (miniaudio/stb_vorbis) — no `Failed to initialize sound from file: <path>` in the debug log (that's the positional `play` miss path, `SoundEngine.cpp:590`).
 - [ ] Block break/step sounds use the intended `Tile::SoundType`.
 - [ ] For music: the track streams (background thread), loops/stops correctly, and participates in the world enter/leave fade.
 - [ ] `/give` a new record and confirm it plays in a jukebox and shows its name/tooltip.

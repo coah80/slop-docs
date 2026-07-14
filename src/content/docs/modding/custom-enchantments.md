@@ -34,8 +34,12 @@ The whole registry lives on the `Enchantment` base class (`Enchantment.h`):
 
 Each enchant is `new`'d in `Enchantment::staticCtor()` with an **id** and a
 **frequency** (rarity weight), and the base ctor calls `_init(id)`
-(`Enchantment.cpp:104`) which slots `this` into `enchantments[id]` and asserts
-the id isn't a duplicate. The four frequency constants (`Enchantment.h:15`):
+(`Enchantment.cpp:104`) which slots `this` into `enchantments[id]`. On a duplicate
+id it does **not** assert or throw — it `DebugPrintf`s `"Duplicate enchantment
+id!"`, hits `DEBUG_BREAK()` on a non-`_CONTENT_PACKAGE` build, and then
+**continues on to overwrite the slot anyway** (`Enchantment.cpp:106-114`; the
+`throw` is commented out). See [What can go wrong](#what-can-go-wrong) for the
+consequences. The four frequency constants (`Enchantment.h:15`):
 
 | Constant | Value |
 |---|---|
@@ -335,6 +339,57 @@ from step 5. There's no separate icon-registration step for an enchant, unlike
 If your enchant produces a visible in-world effect (like Frost Walker's frosted
 ice), that effect's rendering comes from the block/particle it spawns, not from
 the enchant.
+
+## What can go wrong
+
+The enchantment registry backs onto a fixed-size array with **no bounds check and
+no live duplicate guard**, so the two id mistakes fail in very different, very
+un-obvious ways. Verified behaviours at this snapshot:
+
+### ID ≥ 256 → out-of-bounds write in `_init`, not a clean error
+
+`enchantments` is an `EnchantmentArray`, which is `arrayWithLength<Enchantment*>`
+(`ArrayWithLength.h:130`) — and its `operator[]` is a bare `return data[i]` with
+**no bounds check** (`ArrayWithLength.h:55-56`; the only `assert` in that file
+guards `resize`, not indexing). The backing store is 256 slots
+(`Enchantment.cpp:13`, `EnchantmentArray(256)`). So registering an enchant with
+`id >= 256` makes `_init` run `enchantments[id] = this;` (`Enchantment.cpp:114`)
+**past the end of the heap allocation** — an out-of-bounds write that corrupts
+whatever follows the array, with undefined and platform-dependent results. It does
+*not* trip a clean assert or exception. Keep ids in `0–255`; the vanilla ranges
+top out at 70 (mending), so there's plenty of room below the ceiling.
+
+### Two enchantments with the same id → `DEBUG_BREAK` then the later one wins
+
+`_init` checks `if (enchantments[id] != nullptr)` (`Enchantment.cpp:106`) and, on
+a hit, calls `app.DebugPrintf("Duplicate enchantment id!")` and — on a
+non-`_CONTENT_PACKAGE` build — `DEBUG_BREAK()` (`:108-110`). But the
+`IllegalArgumentException` throw is commented out (`:112`), so execution falls
+through to `enchantments[id] = this;` (`:114`) **regardless**. Registration order
+therefore decides the winner: whichever `new XxxEnchantment(id, …)` runs later in
+`staticCtor` overwrites the earlier pointer in the slot (the earlier object
+leaks), and its named static (`Enchantment::waterWalker` etc.) still points at the
+now-orphaned instance. On a release/content build there's no break at all — just
+the silent overwrite. Grep `staticCtor` for the id before you commit it.
+
+### Treasure flag wrong → enchant rolls (or refuses to roll) on the table unexpectedly
+
+`validEnchantments` is filled at the end of `staticCtor` and **skips any enchant
+whose `isTreasureEnchantment()` returns true** (Step 2 note). Forget to override
+`isTreasureEnchantment()` on a loot-only enchant and it will roll in the enchanting
+table like a normal one; override it by mistake on a normal enchant and it will
+never appear on the table. Neither is an error — it just silently changes where
+the enchant can be obtained.
+
+### Null named static → crash the first time gameplay code reads it
+
+Every `EnchantmentHelper::getXxx` accessor dereferences the named static, e.g.
+`Enchantment::sprintBoots->id` (Step 4). If you declared the static and wrote the
+`new SprintBootsEnchantment(...)` but the assignment to `Enchantment::sprintBoots`
+never runs (wrong scope, or you only added the `nullptr` definition and forgot the
+`sprintBoots = new …` line), the accessor dereferences a null pointer and crashes
+the first time the wearer is evaluated. The pointer is only non-null if
+`staticCtor` actually assigns it.
 
 ## Testing checklist
 

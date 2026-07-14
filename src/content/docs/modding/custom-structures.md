@@ -428,6 +428,61 @@ first via [Adding Blocks](/slop-docs/modding/adding-blocks/). Structure names
 that surface in UI (e.g. a locator/map) come from the client string tables, same
 as biome names — see [Adding Biomes → Localization](/slop-docs/modding/adding-biomes/#localization).
 
+## What can go wrong
+
+The structure IO layer is a pair of `unordered_map`s keyed by enum and by
+save-id string (`StructureFeatureIO.cpp:5-8`). Every failure below is a
+map-lookup miss that resolves to an empty string or a silent overwrite — none
+throw. Verified behaviours at this snapshot:
+
+### `StructureFeatureIO` save-id collision → last registration wins, wrong class loads
+
+`setPieceId(clas, fn, id)` writes **two** maps: `pieceIdClassMap[id] = fn` (save
+string → factory) and `pieceClassIdMap[clas] = id` (enum → save string)
+(`StructureFeatureIO.cpp:17-21`). If your new piece reuses an existing save-id
+string (say `L"TeSH"`, already the swamp hut's), the first assignment
+**overwrites the existing factory in the map** — no warning, it's a plain
+`operator[]` write. On load, every NBT piece tagged `"TeSH"` now builds *your*
+class via `loadStaticPiece` (`:94`), which is then `load()`ed with the hut's
+saved data — corrupt reads in `readAdditonalSaveData`, or a crash. `setStartId`
+collides the same way (`:11-15`). Pick a string no other structure uses; the
+existing ones are terse (`L"OMB"`, `L"TeSH"`, `L"Monument"`), so a distinctive
+tag is easy.
+
+### Piece enum registered but no `setPieceId` → piece saves as `""` and vanishes on reload
+
+If you add `eStructurePiece_ShrineRoom` and have `GetType()` return it, but forget
+the `setPieceId` line in `staticCtor`, `getEncodeId(piece)` finds nothing in
+`pieceClassIdMap` and returns **`L""`** (`StructureFeatureIO.cpp:60-63`). The
+piece is written to NBT with an **empty `id`**. On load, `loadStaticPiece` looks
+up `""`, misses, leaves `piece` null, and logs
+`"Skipping Piece with id "` (`:103`) — the piece is **silently dropped from the
+structure**. The structure round-trips minus that piece: it builds fine on first
+generation (the in-memory `pieces` list is intact), then loses the room the first
+time the chunk is saved and reloaded. Starts behave identically:
+unregistered `GetType()` → `getEncodeId` returns `L""` (`:47-50`) →
+`"Skipping Structure with id "` (`:82`) → the whole structure is dropped on load.
+
+### Missing the no-arg ctor → `Create()` won't compile / can't rebuild on load
+
+The reflection factory is `static StructurePiece *Create() { return new ShrinePiece(); }`
+— it calls the **no-arg** constructor. `loadStaticPiece` uses it to build a blank
+instance before `load()` fills it (`:94-99`). Omit the no-arg ctor and either
+`Create()` fails to compile, or (if you route it through the placement ctor) every
+loaded piece is constructed with garbage placement params before its saved box is
+read back. Both constructors are mandatory — the swamp hut shows the pair
+(`ScatteredFeaturePieces.cpp:645-654`).
+
+### Feature constructed but not `apply`/`postProcess`ed → no structure generates, no error
+
+`StructureFeatureIO` only handles save/load; it does **not** generate anything.
+If you register the IO ids and write the feature but never wire the four points in
+`RandomLevelSource` (Step 6), the structure simply never places — `isFeatureChunk`
+is never called, so nothing logs. And because both call sites are guarded by
+`if (generateStructures)` (`RandomLevelSource.cpp:432`/`:735`), a world created
+with "generate structures" **off** also silently produces nothing — worth ruling
+out before you assume your `isFeatureChunk` math is wrong.
+
 ## Testing checklist
 
 - [ ] Both enums (`EStructureStart`, `EStructurePiece`) got new entries; `GetType()` returns them.

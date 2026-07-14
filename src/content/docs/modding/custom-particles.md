@@ -221,7 +221,7 @@ quad or custom UVs.
 ## Step 5 — the dispatch case
 
 Add your type to the `switch` in `LevelRenderer::addParticleInternal`
-(`LevelRenderer.cpp:2997`+). The barrier case is the template
+(`LevelRenderer.cpp:2998`+). The barrier case is the template
 (`LevelRenderer.cpp:3164`):
 
 ```cpp
@@ -240,10 +240,11 @@ case eParticleType_spark:
 
 Include your header at the top of `LevelRenderer.cpp` (the barrier include is at
 `LevelRenderer.cpp:14`). Anything the `switch` builds is handed to
-`mc->particleEngine->add(particle)` automatically at the bottom of the function
-(`LevelRenderer.cpp:3184`). The engine also rejects particles when the
-`particleLevel` option is set to "minimal" (`LevelRenderer.cpp:2988`) and does
-NaN-guarding on the coordinates (`:2864`) — you get that for free.
+`mc->particleEngine->add(particle)` automatically at the bottom of the function,
+guarded by a null check (`LevelRenderer.cpp:3184-3186`). The engine also rejects
+particles when the `particleLevel` option is above "all"
+(`if (particleLevel > 1)`, `LevelRenderer.cpp:2989`) and NaN-guards the
+coordinates (`:2864-2869`) — you get that for free.
 
 ## Step 6 — spawn triggers from world code
 
@@ -309,6 +310,63 @@ particle atlas under `Common/res/`), and `setMiscTex(slotIndex)` picks it by a
 pass its index. If you used `TERRAIN_TEXTURE`/`ITEM_TEXTURE`, the texture comes
 from an existing block/item `Icon` (no new atlas art needed) — that's why
 `BarrierParticle` can just reuse `Tile::barrier->getTexture(Facing::UP)`.
+
+## What can go wrong
+
+The particle path is a hand-written `switch` with a narrow `default`, so a missing
+case doesn't fall through to anything useful — it produces **nothing, silently**.
+Verified behaviours at this snapshot:
+
+### Missing `switch` case → no particle, no crash, no log
+
+`addParticleInternal`'s `switch` (`LevelRenderer.cpp:2998`) has a `default:`
+(`:3171`) that only handles the numeric **iconcrack/tilecrack ranges** — it checks
+`eParticleType >= eParticleType_iconcrack_base` and the tilecrack range, and does
+nothing else (`:3172-3181`). A plain enum value with no matching `case` falls into
+`default`, matches neither range, and leaves the local `particle` pointer null. The
+function then does `if (particle != nullptr) mc->particleEngine->add(particle);`
+(`:3184-3186`) — so a null particle is **quietly skipped**. Result: you added the
+`eParticleType_spark` enum and the spawn call, but forgot the `case` in
+`LevelRenderer.cpp`, and the particle simply never appears — no assert, no default
+"missing" particle, nothing in the log. This is the single most common way a new
+particle "does nothing."
+
+### Registering through `ParticleType.cpp` instead of the switch → also nothing
+
+`ParticleType` (the `byId` class) is a **stub** that returns `nullptr` in this
+codebase (Step 0). If you wire your particle there expecting a registry, it never
+runs — the live dispatch is the `LevelRenderer` switch, full stop. There's no
+error; the code just isn't on the path.
+
+### Wrong `getParticleTexture()` / texture source → untextured or wrong-atlas quad
+
+`getParticleTexture()` selects the atlas (`ParticleEngine.h:19`): `MISC_TEXTURE`
+(0) draws from `particles.png` via `setMiscTex(slot)`, `TERRAIN_TEXTURE` (1) from
+the block atlas via `setTex(...)`, `ITEM_TEXTURE` (2) from the item atlas. Mismatch
+the two — e.g. return `MISC_TEXTURE` but never call `setMiscTex`, or call
+`setMiscTex` while returning `TERRAIN_TEXTURE` — and the particle draws from the
+wrong sheet: you get a garbage cell, a white/untextured quad, or a stray block
+texture. There's no validation that the texture-source enum and the sprite-binding
+call agree; the quad just renders whatever UVs it ended up with. `BarrierParticle`
+is the reference for the terrain-texture path (`BarrierParticle.cpp`, quoted in
+Step 4).
+
+### Enum added below `eParticleType_iconcrack_base` → collides with a packed crack id
+
+`eParticleType_iconcrack_base = 0x100000` and everything above it packs a tile/item
+id into the high bits (`ParticleTypes.h:57`, the `PARTICLE_*CRACK` macros). If you
+add your value **into or above** that numeric range instead of the plain
+sequential list, its integer value can alias a crack id — the `default` branch will
+treat your spawn as a tile/item-break particle and try to index `Tile::tiles[id]`/
+`Item::items[id]` with garbage. Keep the new value in the sequential list, as the
+Step 1 caution says.
+
+### "Minimal particles" option → decorative particles are suppressed by design
+
+`addParticleInternal` returns early when `particleLevel > 1`
+(`LevelRenderer.cpp:2989-2994`), so with the video option on "minimal" your
+particle won't spawn — that's correct behaviour, not a bug. Rule it out before
+chasing a missing-particle ghost: test with particles set to "all."
 
 ## Testing checklist
 

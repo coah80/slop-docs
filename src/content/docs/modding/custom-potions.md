@@ -255,6 +255,60 @@ its color already exists. For a brand-new effect, add its `eMinecraftColour_Effe
 entry and a `colours.xml` row so the bottle tints correctly. See the
 [color table docs](/slop-docs/client/resources/).
 
+## What can go wrong
+
+Potions fail on two different layers — the `MobEffect` array (like enchantments,
+an unchecked fixed array) and the aux-value bit masks, whose "collision" is not a
+brewing-time race but a **first-match-wins tooltip lookup**. Verified behaviours
+at this snapshot:
+
+### Effect id ≥ `NUM_EFFECTS` (32) → out-of-bounds write, no guard
+
+`MobEffect::effects` is a plain C array `static MobEffect *effects[NUM_EFFECTS]`
+with `NUM_EFFECTS = 32` (`MobEffect.h:40-41`). The `MobEffect` ctor slots itself
+in with `effects[id] = this;` (`MobEffect.cpp:90`) and — unlike the enchantment
+path — there is **no duplicate check and no bounds check at all**. So an id `>= 32`
+writes past the end of the static array, corrupting adjacent statics; a duplicate
+id silently overwrites the earlier effect with no log whatsoever. That's why the
+brand-new-effect path (Part A) tells you to take one of the `reserved_24..31`
+slots — they're the only free ids under the 32 ceiling.
+
+### Aux masks collide → the tooltip goes to whichever `MACRO_POTION_IS_*` is tested first
+
+Brewing itself can't "collide" — a formula string is a deterministic per-bit
+toggle applied to the one aux value (`PotionBrewing::applyBrew` walks the string
+bit by bit, `PotionBrewing.cpp:760`+), so there is no recipe-matching search and
+no "which recipe wins" race. The real collision is at **read time**. Every
+`MACRO_POTION_IS_X` macro tests `(brew & 0x200F) == MASK_X` — i.e. the low nibble
+is the discriminator. `PotionItem::getUseDescriptionId` (`PotionItem.cpp:341`) is
+an ordered `if / else if` chain (`:345-357`): regeneration, speed, fire-res, heal,
+… water-breathing, jump-boost, in that fixed order. If your `MASK_HASTE` shares a
+low nibble with an effect earlier in the chain, that earlier `else if` matches
+first and your potion silently shows **its** name and description — your own
+`else if` is never reached. This is exactly why the `Potion_Macros.h:20-24`
+warning says to pick a value that round-trips and to avoid `0x2007`/`0x200D`: a
+bad nibble doesn't error, it just resolves to the wrong (or "artless"/"clear")
+potion. `PotionItem::getColor` → `PotionBrewing::getColorValue`
+(`PotionItem.cpp:164-175`) reads the same aux, so a collided potion is also tinted
+as the effect it collided with.
+
+### Forgot the creative-menu `ITEM_AUX` line → brews fine, invisible in creative
+
+This is the gotcha the TU31 backport shipped with (Part E) and it is genuinely
+silent: the potion brews correctly in survival and its aux round-trips, but it
+never appears in any creative tab because the creative lists are hand-written
+`ITEM_AUX(...)` entries in `IUIScene_CreativeMenu`, not enumerated from anything.
+Nothing logs; the potion is simply absent from creative until you add the line for
+each tier you want.
+
+### Missing tooltip string → literal `IDS_` key or blank name
+
+`getUseDescriptionId` returns an `IDS_POTION_DESC_*` id resolved from the loc
+table. If the entry is missing, the same string-table fallback that hits every
+subsystem applies — the description renders as the literal key text (or blank,
+depending on the lookup overload). Add the `IDS_POTION_DESC_HASTE` entry (Part F)
+before testing the tooltip.
+
 ## Testing checklist
 
 - [ ] New source (if any) is in `cmake/sources/Common.cmake`; the project configures and compiles.
