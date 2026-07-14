@@ -65,6 +65,7 @@ export default defineConfig({
 						{ label: 'Entity Renderers & Models', slug: 'client/entity-rendering' },
 						{ label: 'Particles', slug: 'client/particles' },
 						{ label: 'UI System (UIScene & XUI)', slug: 'client/ui-system' },
+						{ label: 'UI Code Map', slug: 'client/ui-code-map' },
 						{ label: 'Classic Screens & HUD', slug: 'client/screens' },
 						{ label: 'Input', slug: 'client/input' },
 						{ label: 'Texture Packs & Resources', slug: 'client/resources' },
