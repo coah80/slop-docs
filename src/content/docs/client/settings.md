@@ -147,6 +147,97 @@ Supporting calls (`Consoles_App.h:226-289`):
 `ControlInvertLook` / `ControlSouthPaw` are seeded from the platform profile
 (`pSettings->iYAxisInversion`, `pSettings->bSwapSticks`).
 
+## Worked trace: one slider move, drag to disk
+
+This follows a single music-volume slider drag from the on-screen control to the
+sound engine and, eventually, to persisted profile bytes — citing every hop. The
+key structural fact: a slider **move** is applied live but staged; the **write to
+disk** is a separate, rate-limited step gated on a dirty flag.
+
+**1 — Drag (scene → pending).** As the user drags the Music slider,
+`UIScene_SettingsAudioMenu::handleSliderMove(sliderId, currentValue)`
+(`UIScene_SettingsAudioMenu.cpp:155`) plays the scroll SFX and, for
+`eControl_Music`/`eControl_Sound`, only **stages** the value — it does not write
+the store yet (`:164-169`):
+
+```cpp
+case eControl_Music:
+case eControl_Sound:
+    m_bPendingSliderUpdate = true;
+    m_iPendingSliderId     = sliderIdInt;
+    m_iPendingSliderValue  = value;
+    break;
+```
+
+**2 — Commit on tick (`SetGameSettings`).** The scene's next `tick()` drains the
+pending value, updates the slider label, and writes the authoritative store
+(`UIScene_SettingsAudioMenu.cpp:79-97`):
+
+```cpp
+case eControl_Music:
+    app.SetGameSettings(m_iPad, eGameSetting_MusicVolume, m_iPendingSliderValue);   // :88
+    swprintf(TempString, 256, L"%ls: %d%%", app.GetString(IDS_SLIDER_MUSIC), m_iPendingSliderValue);
+    m_multiList.SetSliderLabel(eControl_Music, TempString);
+```
+
+**3 — Store + live-apply + dirty (`SetGameSettings` → `ActionGameSettings`).**
+`SetGameSettings` (`Consoles_App.cpp:2037`) writes the byte into
+`GameSettingsA[iPad]->ucMusicVolume`, calls `ActionGameSettings(iPad,
+eGameSetting_MusicVolume)` for the primary pad, and sets
+`bSettingsChanged = true`. `ActionGameSettings` (`:1521`) is the bridge into the
+classic `Options` mirror (`:1526-1530`):
+
+```cpp
+case eGameSetting_MusicVolume:
+    if(iPad == ProfileManager.GetPrimaryPad())
+        pMinecraft->options->set(Options::Option::MUSIC,
+            static_cast<float>(GameSettingsA[iPad]->ucMusicVolume)/100.0f);
+```
+
+**4 — Reach the sound engine (`Options::set`).** `Options::set` special-cases
+`MUSIC` and pushes it straight into the engine (`Options.cpp:210-218`):
+
+```cpp
+if (item == Option::MUSIC) {
+    music = fVal;
+    …
+    minecraft->soundEngine->updateMusicVolume(fVal);   // :218
+}
+```
+
+`SoundEngine::updateMusicVolume` stores `m_MasterMusicVolume`, which the music tick
+uses as its gain multiplier — so the drag is audible immediately, before anything
+touches disk.
+
+**5 — Persist (`CheckGameSettingsChanged` → profile).** Nothing wrote disk yet;
+`bSettingsChanged` is still set. Two triggers flush it:
+
+- **Per-frame, rate-limited.** The platform loop calls
+  `app.CheckGameSettingsChanged()` every frame (`Windows64_Minecraft.cpp:2236`),
+  which honours the 5-minute timer.
+- **Forced on scene exit.** Leaving the settings menu forces an immediate flush —
+  `app.CheckGameSettingsChanged(true, iPad)` with `bOverride5MinuteTimer = true`
+  (`UIScene_SettingsMenu.cpp:99/162`).
+
+`CheckGameSettingsChanged` (`Consoles_App.cpp:2814`) checks the flag per pad and,
+if set, writes the profile and clears it (`:2822-2833`):
+
+```cpp
+if(GameSettingsA[i]->bSettingsChanged) {
+    ProfileManager.WriteToProfile(i, true, bOverride5MinuteTimer);   // :2827
+#ifdef _WINDOWS64
+    Win64_SaveSettings(GameSettingsA[i]);                             // :2829
+#endif
+    GameSettingsA[i]->bSettingsChanged = false;                      // :2832
+}
+```
+
+On console the write goes through `StorageManager.WriteToProfile` instead
+(`:2825/2841`, PS3/Orbis/Durango/Vita). `ApplyGameSettingsChanged(iPad)`
+(`:1475`) is the mirror-image of step 3 for **all** settings at once — it re-runs
+`ActionGameSettings` for every `eGameSetting` (`:1477-1518`), used at boot and when
+the `Options` mirror must be rebuilt from the store.
+
 ## The classic mirror: Options and Settings
 
 `class Options` (`Options.h`, `Minecraft::options`) is the ported Java options

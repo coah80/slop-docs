@@ -203,6 +203,89 @@ Three server-side listener classes handle the handshake:
   ConsoleInputSource`) — the per-player server-side handler; it also feeds chat
   and commands into the command dispatcher (see [Input](/slop-docs/client/input/#server-side-command-input)).
 
+### Worked trace: one connection, socket accept to level entry
+
+This follows a single player joining from the raw socket to the level-entry packet
+burst, citing every hop. The handshake lives in a **pending** object with no player
+attached; only once login is accepted is a `ServerPlayer` created and the socket
+handed to a per-player `PlayerConnection`.
+
+**1 — Accept (`ServerConnection`).** A new socket arrives at
+`ServerConnection::NewIncomingSocket(Socket*)` (`ServerConnection.cpp:37`), which
+wraps it in a `PendingConnection` and calls `handleConnection` (`:40`).
+`handleConnection` (`:50`) pushes it onto the `pending` vector under `pending_cs`
+(`:64`); on a dedicated server build it first rejects over `maxPendingConnections`
+(`:53-62`). `ServerConnection::tick()` then drives each pending object's `tick()`
+(`:103-110`), snapshotting the vector first so a join can't invalidate the iterator
+(comment "changed so … CS lock doesn't cover the tick", `:101`).
+
+**2 — Pre-login.** `PendingConnection` (`: public PacketListener`) handles the
+pre-login exchange: `handlePreLogin` (`PendingConnection.cpp:102`) checks version
+compatibility and, on the WINDOWS64 dedicated build, resolves the peer IP and fires
+the `FourKitBridge::FirePlayerPreLogin` mod hook (`:155`) before
+`sendPreLoginResponse` (`:170`) replies with the current player list and the
+world's `m_texturePackId` (`:229`).
+
+**3 — Protocol gate (`handleLogin`).** The `LoginPacket` lands in
+`handleLogin` (`PendingConnection.cpp:233`), which gates on the protocol version
+first (`:237`):
+
+```cpp
+if (packet->clientVersion != SharedConstants::NETWORK_PROTOCOL_VERSION) {   // 79
+    disconnect(packet->clientVersion > NETWORK_PROTOCOL_VERSION
+        ? eDisconnect_OutdatedServer : eDisconnect_OutdatedClient);
+    return;
+}
+```
+
+`NETWORK_PROTOCOL_VERSION` is **79** (`Minecraft.World/SharedConstants.h:10`) — a
+mismatch tells the client whether *it* or the *server* is stale. After the gate it
+picks the login XUID (offline first, online fallback, `:312-313`) and rejects
+duplicate-XUID joins (`:315-325`).
+
+**4 — Player handoff (`handleAcceptedLogin`).** Once accepted,
+`handleAcceptedLogin` (`PendingConnection.cpp:495`) re-checks the UGC player-list
+version (`:497`), then asks the roster for a player object —
+`server->getPlayers()->getPlayerForLogin(this, name, playerXuid, onlineXuid)`
+(`:569`) — and hands the socket over (`:576-577`):
+
+```cpp
+server->getPlayers()->placeNewPlayer(connection, playerEntity, packet);
+connection = nullptr;   // responsibility moved to the new PlayerConnection
+```
+
+Nulling `connection` is the ownership transfer: the pending object's destructor no
+longer closes the socket because the `PlayerConnection` now owns it.
+
+**5 — Construct PlayerConnection + level entry (`placeNewPlayer`).**
+`PlayerList::placeNewPlayer` (`PlayerList.cpp:127`) binds the player to its
+`ServerLevel` (`:133-134`), picks a free player index (`:177-200`, rejecting with
+`eDisconnect_ServerFull` if none), constructs the per-player handler —
+`make_shared<PlayerConnection>(server, connection, player)` (`:205`) — and then
+sends the **level-entry burst** in order (`PlayerList.cpp:306-334`):
+
+| # | Packet | Purpose |
+|---|--------|---------|
+| 1 | `Recipes::createUpdatePacket()` | recipe book |
+| 2 | `IUIScene_CreativeMenu::createUpdatePacket()` | creative inventory |
+| 3 | `LoginPacket` | entity id, generator, seed, game mode, dimension, build height, difficulty, world size, hell scale, hardcore |
+| 4 | `SetSpawnPositionPacket` | spawn point |
+| 5 | `PlayerAbilitiesPacket` | fly/build flags |
+| 6 | `SetCarriedItemPacket` | selected hotbar slot |
+| 7 | `CustomPayloadPacket(FORK_HELLO_CHANNEL)` | the `MC|ForkHello` handshake (see [fork-server protocol](#neolegacy-fork-server-protocol--custom-encryption)) |
+| — | `updateEntireScoreboard(...)` | scoreboard |
+| — | `sendLevelInfo(player, level)` | time, weather, world state |
+
+These are exactly the packets the client's `ClientConnection` handlers
+([above](#clientconnection--the-packet-router)) consume — the `LoginPacket` here is
+answered by `handleLogin`, the abilities by `handlePlayerAbilities`, and so on.
+
+**Embedded/loopback.** A single-player world runs this same handshake against the
+*embedded* `MinecraftServer`: the desktop stub's `FakeLocalPlayerJoined()`
+([above](#the-desktop-stub)) synthesises the local player joining their own hosted
+game over the `IQNet` loopback, so even offline play flows accept → pending →
+`placeNewPlayer` → `PlayerConnection` exactly as a remote join would.
+
 ## EntityTracker — server → client entity sync
 
 `EntityTracker` (`EntityTracker.h`) lives on the **server** and decides which

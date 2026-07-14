@@ -105,6 +105,55 @@ popup itself is a `UIScene` (`UIComponent_TutorialPopup`; see
 static timers `m_iTutorialDisplayMessageTime`, `m_iTutorialReminderTime`,
 `m_iTutorialFreezeTimeValue`, etc. (`Tutorial.h:63-69`).
 
+### Worked trace: one tutorial task transition
+
+This follows a single tutorial step from the gameplay action that completes it to
+the next hint appearing on screen, citing every hop. The key structural fact:
+gameplay pushes events into every active task, but the actual **advance** happens
+in `tick()`, which drains completed tasks and promotes the next one.
+
+**1 — Event in (`Tutorial::on*`).** A gameplay action routed through the
+`TutorialMode` game mode calls a `Tutorial::on*` hook — e.g. crafting an item hits
+`Tutorial::onCrafted(item)` (`Tutorial.cpp:1951`), which fans the event out to
+**every** task in the current state so whichever task is watching for it can flag
+itself done (`:1953-1959`):
+
+```cpp
+for(auto& subtasks : activeTasks)
+    for(auto& task : subtasks)
+        task->onCrafted(item);
+```
+
+**2 — Condition check + advance (`tick`).** `Tutorial::tick()` (`Tutorial.cpp:1297`)
+walks `activeTasks[m_CurrentState]` and, for the current task, checks completion —
+gated on a minimum on-screen time so a message can't flash past
+(`:1492-1495`):
+
+```cpp
+if( ( !task->ShowMinimumTime() ||
+      (task->hasBeenActivated() && (lastMessageTime + m_iTutorialMinimumDisplayMessageTime) < GetTickCount()) )
+    && task->isCompleted() )
+```
+
+When it passes, the task is erased and deleted (`:1497-1500`), its
+`getCompletionAction()` decides how the rest of the state's tasks are handled
+(`e_Tutorial_Completion_Complete_State` clears them, `_Jump_To_Last_Task` keeps
+only the last, `:1504-1544`), and the **next** task is promoted as current via
+`currentTask[state] = activeTasks[state][0]; …->setAsCurrentTask()` (`:1547-1551`).
+If the list drained, `setStateCompleted(m_CurrentState)` marks the state done
+(`:1554`) and flips its completion bit in the profile budget.
+
+**3 — Hint UI out.** With a new current task, `tick()` builds the popup: it
+assembles a `TutorialPopupInfo` with the message text, icon, aux value and the
+`allowFade`/`isReminder` flags (`Tutorial.cpp:1737-1744`) and pushes it to the live
+scene — `ui.SetTutorialDescription(m_iPad, &popupInfo)` (`:1751/1755`). The popup
+scene itself is navigated in when the tutorial becomes visible —
+`app.NavigateToScene(m_iPad, eUIComponent_TutorialPopup, this, …)`
+(`Tutorial.cpp:1381-1406`) — and input is gated while a hint is up
+(`ui.SetTutorialVisible`, `:1420-1425`). Completion of the whole state persists as
+one of the 512 profile bits ([above](#states-hints-and-telemetry-markers)), so the
+step never re-plays on reload.
+
 ## Console GameRules — the minigame / map system
 
 `Common/GameRules/` is the console "mini-game" and custom-map rule engine —
@@ -201,6 +250,68 @@ elsewhere) used by the store. Skin access has dedicated helpers:
 Because console DLC archives are big-endian, `DLCManager` provides the
 `SwapInt16/SwapInt32/SwapUTF16Bytes` byte-swap helpers used while parsing
 (`DLCManager.h:100-122`).
+
+### Worked trace: one DLC pack mount, file to available content
+
+This follows a single `.pck` from disk to the point its content is selectable,
+citing every hop. A pack is a versioned binary blob; `DLCManager` parses it into
+typed `DLCFile`s, buckets them on a `DLCPack`, registers the pack, and — for a
+texture pack — surfaces it through the texture repository.
+
+**1 — Read the file (`readDLCDataFile`).** A driver points `DLCManager` at a `.pck`
+path — the app's DLC scan (`Consoles_App.cpp:5995/5999`), the texture repo's
+dummy-pack load (`TexturePackRepository.cpp:64`), or a `DLCTexturePack`'s lazy
+mount (`DLCTexturePack.cpp:377`). `DLCManager::readDLCDataFile`
+(`DLCManager.cpp:407`) resolves the path — from the media archive
+(`app.getArchiveFile`, `:412`) or a `StorageManager.GetMountedPath` on
+Windows64/Durango (`:419-425`), with a `.pck`-folder fallback
+(`hasPckFolderFallback` → `readDLCDataFolder`, `:431-448`) — and hands the bytes to
+`processDLCDataFile`.
+
+**2 — Parse the versioned format (`processDLCDataFile`).**
+`DLCManager::processDLCDataFile(pbData, dwLength, pack)` (`DLCManager.cpp:569`)
+reads the format documented inline (`:574-584`): a version int, a parameter-type
+map, a file count, and per-file details + data. It **auto-detects endianness** by
+testing the version both ways (`:588-598`) — console packs are big-endian — and
+uses the `SwapInt32`/`SwapUTF16Bytes` helpers throughout. It builds the
+DLC-string→`EDLCParameterType` mapping (`:605-628`), then reads the file table.
+
+**3 — Type each file (`addFile`).** For each entry it reads the `EDLCType`
+(`:659`) and materialises the right object (`DLCManager.cpp:664-671`):
+
+```cpp
+if(type == e_DLCType_TexturePack)
+    dlcTexturePack = new DLCPack(pack->getName(), pack->getLicenseMask());  // nested pack
+else if(type != e_DLCType_PackConfig)
+    dlcFile = pack->addFile(type, (WCHAR*)pFile->wchFile);                  // typed DLCFile
+```
+
+`pack->addFile(type, name)` buckets the file into `m_files[type]` on the
+`DLCPack` — so afterward `getSkinCount()`, `getSkinFile(path)`,
+`doesPackContainSkin(path)` etc. answer from the parsed contents. A nested
+`e_DLCType_TexturePack` becomes a **child** `DLCPack` (the Mash-Up nesting from
+[DLCPack](#dlcpack)).
+
+**4 — Register the pack (`addPack`).** The driver then calls
+`app.m_dlcManager.addPack(pack)` (`DLCManager.cpp:166`, e.g.
+`Consoles_App.cpp:5928`, `TexturePackRepository.cpp:68`), adding it to the
+manager's `vector<DLCPack*>`. From here `getPack(name)`,
+`getPackContainingSkin(path)` and `checkForCorruptDLCAndAlert()`
+(`Minecraft.cpp:1423`) can all see it.
+
+**5 — Surface as content.** How the pack becomes *usable* depends on its type:
+
+- **Texture pack** → `TexturePackRepository::addTexturePackFromDLC(dlcPack, id)`
+  (`TexturePackRepository.cpp:363`) wraps it in a `DLCTexturePack` and caches it by
+  id, so `selectTexturePackById(id)`
+  ([the resources trace](/slop-docs/client/resources/#worked-trace-one-texture-pack-switch-selection-to-re-bound-atlas))
+  can now select it.
+- **Skin** → the skin-select scene resolves a loose path back to its pack with
+  `app.m_dlcManager.getPackContainingSkin(...)`
+  (`UIScene_SkinSelectMenu.cpp:417`).
+- **Game rules / audio / colours** → loaded on demand by the matching subsystem
+  (`GameRuleManager::loadGameRules(DLCPack*)`, `DLCTexturePack`'s sound banks, the
+  `ColourTable` two-arg override).
 
 > **neoLegacy delta (TU25 skin packs):** the Skin Select menu was rewritten for
 > TU36+ parity (NOTES.md), and along with it the skin-pack pipeline — including

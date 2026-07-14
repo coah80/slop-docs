@@ -207,6 +207,93 @@ The pending-request bookkeeping lives on `Minecraft`:
 `m_pendingTextureRequests` (`Minecraft.h:336`), `handleClientTextureReceived(name)`
 (`Minecraft.h:341`, `Minecraft.cpp:5379`), and `clearPendingClientTextureRequests()`.
 
+## Worked trace: one texture-pack switch, selection to re-bound atlas
+
+This follows a single texture-pack change from the moment the player picks a pack
+to the frame that draws with the new tiles, citing every hop. The key structural
+fact: **selection and reload are decoupled.** `selectSkin` only swaps a pointer;
+the expensive teardown/restitch is deferred to an app-action drained on the main
+thread, so the switch never happens mid-frame.
+
+**1 — Selection (scene → repository).** A world-setup scene commits the chosen id
+— e.g. `UIScene_CreateWorldMenu.cpp:1254` or `UIScene_LoadMenu.cpp:1707` calling
+`pMinecraft->skins->selectTexturePackById(dwTexturePack)`. The same entry is also
+hit **off the network**: when a client joins a host whose world uses a pack, the
+pre-login handler selects it (`ClientConnection.cpp:2505`, primary pad only, before
+the `LoginPacket` so it resolves before the world starts).
+
+**2 — Swap + schedule reload (`selectTexturePackById`).**
+`TexturePackRepository::selectTexturePackById` (`TexturePackRepository.cpp:304`)
+first records the required id for join-from-invite checks
+(`app.SetRequiredTexturePackID(id)`, `:310`), looks the pack up in `cacheById`
+(`:312`), and if it differs from `selected` calls `selectSkin(newPack)` (`:318`).
+`selectSkin` (`:97`) is deliberately cheap — it stashes `lastSelected`, clears
+`usingWeb`, and assigns `selected = skin` (`:101-103`); **no textures move here.**
+It then either schedules the reload if the pack's data is already resident, or
+kicks the lazy DLC mount:
+
+```cpp
+if(newPack->hasData())
+    app.SetAction(ProfileManager.GetPrimaryPad(), eAppAction_ReloadTexturePack);  // :322
+else
+    newPack->loadData();                                                          // :326
+```
+
+An unknown id fails safe: it `selectSkin(DEFAULT_TEXTURE_PACK)` and schedules the
+same reload action (`:344-346`).
+
+**3 — Drain the action (main thread).** The queued `eAppAction_ReloadTexturePack`
+is consumed in the app's action pump at `Consoles_App.cpp:4473`. It immediately
+resets the action to `eAppAction_Idle` (`:4475`) and runs the reload cascade:
+
+```cpp
+pMinecraft->textures->reloadAll();     // :4477  — teardown + restitch
+pMinecraft->skins->updateUI();         // :4478  — refresh the front-end list
+```
+
+then, for a non-default pack, records telemetry
+(`RecordTexturePackLoaded`, `:4493`) and — if the pack ships audio — restarts the
+music stream so a Mash-Up pack's soundtrack takes over
+(`soundEngine->playStreaming(L"", …)`, `:4500`, the coupling the
+[audio page](/slop-docs/client/audio/) notes).
+
+**4 — Teardown + restitch (`Textures::reloadAll`).**
+`Textures::reloadAll` (`Textures.cpp:1440`) is the actual reload. It:
+
+1. **Releases** every preloaded texture — `for i in [0, TN_COUNT-2): releaseTexture(preLoadedIdx[i])` (`:1444-1447`).
+2. **Clears** the resolve caches — `idMap.clear()`, `loadedImages.clear()`,
+   `pixelsMap.clear()` (`:1449-1454`).
+3. **Re-reads** the preloaded set from the *now-current* pack —
+   `loadIndexedTextures()` (`:1452`) re-runs `loadTexture(TEXTURE_NAME, name+".png")`
+   for every `TN_` entry (`Textures.cpp:320-327`), and `loadTexture`/`getResource`
+   pull from `skins->getSelected()`, i.e. the pack just swapped in.
+4. **Restitches** both atlases — `stitch()` (`:1460`) calls
+   `terrain->stitch()` and `items->stitch()` (`Textures.cpp:1517-1521`).
+5. **Prunes** now-invalid packs — `skins->clearInvalidTexturePacks()` (`:1462`).
+
+So the atlases are **restitched from scratch**, not patched: `PreStitchedTextureMap::stitch`
+(`PreStitchedTextureMap.cpp:36`) frees animated-frame textures, reloads UVs, and
+re-registers every tile and item icon (`Tile::tiles[i]->registerIcons(this)`,
+`:53`; the item loop at `:62`).
+
+**5 — Re-bind next frame.** The restitch's terrain branch re-registers the atlas
+with the renderers in the same call —
+`Minecraft::levelRenderer->registerTextures(this)` and
+`EntityRenderDispatcher::instance->registerTerrainTextures(this)`
+(`PreStitchedTextureMap.cpp:57-58`). The bound GL atlas texture is now the new
+pack's, so from the next
+[frame](/slop-docs/client/rendering/#worked-trace-one-frame-platform-loop-to-pixels)
+`renderLevel`'s terrain and entity passes draw against it. (The classic desktop
+path also reaches `reloadAll` via `Minecraft.cpp:1290` and `Options.cpp:267`.)
+
+Note the reload does **not** itself mark chunks dirty — `reloadAll` and the
+`eAppAction_ReloadTexturePack` handler contain no `allChanged()` / `setDirty`
+call. Icon UVs are re-registered on the atlas by the restitch, but already-compiled
+chunk display lists ([built in the rendering trace](/slop-docs/client/rendering/#worked-trace-one-chunk-rebuild-dirty-mark-to-drawn))
+bake their UVs; in practice a pack switch happens at world-setup/join time before
+terrain is compiled, so the question of restitching under live compiled geometry
+does not arise on the normal path.
+
 ## Common/res layout
 
 The shipped default pack lives under `Common/res/`. Subdirectories:

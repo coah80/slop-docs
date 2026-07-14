@@ -122,6 +122,78 @@ here). The neoLegacy desktop engine does **not** read them at runtime — it rea
 loose `.ogg`/`.wav`/`.mp3` from the media folders as described above. The banks
 remain in the tree for the console builds.
 
+## Worked trace: one block-break sound, trigger to output
+
+This follows a single block-break SFX from the world event to the miniaudio
+device, citing every hop. The path is entirely client-side: the break arrives as
+a level event, `LevelRenderer` resolves the tile's sound, and `SoundEngine::play`
+loads a loose file and starts a spatialized miniaudio voice.
+
+**1 — Level event → LevelRenderer.** A block break reaches the client's
+`LevelRenderer` as a `LevelEvent::PARTICLES_DESTROY_BLOCK` (the same event that
+spawns the break particles). In `LevelRenderer::levelEvent` (the `LevelListener`
+callback), the `PARTICLES_DESTROY_BLOCK` case pulls the destroyed tile and fires
+its break sound (`LevelRenderer.cpp:3510-3516`):
+
+```cpp
+case LevelEvent::PARTICLES_DESTROY_BLOCK:
+    int t = data & Tile::TILE_NUM_MASK;
+    if (t > 0) {
+        Tile *oldTile = Tile::tiles[t];
+        mc->soundEngine->play(oldTile->soundType->getBreakSound(),
+            x + 0.5f, y + 0.5f, z + 0.5f,
+            (oldTile->soundType->getVolume() + 1) / 2,
+            oldTile->soundType->getPitch() * 0.8f);
+    }
+```
+
+The sound id comes from the tile's `soundType` (`getBreakSound()`), the position is
+the block centre, and volume/pitch are derived from the sound type — pitch scaled
+by `0.8` for the dig/break variant.
+
+**2 — Name resolve (`SoundEngine::play`).** `SoundEngine::play(iSound, x,y,z,
+volume, pitch)` (`SoundEngine.cpp:482`, the desktop `#else` branch) rejects the
+`-1` sentinel (`:486`), then maps the id to a dotted name through the
+`wchSoundNames[iSound]` table (`:494`) and converts it with
+`ConvertSoundPathToName` (`:496`). It prefixes `Minecraft/` and builds a base path
+`Windows64Media/Sound/Minecraft/<name>` (`:492-504`).
+
+**3 — File probe.** It probes extensions `.ogg`, `.wav`, `.mp3` in that order
+(`:509-525`); on a miss it scans **numbered variants** `<name>1..31.<ext>` and
+picks one at random (`:527-567`) — this is how a break sound with several takes
+gets varied. The winner lands in `finalPath`.
+
+**4 — miniaudio voice setup.** A `MiniAudioSound` is allocated and its `AUDIO_INFO`
+filled with position, volume, pitch and `bIs3D = true` (`:569-580`). The file is
+decoded and a voice created with
+`ma_sound_init_from_file(&m_engine, finalPath, MA_SOUND_FLAG_ASYNC, …, &s->sound)`
+(`:582`) — async so decode doesn't stall the caller; on failure it logs and bails
+(`:590-592`). It then configures 3D attenuation from the tuning constants:
+
+```cpp
+ma_sound_set_spatialization_enabled(&s->sound, MA_TRUE);      // :595
+ma_sound_set_min_distance(&s->sound, SFX_3D_MIN_DISTANCE);    // 1.0f
+ma_sound_set_max_distance(&s->sound, SFX_3D_MAX_DISTANCE);    // 16.0f
+ma_sound_set_rolloff(&s->sound, SFX_3D_ROLLOFF);              // 0.5f
+```
+
+Final gain is `volume * m_MasterEffectsVolume * SFX_VOLUME_MULTIPLIER`, clamped to
+`SFX_MAX_GAIN = 1.5` (`:600-604`), then `ma_sound_set_pitch` and
+`ma_sound_set_position(x,y,z)` place the voice in the world (`:605-606`).
+
+**5 — Start + lifecycle.** `ma_sound_start(&s->sound)` (`:608`) begins playback and
+the voice is pushed onto `m_activeSounds` (`:610`). Each frame `tick()` reaps it:
+it walks `m_activeSounds`, and any voice where `!ma_sound_is_playing` is
+`ma_sound_uninit`'d, `delete`d, and erased (`SoundEngine.cpp:265-275`); still-playing
+voices have their gain re-clamped against the current master volume each tick
+(`:277-281`). `tick()` also re-points the miniaudio listener(s) to the local
+player position, so a moving player hears the attenuation update
+(`ma_engine_listener_set_position`, `:260`).
+
+The **music** side — entering a world, the fade steps, and the track swap — is the
+separate state machine walked in [The neoLegacy music-fade fix](#the-neolegacy-music-fade-fix)
+below; it does not touch this per-SFX path.
+
 ## Music streaming
 
 Music is a **state machine**, not a direct play. `playStreaming(name, ...)` does

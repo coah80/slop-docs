@@ -131,6 +131,63 @@ bool StatsCounter::canTake(Achievement *ach)
 `StatsCounter.cpp:83`. Any achievement can be awarded regardless of whether its
 prerequisite was earned first.
 
+### Worked trace: one achievement unlock, trigger to persisted
+
+This follows a single achievement from the gameplay event that grants it to the
+on-screen toast and the profile write, citing every hop. The classic
+`AchievementPopup` is **not** on this path — the live toast is the XUI one, and the
+grant, telemetry and persistence are all driven from `LocalPlayer::awardStat`.
+
+**1 — Grant (`LocalPlayer::awardStat`).** A stat/achievement is awarded through
+`LocalPlayer::awardStat(Stat *stat, byteArray param)` (`LocalPlayer.cpp:888`). On
+the desktop `#else` branch it reads the param count, then early-outs if stats are
+disabled or the stat is null (`:904-905`), and branches on
+`stat->isAchievement()` (`:907`).
+
+**2 — Fresh-unlock gate + toast.** For an achievement it casts to `Achievement*`,
+builds the icon path `Graphics\Achievements\TROP<icon>.png` and loads its bytes
+(`:918-921`), then gates on **not already taken** and shows the live XUI toast
+(`LocalPlayer.cpp:924-931`):
+
+```cpp
+if (!minecraft->stats[m_iPad]->hasTaken(ach)) {
+    ui.ShowAchievementToast(
+        WideToUtf8(app.GetString(ach->nameID)),
+        WideToUtf8(app.FormatHTMLString(0, app.GetString(IDS_ACHIEVEMENT_VIEW), 0xFFFFFFFF, true).c_str()),
+        ba, WideToUtf8(path.c_str()));
+    minecraft->achID = ach->getAchievementID();
+}
+```
+
+`hasTaken(ach)` is a plain map membership test —
+`stats.find(ach) != stats.end()` (`StatsCounter.cpp:78`) — so the toast only fires
+the first time.
+
+**3 — Platform award + telemetry.** Guarded by
+`ProfileManager.CanBeAwarded(m_iPad, id)` (splitscreen/trial players are filtered),
+it records `TelemetryManager->RecordAchievementUnlocked(m_iPad, id, 0)`
+(`LocalPlayer.cpp:949`) and, for a full-version local single-player game, may pop
+the platform award menu (`:953-957`). The actual entitlement grant is
+`ProfileManager.Award(m_iPad, id)`, itself gated by a per-session bitmask
+`m_awardedThisSession` to stop trophy spam (`:960-967`).
+
+**4 — Tally into StatsCounter.** Finally it folds the stat into the difficulty
+store — `minecraft->stats[m_iPad]->award(stat, level->difficulty, count)`
+(`LocalPlayer.cpp:969`). `StatsCounter::award` (`StatsCounter.cpp:35`) forces
+achievements to difficulty bucket `0` (`:38-39`), inserts/adds into the
+`StatContainer` (`:41-62`), sets `requiresSave = true` (`:64`), and — if the stat
+is on a leaderboard — ORs its flag into `modifiedBoards` shifted by difficulty and
+arms `flushCounter = FLUSH_DELAY` (`:67-74`).
+
+**5 — Persist (deferred).** No disk write happens inline. `StatsCounter::tick(player)`
+(`StatsCounter.cpp:105`) counts `saveCounter` down and, when it hits zero with
+`requiresSave` set, calls `save()` — which serialises the whole stat set into the
+profile blob's `GAME_DEFINED_PROFILE_DATA` (see
+[Persistence into the profile blob](#persistence-into-the-profile-blob)) — while
+`flushCounter` separately drives `flushLeaderboards()`. On a trial profile all of
+`save()` / `saveLeaderboards()` / `writeStats()` early-out, so a demo unlock shows
+the toast but never persists.
+
 ## Leaderboards
 
 ### The abstract manager
