@@ -36,10 +36,18 @@ from plain **`Feature`** (the worldgen-decoration base from
 `StructureFeature`: they add **no** `EStructureStart`/`EStructurePiece` enum
 entries and register **nothing** with `StructureFeatureIO`. They are placed by a
 direct `.place(...)` call in `RandomLevelSource::postProcess`
-(`RandomLevelSource.cpp:790`/`:799` on `origin/main`) and build from
-template XML under
-`Minecraft.Client/Common/Media/.../Structures/igloo/` and `.../fossils/`. So for
-a **fixed, template-driven** structure the `Feature` route is now the simpler
+(fossil at `RandomLevelSource.cpp:790`; igloo at `:799` on `origin/main`) and lay
+blocks from **hardcoded C++** — `FossilFeature` from static `spineStructures`/
+`skullStructures` struct arrays, `IglooFeature` from inline `setTileAndData` calls
+— *not* from template XML. (XML files do sit under
+`Minecraft.Client/Common/Media/.../Structures/igloo/` and `.../fossils/`, but no
+code path reads them.) The TU43 bug-fix commit `680f539f` (formerly `f61aa677`
+before upstream force-pushed; upstream tip `3833d0f3`) reworked their placement:
+igloos now follow vanilla `MapGenScatteredFeature` spacing (one scattered feature
+per 32×32-chunk region, deterministically seeded) instead of the flat `1/48`
+per-chunk roll, and `FossilFeature::place` now buries the fossil 15–24 blocks below
+the lowest surface over its footprint (floored at y=10) and skips liquids. So for
+a **fixed, hardcoded** structure the `Feature` route is now the simpler
 precedent; reach for the full `StructureFeature` framework (this page) when you
 need seed-deterministic grid placement, multi-piece starts, or save/load of piece
 state.
@@ -431,7 +439,7 @@ as biome names — see [Adding Biomes → Localization](/slop-docs/modding/addin
 - [ ] Regenerate the same seed — the structure appears in the same place.
 - [ ] Save and reload with the structure loaded and unloaded — pieces round-trip (correct save-id strings; `postProcess` doesn't double-place).
 - [ ] Biome/placement validation actually restricts placement (Shrine only where you allow it).
-- [ ] New `.cpp` files (`ShrineFeature.cpp`, `ShrinePiece.cpp`) added to `cmake/sources/Common.cmake`.
+- [ ] New `.cpp` files (`ShrineFeature.cpp`, `ShrinePiece.cpp`) added to `Minecraft.World/cmake/sources/Common.cmake` (the source list where `FossilFeature.cpp`/`OceanMonumentFeature.cpp` are registered).
 
 ## Could not verify
 

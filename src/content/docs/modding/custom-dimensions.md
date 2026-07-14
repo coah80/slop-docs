@@ -284,7 +284,7 @@ The world-logic side is what's documented here.
 
 ## Testing checklist
 
-- [ ] `VoidDimension.cpp` is in `cmake/sources/Common.cmake`; builds clean.
+- [ ] `VoidDimension.cpp` is in `Minecraft.World/cmake/sources/Common.cmake`; builds clean.
 - [ ] `Dimension::getNew(2)` returns a `VoidDimension` (breakpoint or unit-poke).
 - [ ] `init()` sets a non-null `biomeSource`, the correct `id`, and `ultraWarm`/`hasCeiling`.
 - [ ] `createRandomLevelSource()` returns a working source (flat world generates without crash).

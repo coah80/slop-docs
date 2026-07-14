@@ -338,7 +338,7 @@ the enchant.
 
 ## Testing checklist
 
-- [ ] `SprintBootsEnchantment.cpp`/`.h` are in `cmake/sources/Common.cmake`; the project configures and compiles them.
+- [ ] `SprintBootsEnchantment.cpp`/`.h` are in `Minecraft.World/cmake/sources/Common.cmake`; the project configures and compiles them.
 - [ ] The build links — the `Enchantment *Enchantment::sprintBoots = nullptr;` definition and the `new SprintBootsEnchantment(10, …)` in `staticCtor` both exist, or you get an undefined-symbol / null-deref.
 - [ ] Boot up, `/enchant`-command or enchanting-table the boots, and confirm the enchant applies only to boots (category = `armor_feet`) and not to a sword or pickaxe.
 - [ ] The enchant name renders correctly in the item tooltip — "Sprint Boots III", not a missing-string placeholder (`IDS_ENCHANTMENT_SPRINT_BOOTS` resolved).

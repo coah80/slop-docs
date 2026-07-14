@@ -294,7 +294,7 @@ registration, texture/icon wiring, and localization), then reference its
 
 ## Testing checklist
 
-- [ ] `BasaltColumnFeature.cpp` is in `cmake/sources/Common.cmake`; builds clean.
+- [ ] `BasaltColumnFeature.cpp` is in `Minecraft.World/cmake/sources/Common.cmake`; builds clean.
 - [ ] `place` never writes above `Level::maxBuildHeight - 1` or below `y < 1`.
 - [ ] Every write is preceded by a validity check (`isEmptyTile`, ground check, `mayPlace` where relevant) — mirror `MelonFeature.cpp:13-15`.
 - [ ] Placement uses the deterministic chunk `random` passed into `decorate`, not a new `Random` — same seed must give same world.
