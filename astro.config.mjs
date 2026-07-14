@@ -155,10 +155,19 @@ export default defineConfig({
 							label: 'UI & Assets',
 							items: [
 								{ label: 'Textures & Asset Pipeline', slug: 'modding/textures-assets' },
-								{ label: 'Custom UI Scenes', slug: 'modding/custom-ui' },
 								{ label: 'Custom Container Menus', slug: 'modding/custom-containers' },
 								{ label: 'Custom Particles', slug: 'modding/custom-particles' },
 								{ label: 'Custom Sounds & Music', slug: 'modding/custom-sounds' },
+							],
+						},
+						{
+							label: 'Iggy & Custom UI',
+							items: [
+								{ label: 'Iggy: the UI Runtime', slug: 'modding/iggy-overview' },
+								{ label: 'UI Movies & Textures', slug: 'modding/iggy-assets' },
+								{ label: 'Opening & Editing SWFs', slug: 'modding/iggy-editing-swfs' },
+								{ label: 'Custom GUI: New SWFs & Scenes', slug: 'modding/iggy-custom-gui' },
+								{ label: 'Custom UI Scenes (C++)', slug: 'modding/custom-ui' },
 							],
 						},
 						{
