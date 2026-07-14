@@ -93,6 +93,78 @@ bitblt, RefreshRate 0/0). There is an HDR/wide-gamut path through
 (`Windows64_Minecraft.cpp:1429`), which is why the file pulls in `<dxgi1_4.h>`
 (`Windows64_Minecraft.cpp:6`).
 
+## Worked trace: cold start, process entry to the first frame
+
+This walks the PC boot from the process entry point through engine bring-up to the
+top of the render loop, citing every hop. The single structural fact: the window is
+**not shown** until the entire engine is initialised — `_tWinMain` does all device,
+runtime, and game-system setup first, then reveals the window and enters the loop.
+
+**1 — Process entry (`_tWinMain`).** `_tWinMain` (`Windows64_Minecraft.cpp:1542`)
+chdir's to the exe dir (`GetModuleFileNameA` → `SetCurrentDirectoryA`, `:1550-1556`),
+declares DPI awareness and reads the native resolution (`:1558-1564`), loads
+`username.txt` (`:1567-1596`), parses launch options (`ParseLaunchOptions()` →
+`ApplyScreenMode`, `:1600-1601`), reads `resolution.txt` (`:1604-1626`), ensures the
+persistent XUID exists (`Win64Xuid::ResolvePersistentXuid()`, `:1629`), defaults the
+username to `"Player"` (`:1632-1636`), and migrates any legacy `servers.txt` into the
+binary `servers.db` (`MCSV` magic, `:1641-1707`).
+
+**2 — Window class + window + device.** Still in `_tWinMain`: `MyRegisterClass(hInstance)`
+(`:1710`, registers `"MinecraftClass"`), then `InitInstance(hInstance, nCmdShow)`
+(`:1713`) which `CreateWindowW(L"MinecraftClass", L"Minecraft: neoLegacy", …)` into
+`g_hWnd` (`InitInstance` @ `:827`), then `InitDevice()` (`:1719`) — the D3D11
+device/swap-chain/depth/RTV bring-up ([above](#initdevice--the-d3d11-bring-up)). A
+`FAILED(InitDevice())` calls `CleanupDevice()` and bails (`:1719-1722`). Note the
+window is created but **not yet shown**.
+
+**3 — Engine bring-up (`InitialiseMinecraftRuntime`).** `_tWinMain` calls
+`InitialiseMinecraftRuntime()` (`:1786`, defined `:1479`), the one function that stands
+up every game system, in order:
+
+1. `app.loadMediaArchive()` + `app.loadStringTable()` (`:1481,1486`) — asset archive and
+   localised strings.
+2. `ui.init(g_pd3dDevice, g_pImmediateContext, g_pRenderTargetView, g_pDepthStencilView, …)`
+   (`:1487`) — brings up Iggy + GDraw and registers the UI callbacks (the
+   `ConsoleUIController` from the [UI code map](/slop-docs/client/ui-code-map/#2a-controller-layer--uicontroller)).
+3. `InputManager.Initialise(...)`, `g_KBMInput.Init()`, `DefineActions()`
+   (`:1489-1494`) — input maps.
+4. `ProfileManager.Initialise(...)` (`:1495`) — the local fake profile / awards store.
+5. `g_NetworkManager.Initialise()` (`:1505`), seed the `IQNet::m_player[0..MAX]` array
+   (player 0 is the host, `:1507-1513`), `WinsockNetLayer::Initialize()` (`:1516`) — the
+   [PC multiplayer stack](#networking--windows64networkwinsocknetlayercpph).
+6. Per-subsystem thread-local storage: `Tesselator`, `AABB`, `Vec3`, `IntCache`,
+   `Compression`, `OldChunkStorage`, `Tile::CreateNewThreadStorage()` and
+   `Level::enableLightingCache()` (`:1520-1528`) — the same TLS the dedicated server
+   sets up (see [Server Overview §4](/slop-docs/server/overview/#4-engine-init-reusing-the-clients-classes)).
+7. `Minecraft::main()` then `Minecraft::GetInstance()` (`:1530-1533`) — constructs the
+   `Minecraft` god-object singleton.
+8. `app.InitGameSettings()`, `app.InitialiseTips()`, `ui.ReloadSkin()` (`:1535-1537`).
+
+A null `Minecraft*` here also `CleanupDevice()`s and returns (`:1787-1791`).
+
+**4 — Reveal the window, enter the loop.** Only now does `_tWinMain` restore the
+fullscreen option (`:1726-1732`), then `ShowWindow(g_hWnd, SW_SHOWMAXIMIZED)` +
+`UpdateWindow(g_hWnd)` (`:1830-1831`) — the in-source comment (`:1819-1829`, `@CDevJoud`)
+explains the deferral: showing the window before init completes makes Windows paint a
+"Not Responding" frame on low-end machines. The main loop opens at `:1832`:
+`while(WM_QUIT != msg.message && !app.m_bShutdown)`.
+
+**5 — Per-iteration head (input, messages, clear).** Each iteration: `g_KBMInput.Tick()`
+(`:1834`), drain the Win32 message queue (`PeekMessage`/`TranslateMessage`/`DispatchMessage`,
+`:1836-1843`; `WndProc` @ `:612` routes KBM into `g_KBMInput` and resize into `ResizeD3D`),
+skip rendering entirely while minimised (`IsIconic(g_hWnd)` → `Sleep(100)`, `:1847-1851`),
+then pick the clear colour by game state (`app.GetGameStarted() ? kClearColorBlack : kClearColorWhite`)
+and `RenderManager.StartFrame()` (`:1853-1855`).
+
+**6 — Into the frame trace.** From `StartFrame()` onward the body is exactly the
+[rendering frame trace](/slop-docs/client/rendering/#worked-trace-one-frame-platform-loop-to-pixels):
+`applyFrameMouseLook()` + `run_middle()` draw the world per pad, `ui.tick()`/`ui.render()`
+composite the scenes, `ApplyGammaPostProcess()` runs, and the frame is presented via
+`Present(0,0)` or `RenderManager.Present()`. That page picks the trace up at
+`Windows64_Minecraft.cpp:1856`; this one hands off exactly one line earlier, at
+`StartFrame()` (`:1855`). The two traces meet at the frame boundary and are not
+duplicated here.
+
 ## App subclass — `Windows64_App.{cpp,h}`
 
 `CConsoleMinecraftApp : CMinecraftApp` (`Windows64_App.h:4`), with global instance `app`. Header

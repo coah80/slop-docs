@@ -110,6 +110,93 @@ So the data flow is bidirectional and symmetric: **C++ → C# is the `Fire*` pat
 
 Files: `Minecraft.Server/FourKitBridge.cpp`
 
+### Worked trace: one cancellable event, C++ call site to cancellation
+
+This follows a **block break** — a cancellable, value-mutating event — the whole way
+across the boundary and back, citing every hop. Block break is the clean example: it
+can both *cancel* (restore the block) and *mutate a value* (the XP the break drops), so
+it exercises the full round-trip contract.
+
+**1 — Gameplay call site (C++).** When a survival player finishes mining a tile,
+`ServerPlayerGameMode` has already computed the base ore XP (`eventExp`, the ore-type
+switch at `ServerPlayerGameMode.cpp:262-282`) and calls the bridge **unconditionally**:
+
+```cpp
+int dimId = level->dimension ? level->dimension->id : 0;
+int breakResult = FourKitBridge::FireBlockBreak(player->entityId, dimId, x, y, z, t, data, eventExp);
+if (breakResult < 0)
+{
+    player->connection->send(std::make_shared<TileUpdatePacket>(x, y, z, level));
+    return false;   // cancelled: re-send the intact block, abort the break
+}
+int finalExp = breakResult;
+```
+
+Files: `ServerPlayerGameMode.cpp:286-293`. The `< 0` sentinel means *cancelled*; any
+non-negative return is the (possibly plugin-adjusted) XP to drop. In the vanilla build
+the inline stub returns `exp` unchanged (`FourKitBridge.h`, `FireBlockBreak(...) { return exp; }`),
+so `breakResult == eventExp` and the branch is never taken.
+
+**2 — Native marshal (`FireBlockBreak`).** In the FourKit build the real
+`FireBlockBreak` (`FourKitBridge.cpp:624`) guards on the runtime being live, then calls
+straight through the managed delegate resolved at `Initialize` time
+(`s_managedFireBlockBreak`, registered `FourKitBridge.cpp:226`):
+
+```cpp
+int FireBlockBreak(int entityId, int dimId, int x, int y, int z, int tileId, int data, int exp)
+{
+    if (!s_initialized || !s_managedFireBlockBreak)
+        return exp;
+    return s_managedFireBlockBreak(entityId, dimId, x, y, z, tileId, data, exp);
+}
+```
+
+This one takes only scalars, so there is no string marshaling — the call is a direct
+`[UnmanagedCallersOnly]` invocation across the hostfxr boundary.
+
+**3 — Managed handler build + dispatch.** The delegate lands at the
+`[UnmanagedCallersOnly] FourKitHost.FireBlockBreak` (`FourKitHost.Events.cs:343`). It
+resolves the player, syncs the `double[27]` snapshot, builds the event object, and fires
+it:
+
+```csharp
+var player = FourKit.GetPlayerByEntityId(entityId);
+if (player == null) return exp;
+SyncPlayerFromNative(player);
+var world = FourKit.getWorld(dimId);
+var block = new Block.Block(world, x, y, z);
+var evt = new BlockBreakEvent(block, player, exp);
+FourKit.FireEvent(evt);
+if (evt.isCancelled()) return -1;
+return evt.getExpToDrop();
+```
+
+`FourKit.FireEvent` (`FourKit.cs:249`) forwards to `_dispatcher.Fire(evt)`. The whole
+body is wrapped in `try/catch` that returns the original `exp` on any exception
+(`:365-367`) — a throwing plugin can never cancel a break or corrupt the drop.
+
+**4 — Dispatcher → plugin handler.** `EventDispatcher.Fire`
+([snapshot-on-write](#eventdispatcher--reflection-based-snapshot-on-write)) looks up
+handlers by the *exact* runtime type `BlockBreakEvent`, and for each registered
+`[EventHandler]` calls `handler.Method.Invoke(handler.Instance, [evt])`. A plugin
+handler mutates the event through its API — e.g. `e.setCancelled(true)` to veto, or
+`e.setExpToDrop(15)` to change the drop (`getExpToDrop`/`setExpToDrop` on
+`BlockExpEvent.cs:21,27`; usage in `Minecraft.Server.FourKit/docs/usage-of-all-events.md:705`).
+`BlockBreakEvent : BlockExpEvent, Cancellable` (`BlockBreakEvent.cs:25`).
+
+**5 — Result path back to C++.** `FireBlockBreak` reads the mutated event: a cancelled
+event returns `-1`, otherwise `evt.getExpToDrop()`. That int propagates back through the
+native `FireBlockBreak` return, up to the call site in step 1. `breakResult < 0` →
+`TileUpdatePacket` restores the block on the client and the break is aborted; otherwise
+`finalExp` becomes the XP the block drops. The sign-encoded return is how a single `int`
+carries *both* the cancel decision and the mutated value across the boundary — no
+out-param needed for this event.
+
+> The value-*and*-out-param variant looks the same but uses pointers. `FirePlayerMove`
+> passes `double *outToX/Y/Z`; the no-op stub defaults each out-param to its input
+> (`FourKitBridge.h`) so the vanilla build never reads uninitialised stack — the
+> [build-flag switch](#the-build-flag-switch-minecraft_server_fourkit_build) contract.
+
 ### Marshaling and out-params
 
 The `Fire*` functions marshal wide strings → UTF-8, call the managed delegate, and read back cancellation (`cancelled != 0`) plus mutated out-params (chat text, kick/death messages, moved coordinates, item ids). Sign, chat, kick, and death messages use fixed 2048/512-byte out buffers. An `unordered_map<int, OpenContainerInfo> s_openContainerInfo` tracks open-container metadata (type/size/title) so inventory-click events can report which container was clicked.

@@ -102,6 +102,74 @@ exec "${WINE_CMD}" "${SERVER_EXE}" -port "${SERVER_PORT}" -bind "${SERVER_BIND_I
 
 The entrypoint's own default screen if unset is `64x64x16`; the compose files raise it to `720x1280x16` (see below). The comment in the script is explicit about why the virtual display is needed at all: "a virtual screen is required because the client-side logic is being called for compatibility."
 
+### Worked trace: `compose up` to the first log lines
+
+This walks a Docker cold start from `docker compose up` to the first lines a user should
+expect on stdout, citing each step. It is the concrete version of the entrypoint steps
+above.
+
+**1 — Compose starts the container.** `docker compose -f docker-compose.dedicated-server.yml up`
+builds/pulls the image, mounts `./server-data:/srv/persist`, sets `SERVER_CLI_INPUT_MODE=stream`,
+`XVFB_DISPLAY=:99`, `XVFB_SCREEN=720x1280x16`, `WINEDEBUG=-all`, and runs the container
+under `tini` with `tty`+`stdin_open`. `tini` execs `entrypoint.sh`.
+
+**2 — Working dir + exe guard.** `entrypoint.sh` (`set -euo pipefail`) validates
+`/srv/mc` exists and `cd`s into it (`entrypoint.sh:92-97`), then hard-fails with a
+`[hint]` if `Minecraft.Server.exe` is absent (`:100-104`) — the image only *copies* the
+runtime, so a missing exe means you never ran the CMake build.
+
+**3 — Persist symlinks.** `mkdir -p /srv/persist` and `/srv/persist/GameHDD` (`:106-109`),
+then `ensure_persist_file` (`:12-30`) seeds and symlinks `server.properties`,
+`banned-players.json` (default `[]`), and `banned-ips.json` out of the image into
+`/srv/persist` so restarts keep them (`:111-113`), and `GameHDD` is symlinked from the
+persist mount into `Windows64/GameHDD` (`:116-119`). This is why your world and config
+survive `docker compose down`/rebuild.
+
+**4 — Pick Wine, ensure prefix.** The script prefers `wine64` → `/usr/lib/wine/wine64`
+→ `wine` (`:122-131`) and creates `$WINEPREFIX` if empty (`:133-135`).
+
+**5 — Start Xvfb, poll for readiness.** With `$DISPLAY` unset it exports
+`DISPLAY=:99`, clears any stale `X99` socket/lock (`:147-151`), launches
+`Xvfb :99 -nolisten tcp -screen 0 720x1280x16` into `/tmp/xvfb.log` (`:152`), and calls
+`wait_for_xvfb_ready` (`:32-90`). That polls the `/tmp/.X11-unix/X99` socket up to
+`XVFB_WAIT_SECONDS`×10 ticks (default 10 s), re-checking the Xvfb PID is still alive at
+each step and dumping the tail of `xvfb.log` on failure. On success it prints the
+**first expected line**:
+
+```
+[info] Xvfb ready on :99 (pid=<n>, screen=720x1280x16)
+```
+
+**6 — Exec the server.** The script builds `-port $SERVER_PORT -bind $SERVER_BIND_IP`
+(`:160-163`), prints `[info] Starting Minecraft.Server.exe on 0.0.0.0:25565`
+(`:165`), and `exec wine Minecraft.Server.exe -port 25565 -bind 0.0.0.0` (`:166`) —
+replacing the shell so `tini` reaps the server directly.
+
+**7 — The server's own first lines.** Now `ServerMain.cpp`'s `main()` runs the
+[lifecycle](/slop-docs/server/overview/#servermaincpp--the-lifecycle) and emits
+`ServerLogger` lines in the format `[<timestamp>][<LEVEL>][<category>] <message>`
+(`ServerLogger.cpp:151-156`). The first startup steps, in order (`ServerMain.cpp`):
+
+```
+[…][INFO][startup] initializing process state          (LogStartupStep, ServerMain.cpp:418)
+[…][INFO][startup] initializing server log manager      (:435)
+[…][INFO][startup] initializing dedicated access control (:437)
+[…][INFO][startup] Security: hide-player-list=…, rate-limit=5/30s, …  (:456)
+[…][INFO][startup] LAN advertise: …                     (:479)
+[…][INFO][startup] Whitelist: …                         (:480)
+[…][INFO][startup] loading media/string tables          (:491)
+[…][INFO][startup] initializing network manager         (:509)
+[…][INFO][startup] creating Minecraft singleton         (:531)
+[…][INFO][startup] starting hosted network game thread  (:657)
+[…][INFO][startup] server startup complete              (:684)
+[…][INFO][startup] Dedicated server listening on 0.0.0.0:25565 (:685)
+```
+
+After the last line the `server> ` prompt appears (stream mode) and
+[`TickCoreSystems`](/slop-docs/server/overview/#8-main-loop) begins. If you instead see
+`[error] Timed out waiting for Xvfb display :99` (step 5) the server never launches —
+that is the entrypoint failing before `exec`, not the game crashing.
+
 ### Environment variables
 
 | Var | Default (entrypoint) | Purpose |

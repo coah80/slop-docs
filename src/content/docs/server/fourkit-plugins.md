@@ -66,6 +66,78 @@ Two paths are handed to the plugin automatically *before* `onEnable`:
 
 Files: `Minecraft.Server.FourKit/Plugin/ServerPlugin.cs`
 
+## Worked trace: plugin load lifecycle, server start to live subscription
+
+This walks a single plugin (`HelloPlugin`) from the server calling into the bridge
+through assembly load and `onEnable` to a *live* event subscription, citing every hop.
+The key ordering fact: assemblies are **loaded first for all plugins**, then
+**enabled** in a second pass — so `onEnable` for one plugin can already see every other
+loaded plugin's types.
+
+**1 — Bridge init (C++ → managed).** `ServerMain.cpp` calls
+`FourKitBridge::Initialize()` once, after `HostGame` and before the main loop (see
+[architecture §lifecycle](/slop-docs/server/fourkit/#lifecycle-from-servermaincpp)).
+That resolves the managed `FourKitHost` entry points and invokes `s_managedInit()` —
+the `[UnmanagedCallersOnly] FourKitHost.Initialize()`.
+
+**2 — Resolve `plugins/`, hand off to the loader.** `FourKitHost.Initialize`
+(`FourKitHost.cs`) computes the server root from `Environment.ProcessPath` (not
+`AppContext.BaseDirectory`, which points at `runtime/`), redirects
+`APP_CONTEXT_BASE_DIRECTORY` to the server root, then:
+
+```csharp
+string pluginsDir = Path.Combine(serverRoot, "plugins");
+s_loader = new PluginLoader();
+s_loader.LoadPlugins(pluginsDir, serverRoot);   // pass 1: load
+s_loader.EnableAll();                            // pass 2: enable
+```
+
+**3 — Scan + load (pass 1).** `PluginLoader.LoadPlugins`
+(`PluginLoader.cs:18`) creates `plugins/` if absent (and returns early), then scans two
+layouts: loose `plugins/*.dll` (`:30-39`) and each `plugins/<Name>/` subfolder whose
+main DLL name matches the folder (`:41-79`). For `HelloPlugin.dll` it calls
+`LoadPluginAssembly` (`:83`):
+
+```csharp
+var context = new PluginLoadContext(dllPath);                       // isolated ALC
+var assembly = context.LoadFromAssemblyPath(Path.GetFullPath(dllPath));
+```
+
+Each plugin gets its **own** `PluginLoadContext` (`PluginLoadContext.cs`, a
+non-collectible `AssemblyLoadContext`) that shares the host assembly so `ServerPlugin`
+and the event types are the *same* `Type` instances
+([architecture detail](/slop-docs/server/fourkit/#pluginloader-and-pluginloadcontext)).
+`LoadPluginAssembly` then reflects over `assembly.GetTypes()`, and for every
+non-abstract `ServerPlugin` subtype calls `Activator.CreateInstance(type)`
+(`PluginLoader.cs:97`), reads `name`/`version`/`author` (warning if undeclared,
+`:106-111`), adds it to `_plugins`, and logs `Loaded plugin: HelloPlugin v1.0.0 by …`.
+When the scan finishes it fires `PluginsLoadedEvent` (`:80`).
+
+**4 — Enable (pass 2).** `EnableAll` (`PluginLoader.cs:124`) walks `_plugins` and calls
+`EnablePlugin` (`:140`), which — *before* `onEnable* — sets `plugin.serverDirectory =
+serverRoot` and creates + assigns `plugin.dataDirectory = plugins/<name>/` (`:146-150`),
+then `InvokePluginMethod(plugin, "onEnable", …)` (`:152`), logs `Enabled: HelloPlugin`,
+and fires `PluginEnableEvent` (`:155`).
+
+**5 — `onEnable` registers a listener (live subscription).** Inside
+`HelloPlugin.onEnable` the plugin calls `FourKit.addListener(new HelloListener())`
+(`samples/HelloPlugin/HelloPlugin.cs`). `FourKit.addListener` (`FourKit.cs:129`) forwards
+to `_dispatcher.Register(listener)`, which reflects over the listener's `[EventHandler]`
+methods, records `(EventPriority, IgnoreCancelled)`, and swaps them into the
+snapshot-on-write handler table
+([dispatcher internals](/slop-docs/server/fourkit/#eventdispatcher--reflection-based-snapshot-on-write)).
+From this point `HelloListener.onPlayerJoin` is live: a real join fires
+`FourKitHost.FirePlayerJoin` → dispatcher → the handler, exactly as the
+[block-break trace](/slop-docs/server/fourkit/#worked-trace-one-cancellable-event-c-call-site-to-cancellation)
+walks in the other direction.
+
+> Subscribing to a **high-frequency** event (`ChunkLoad`/`ChunkUnload`/`PlayerMove`) at
+> this step additionally flips a `HasHandlers` mask bit back to native via
+> `NativeSetHandlerMask`, turning off the no-listener fast path — which is why
+> `FourKitTestPlugin` defers its chunk listener to an explicit `/fktest hookchunks`
+> rather than registering it in `onEnable` (see
+> [the high-frequency-event gotcha](#the-high-frequency-event-gotcha)).
+
 ## HelloPlugin — the skeleton walkthrough
 
 `HelloPlugin` is the canonical minimal plugin: it declares its metadata, registers one listener in `onEnable`, and greets each joining player.
