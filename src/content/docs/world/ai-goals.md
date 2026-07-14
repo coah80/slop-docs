@@ -116,6 +116,77 @@ incumbent's `canInterrupt()` allows it and they contend for the same control
 flag; goals with disjoint control flags simply run in parallel regardless of
 priority.
 
+### Where the tick comes from
+
+`GoalSelector::tick` is not called directly by the mob — it rides the AI pump.
+Each server tick the world runs `Level::tickEntities` →
+[`Mob::newServerAiStep`](/slop-docs/world/entities/#the-per-tick-entity-pipeline)
+(`Mob.cpp:496`), which calls `targetSelector.tick()` (`Mob.cpp:508`) then
+`goalSelector.tick()` (`:511`). So a mob resolves its target set *before* its
+action set every tick, and both run through the identical `GoalSelector::tick`
+machinery below.
+
+## Worked trace: one `GoalSelector` tick
+
+This walks a single `goalSelector.tick()` for the **creeper** (wiring from
+[§per-mob wiring](#per-mob-goal-wiring)), showing exactly which goals start, run in
+parallel, or get blocked. Recall the creeper's action goals and their control
+flags (read from each goal's constructor):
+
+| prio | Goal | Control flags |
+|-----:|------|---------------|
+| 1 | `FloatGoal` | `Jump` (4) — `FloatGoal.cpp:10` |
+| 2 | `SwellGoal` | `Move` (1) — `SwellGoal.cpp:13` |
+| 3 | `AvoidPlayerGoal` (←ocelot) | `Move` (1) — `AvoidPlayerGoal.cpp:31` |
+| 4 | `MeleeAttackGoal` | `Move\|Look` (3) — `MeleeAttackGoal.cpp:18` |
+| 5 | `RandomStrollGoal` | `Move\|Look` (3) — `RandomStrollGoal.cpp:14` |
+| 6 | `LookAtPlayerGoal` | `Look` (2) — `LookAtPlayerGoal.cpp:13` |
+| 6 | `RandomLookAroundGoal` | `Move\|Look` (3) — `RandomLookAroundGoal.cpp:12` |
+
+**Scenario: a creeper on flat ground, one player 5 blocks away, no ocelot, not in
+water.** Trace `GoalSelector::tick` (`GoalSelector.cpp:60`):
+
+1. **Which tick am I?** `if (tickCount++ % newGoalRate == 0)` (`:64`, `newGoalRate = 3`).
+   On a **re-evaluation tick** (1 of every 3) it walks all goals top to bottom
+   (`:66`); on the other two it only asks each *running* goal `canContinueToUse()`
+   (`:90-102`) — a cheap pass. Assume a re-evaluation tick.
+2. **prio 1 `FloatGoal`.** Not running. `canUseInSystem` (`:127`) sees no
+   higher-prio contender; `canUse()` (`FloatGoal.cpp` = "in water/lava?") returns
+   **false** on dry land → skipped (`:82`).
+3. **prio 2 `SwellGoal`.** `canUse()` returns false (target > 3 blocks) → skipped.
+4. **prio 3 `AvoidPlayerGoal`.** No ocelot in range → `canUse()` false → skipped.
+5. **prio 4 `MeleeAttackGoal`.** `canUse()` true (has a player target).
+   `canUseInSystem` checks every other goal (`:130`): nothing higher-prio is
+   running, so it passes. Started. Claims `Move|Look` (3). Added to `usingGoals`
+   (`:84-85`).
+6. **prio 5 `RandomStrollGoal`.** `canUse()` may be true, but `canUseInSystem`
+   (`:136`) finds running `MeleeAttackGoal` at prio 4 (higher priority, lower
+   number). Because stroll's prio (5) ≥ melee's prio (4), the branch at `:138`
+   runs `canCoExist` — `(3 & 3) != 0` → **false** → **blocked**. The attacker owns
+   Move+Look; the wanderer can't also steer.
+7. **prio 6 `LookAtPlayerGoal`.** Control flag `Look` (2). vs running melee (3):
+   `canCoExist` = `(2 & 3) = 2 != 0` → still **blocked** — melee already owns Look.
+8. **prio 6 `RandomLookAroundGoal`.** `Move|Look` (3) vs melee (3) → blocked.
+
+Result this tick: **only `MeleeAttackGoal` runs.** The two selector loops at the
+bottom then fire `start()` on newly-started goals (`:106-109`) and `tick()` on all
+running goals (`:111-114`).
+
+**Now the player throws an ocelot's-eye-view — an ocelot walks up.** Next
+re-evaluation tick: at step 4, `AvoidPlayerGoal::canUse()` is now true. It is
+prio 3 (higher than melee's 4). At melee's turn, `canUseInSystem` hits the
+`else` branch (`:140`): avoid is *higher* priority and running-or-startable, so
+melee runs only if avoid `canInterrupt()`s — and avoid's flag is `Move` (1), which
+collides with melee's `Move|Look` (3). The higher-priority flee **preempts** the
+attack: the creeper stops swelling and runs from the cat, exactly the vanilla
+behaviour, arbitrated purely by prio number + control-flag overlap with no
+special-casing.
+
+The one wrinkle: goals with **disjoint** flags never contend. `FloatGoal`
+(`Jump`, 4) shares no bit with any other creeper goal, so the instant the creeper
+touches water it floats *while* still attacking or fleeing — both run in the same
+tick because `(4 & 3) == 0`.
+
 ## The goal classes
 
 ~48 `*Goal.h` headers exist. Grouped by role:

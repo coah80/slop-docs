@@ -194,6 +194,62 @@ return a `TileEntityDataPacket`. The packet carries a small **type discriminator
 without an override (chest, furnace, hopper) sync through their **container menu**
 instead — see [Container Menus](/slop-docs/world/containers/).
 
+## Worked trace: create → tick → sync → save/load
+
+The four moments in a tile entity's life, stitched from the block side through the
+network. Following a furnace:
+
+**1 — Create (block placement spawns the TileEntity).** There are **two creation
+paths**, split by base class. Blocks extending `EntityTile` directly create their
+tile entity **eagerly** on placement: `EntityTile::onPlace` (`EntityTile.cpp:12`)
+calls `level->setTileEntity(x, y, z, newTileEntity(level))` (`:15`). Blocks
+extending `BaseEntityTile` — the furnace does (`FurnaceTile : public
+BaseEntityTile`) — create **lazily**: `BaseEntityTile::onPlace` has its
+`setTileEntity` line commented out (`BaseEntityTile.cpp:16`), so the tile entity is
+materialized on first access by `LevelChunk::getTileEntity`
+(`LevelChunk.cpp:1315`) — when a block that `isEntityTile()` has no cached entity,
+it calls `dynamic_cast<EntityTile*>(tile)->newTileEntity(level)` (`LevelChunk.cpp:1345`)
+and installs it (`:1346`). Either way the concrete subclass's `newTileEntity()`
+override (`FurnaceTile::newTileEntity`, `FurnaceTile.cpp:142`, a pure-virtual on
+`EntityTile`) does the `new FurnaceTileEntity()`. `Level::setTileEntity`
+(`Level.cpp:2940`) then installs it into the chunk (`:2973`) and appends it to the
+level's `tileEntityList` (`:2970`), which is what the tick pass walks.
+
+**2 — Tick (shared with the entity pass).** Tile entities are **not** ticked from
+`ServerLevel::tick` — they ride the *same* `Level::tickEntities` pass as mobs. After
+the entity loop, `tickEntities` iterates `tileEntityList` (`Level.cpp:2364`) and,
+for each non-removed one whose chunk is loaded, calls `te->tick()` (`:2376`). For
+the furnace that resolves to `FurnaceTileEntity::tick`, which decrements `litTime`,
+advances toward `BURN_INTERVAL`, and calls `burn()` on a completed smelt. A tile
+entity that finishes cooking and changes its output slot calls `setChanged()`.
+
+**3 — Sync (`setChanged` → update packet).** `TileEntity::setChanged`
+(`TileEntity.cpp:130`) refreshes the cached `data` byte, notifies the level
+(`level->tileEntityChanged(x, y, z, self)`, `:135`), and pokes comparators
+(`updateNeighbourForOutputSignal`, `:136`). For a tile entity that overrides
+`getUpdatePacket()`, the server side turns that into a packet via
+`ServerPlayer::broadcast(te)` (`ServerPlayer.cpp:1119`): it calls
+`te->getUpdatePacket()` (`:1123`) and, if non-null, `connection->send(p)` (`:1128`).
+The furnace returns `nullptr` from `getUpdatePacket` (base, `TileEntity.cpp:159`) —
+it syncs its slots through its **container menu** instead — whereas a beacon or
+skull returns a `TileEntityDataPacket` carrying its type discriminator.
+
+**4 — Save / load (NBT round-trip).** On world save, `TileEntity::save`
+(`TileEntity.cpp:79`) writes the save-id string (looked up in `classIdMap`) plus
+`x/y/z`; `FurnaceTileEntity::save` chains to that and appends `litTime`,
+`litDuration`, its `items` list, and any custom name. On load, the static
+`TileEntity::loadStatic(tag)` (`TileEntity.cpp:98`) reads the `id` string, looks up
+the factory in `idCreateMap`, `create()`s the right subclass, and calls `load()` to
+repopulate it — an unknown id is silently skipped (`:98`-region), which is the
+graceful-degrade behaviour. This is why the [legacy save-id strings](#the-17-registered-tile-entities)
+(`"Cauldron"`, `"Airportal"`, `"Trap"`, `"Control"`) must never be renamed: the
+`idCreateMap` key *is* the on-disk string.
+
+The takeaway: a tile entity's create hook lives on the **block** (`EntityTile`),
+its tick rides the **entity** pass, its sync goes through either an **update packet**
+or a **container menu**, and its persistence is a **string-keyed factory** with no
+numeric registry at all.
+
 ## Skull tile entity
 
 Files: `SkullTileEntity.h`, `SkullTileEntity.cpp`, `SkullTile.h`,

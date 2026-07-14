@@ -307,6 +307,117 @@ first setter runs. IDs are hard-coded inline — there is no auto-increment.
 - **Ore / metal** — `OreTile`, `MetalTile`, `RedStoneOreTile`,
   `PoweredMetalTile` (block of redstone).
 
+## How a tile is driven each tick
+
+`Tile` is a **flyweight** — one instance per ID, shared by every placement — so
+nothing "owns" a tile per-tick. Instead the world calls *into* the shared `Tile`
+object with the block coordinates as arguments. There are three distinct pumps
+that reach a tile, and they come from three different call sites:
+
+| Pump | Driven from | Reaches | Cadence |
+|------|-------------|---------|---------|
+| **Random tick** | `ServerLevel::runUpdate` (worker thread) → `ServerLevel::tickTiles` (`ServerLevel.cpp:478`; the `Tile::tick` call is `:512`) | `Tile::tick(level,x,y,z,random)` — only if `isTicking()` | ~random, throttled |
+| **Scheduled tick** | `ServerLevel::tickPendingTicks` (`ServerLevel.cpp:754`) | `Tile::tick(...)` at a delay set by `addToTickNextTick` | deterministic delay |
+| **Neighbor update** | `Level::setTileAndData`/`setData` → `tileUpdated` → `updateNeighborsAt` (`Level.cpp:1125`) | `Tile::neighborChanged(level,x,y,z,type)` on all 6 neighbors | on any adjacent change |
+
+The top of the chain is the server tick loop: `MinecraftServer::tick` calls
+`level->tick()` (`MinecraftServer.cpp:2387`) then `level->tickEntities()` (`:2409`).
+`ServerLevel::tick` (`ServerLevel.cpp:199`) is what fires `tickPendingTicks(false)`
+(`:308`) and `tickTiles()` (`:316`) — the tile pumps — every game tick.
+
+### The two-phase random-tick model (a 4J idiom)
+
+Vanilla Java picks 3 random positions per chunk section inline during the chunk
+tick. neoLegacy splits this into a **gather phase on a worker thread** and an
+**apply phase on the tick thread**, communicating through a fixed-size array under
+a critical section — a console-performance rewrite:
+
+1. **Gather** (`ServerLevel::runUpdate`, the worker, `ServerLevel.cpp:1595`): for
+   each active chunk, run `for (int j = 0; j < 80; j++)` (`:1634`) LCG draws to
+   pick a random `(x,y,z)`; if `Tile::tiles[id]->isTicking()` **and**
+   `shouldTileTick(...)` (a 4J-added early-out so a set-to-tick block that would
+   no-op doesn't burn an update slot, `:1652`), push it into
+   `m_updateTileX/Y/Z[iLev][]` (`:1656-1660`). Two 4J throttles cap the churn:
+   `grassTicks`/`lavaTicks` are stopped at `MAX_GRASS_TICKS = MAX_LAVA_TICKS = 100`
+   (`Level.h:61-62`, gate at `ServerLevel.cpp:1649`), and the whole batch is capped
+   at `MAX_UPDATES = 256` (`ServerLevel.h:177`).
+2. **Apply** (`ServerLevel::tickTiles`, `:499-515`): walk the gathered array,
+   re-read the tile id (it may have changed), and if it still `isTicking()` call
+   `Tile::tiles[id]->tick(this, x, y, z, random)` (`:512`). The array is drained
+   (`m_updateTileCount[iLev] = 0`, `:517`) so next tick works on a fresh batch.
+
+The `iLev` index (`0` overworld / `1` nether / `2` end) keeps three independent
+update queues so dimensions don't share tick budget. The base `Tile::tick`
+(`Tile.cpp:1045`) and `Tile::neighborChanged` (`Tile.cpp:1057`) are both
+**empty** — a plain full-cube block never schedules or reacts to anything; only
+subclasses that call `setTicking(true)` or override `neighborChanged` participate.
+
+## Worked trace: the full life of a placed block
+
+This follows one stone block from the player's right-click to its drop as an item,
+citing every hop. It is the concrete version of the three pumps above.
+
+**1 — Placement (input → `setTileAndData`).** The client interaction driver
+`SurvivalMode::useItemOn` (`SurvivalMode.cpp:192`) is reached when the player
+right-clicks a face with a block in hand. It first offers the *clicked* block a
+chance to consume the click (`Tile::use`, `:197`); if unhandled it forwards to
+`item->useOn(...)` (`:200`). For a block item that lands in `TileItem::useOn`
+(`TileItem.cpp:49`): it offsets the target by the clicked `face` (`:62-67`), gates
+on `player->mayUseItemAt` and `level->mayPlace` (`:71`, `:78`), computes the data
+byte via `getPlacedOnFaceDataValue` (`:85`), and commits with
+`level->setTileAndData(x, y, z, tileId, dataValue, Tile::UPDATE_ALL)`
+(`TileItem.cpp:86`). On success it calls `setPlacedBy` + `finalizePlacement`
+(`:115-116`), plays the place sound (`:149`), and decrements the stack (`:155`).
+
+**2 — Commit and fan-out (`setTileAndData`).** `Level::setTileAndData`
+(`Level.cpp:917`) writes the chunk (`c->setTileAndData`, `:937`), reruns lighting
+(`checkLight`, `:944`), and — because `UPDATE_ALL = UPDATE_NEIGHBORS |
+UPDATE_CLIENTS` — does two things:
+- `UPDATE_CLIENTS` → `sendTileUpdated(x,y,z)` (`:952`) queues the block change to
+  every tracking client.
+- `UPDATE_NEIGHBORS` (server only) → `tileUpdated(x,y,z,oldTile)` (`:956`) →
+  `updateNeighborsAt` (`Level.cpp:1125`) → six `neighborChanged(...)` calls, one
+  per face (`:1127-1132`). Each neighbor's `Tile::neighborChanged` runs — this is
+  how a torch pops off when its support is removed, how redstone recomputes, and
+  how a placed block that turns out to be unsupported deletes itself.
+
+**3 — Living in the world (random tick).** Stone is not a ticking tile, so it just
+sits. A ticking neighbor (say grass adjacent to it) is gathered by the worker
+(§gather above) and applied via `Tile::tick` — grass spreading onto exposed dirt,
+for instance, is a `GrassTile::tick` that calls back into `setTileAndData`,
+restarting this same cycle at the new position.
+
+**4 — Destruction (mine → drops).** Breaking is the mirror image.
+`SurvivalMode::destroyBlock` (`SurvivalMode.cpp:60`) snapshots `t`/`data`, calls
+`GameMode::destroyBlock` (`GameMode.cpp:23`), then applies tool durability
+(`item->mineBlock`, `:70`) and — if the player could actually harvest it —
+`Tile::tiles[t]->playerDestroy(...)` (`:78`). Inside `GameMode::destroyBlock`:
+`levelEvent(PARTICLES_DESTROY_BLOCK, ...)` (`GameMode.cpp:31`) for the break
+particles, then `level->setTile(x,y,z,0)` (`:36`) which is
+`setTileAndData(...,0,0,UPDATE_ALL)` — re-running step 2 with air, firing the
+neighbor fan-out again — then `oldTile->destroy(level,x,y,z,data)` (`:40`, base is
+empty, `Tile.cpp:1053`).
+
+**5 — Drops (`playerDestroy` → `spawnResources` → `ItemEntity`).**
+`Tile::playerDestroy` (`Tile.cpp:1390`) awards mining stats and food exhaustion
+(`:1424-1425`), then branches on Silk Touch: with it,
+`popResource(getSilkTouchItemInstance(data))` (`:1437`); without it,
+`spawnResources(level, x, y, z, data, EnchantmentHelper::getDiggingLootBonus(player))`
+(`:1443`). `spawnResources` (`Tile.cpp:1104`) is server-only (`:1106`), rolls a
+Fortune-adjusted count, and for each drop calls
+`popResource(..., new ItemInstance(getResource(...), 1, ...))` (`:1114`).
+`popResource` (`Tile.cpp:1118`) short-circuits if the `doTileDrops` game rule is
+off (`:1120`), jitters a spawn offset, builds an `ItemEntity`, sets `throwTime = 10`,
+and calls `level->addEntity(item)` (`:1128`) — handing the drop off to the
+[entity pipeline](/slop-docs/world/entities/#worked-trace-a-mob-from-spawn-to-despawn).
+
+The whole loop touches `setTileAndData` **twice** (place, then break-to-air), and
+each time the `UPDATE_NEIGHBORS` bit re-fans the six-way `neighborChanged` — which
+is why the vanilla comment preserved at `TileItem.cpp:110-112` warns that "neighbor
+updates can cause the placed block to become something else before these methods
+are called," and why the code re-checks `level->getTile(x,y,z) == tileId` at `:113`
+before running `setPlacedBy`.
+
 ## The `stone` block: granite / diorite / andesite
 
 In vanilla TU19 block ID 1 is plain stone. neoLegacy carries the 1.7 stone

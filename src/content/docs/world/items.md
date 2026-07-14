@@ -161,6 +161,73 @@ The fluent setters (`setIconName`, `setMaxStackSize`, `setDescriptionId`,
 `setMaxDamage`, `handEquipped`, `setPotionBrewingFormula`) all return `this`,
 enabling the one-line builder chains used throughout `staticCtor()`.
 
+## `Item` vs `ItemInstance` — who mutates what
+
+The single most important runtime distinction: an **`Item` is a shared flyweight**
+(one per ID, in `Item::items`), and an **`ItemInstance` is the mutable stack** the
+player actually holds (`id` + `count` + aux/damage value, one heap object per
+slot). Every behaviour virtual on `Item` takes the `ItemInstance` as an argument
+and mutates *that*, never the flyweight. The two mutation primitives on
+`ItemInstance` are:
+
+- **`count`** — the stack size. Consuming an item decrements it directly
+  (`instance->count--`); a stack that hits `count == 0` is nulled out of the
+  inventory slot by the caller.
+- **`hurtAndBreak(dmg, owner)`** (`ItemInstance.cpp:438`) — durability. It early-outs
+  in creative (`abilities.instabuild`, `:441`) and for non-damageable items, then
+  `hurt(dmg, random)` (`:409`) which raises the damage aux value; when it crosses
+  `maxDamage` the tool breaks (`breakItem`, `count--`, `:445-448`).
+
+## Worked trace: right-click a block (`useOn`)
+
+The place/use-on path, from input to `setTileAndData`, for a **block item**:
+
+1. **Input.** The client interaction driver `SurvivalMode::useItemOn`
+   (`SurvivalMode.cpp:192`) fires on a right-click against a block face. It first
+   offers the *targeted block* the click (`Tile::use`, `:197` — this is how a
+   crafting table or chest opens instead of placing). If the block doesn't consume
+   it, it forwards to `item->useOn(player, level, x, y, z, face)` (`:200`).
+2. **Dispatch.** `Item::useOn` is the virtual; for anything placeable it is
+   `TileItem::useOn` (`TileItem.cpp:49`), which offsets by `face`, validates
+   (`mayUseItemAt`, `mayPlace`), and commits with
+   `level->setTileAndData(x, y, z, tileId, dataValue, UPDATE_ALL)`
+   (`TileItem.cpp:86`) — handing off to the
+   [block placement pipeline](/slop-docs/world/blocks/#worked-trace-the-full-life-of-a-placed-block).
+3. **Consume.** On success `TileItem::useOn` decrements the stack
+   (`instance->count--`, `TileItem.cpp:155`) — the only mutation to the held
+   `ItemInstance`. A tool's `useOn` instead calls `hurtAndBreak` (e.g. the shovel's
+   grass-path conversion, `ShovelItem.cpp:30`).
+
+## Worked trace: eating (held-use → `useTimeDepleted`)
+
+`use()` (right-click in air) starts a **held-use** that runs over multiple ticks
+before the effect lands — this is the mechanism behind eating, drawing a bow, and
+drinking a potion. Following an apple:
+
+1. **Right-click in air.** `MultiPlayerGameMode::useItem` (`MultiPlayerGameMode.cpp:387`)
+   snapshots the count and calls `item->use(level, player)` (`:410`). For food that
+   is `FoodItem::use` (`FoodItem.cpp:67`): if `player->canEat(canAlwaysEat)` it calls
+   `player->startUsingItem(instance, getUseDuration(instance))` (`:71`) with
+   `EAT_DURATION = 32` ticks — it does **not** consume the food yet, just arms the
+   timer.
+2. **Countdown.** Every tick, `Player::tick` (`:320`) → `Player::updateFrameTick`
+   (`Player.cpp:251`) runs `--useItemDuration` (`:269`), spawns eat particles as it
+   nears zero (`:265-267`), and when it reaches 0 on the server calls
+   `completeUsingItem()` (`:273`).
+3. **Effect + consume.** `Player::completeUsingItem` (`Player.cpp:587`) calls
+   `useItem->useTimeDepleted(level, player)` (`:594`). For food that is
+   `FoodItem::useTimeDepleted` (`FoodItem.cpp:36`): it decrements the stack
+   (`instance->count--`, `:38`), feeds the player (`getFoodData()->eat(this)`, `:39`),
+   plays the burp (`:41`), and applies any status effect via `addEatEffect` (`:43`,
+   e.g. raw chicken's 30 % hunger). The returned instance (possibly `count == 0`, or
+   a different item like the bowl a stew leaves behind) replaces the inventory slot.
+
+Releasing early (`Player::releaseUsingItem`, `:220`) instead calls
+`useItem->releaseUsing(...)` (`:224`) with the remaining duration — this is how a
+bow reads its draw time to compute arrow velocity. `getUseAnimation`
+(`FoodItem.cpp:62` → `UseAnim_eat`) picks the first-person animation the client
+plays during the countdown.
+
 ## Tool tiers
 
 Tool durability, speed, and damage come from a shared `Item::Tier` table

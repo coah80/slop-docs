@@ -299,6 +299,95 @@ the same `CompoundTag`/`ListTag` system stores entity data.
 - Whether mobs spawn at all is the `doMobSpawning` game rule (`RULE_DOMOBSPAWNING
   = 3`, see [Game Rules](/slop-docs/world/gamerules/)).
 
+## The per-tick entity pipeline
+
+Entities are pumped from the server main loop, **not** from `ServerLevel::tick`.
+`MinecraftServer::tick` calls `level->tick()` (`MinecraftServer.cpp:2387`, the
+world/tile pumps) and then, gated on the dimension having players or pending
+removals, `level->tickEntities()` (`MinecraftServer.cpp:2409`) followed by
+`level->getTracker()->tick()` (`:2416`). So one server tick is, in order:
+**world sim → entity sim → client sync.**
+
+`Level::tickEntities` (`Level.cpp:2239`) is one big pass that walks three lists
+under critical sections:
+
+1. **Global entities** (lightning) — ticked and erased-if-removed (`:2241-2255`).
+2. **Regular entities** — after purging `entitiesToRemove`, it iterates
+   `entities` and calls `tick(e)` on each live one (`Level.cpp:2329`), then erases
+   any that became `removed` during their own tick (`:2333-2353`). The
+   `#ifndef _FINAL_BUILD` guard at `:2326` is the debug "mobs don't tick" toggle.
+3. **Tile entities** — the *same* method then ticks `tileEntityList` (`:2364-2377`),
+   which is why block entities and mobs share one tick pass. See
+   [Block Entities §ticking](/slop-docs/world/tile-entities/#worked-trace-create--tick--sync--saveload).
+
+`Level::tick(e)` (`Level.cpp:2480`) is the per-entity wrapper: it bails if no
+chunks are loaded near the entity (`:2489`), saves the old position/rotation for
+interpolation (`:2495-2499`), calls `e->tick()` (or `rideTick()` if riding,
+`:2509-2516`), runs a NaN-position sanity clamp (`:2520-2524`), and re-buckets the
+entity into its new chunk if it crossed a boundary (`:2532-2543`).
+
+For a mob, `e->tick()` resolves down the vtable to `Mob::tick` (`Mob.cpp:225`) →
+`LivingEntity::tick` → (near its end) `aiStep()` (`LivingEntity.cpp:1768`) →
+`LivingEntity::aiStep` (`:1844`), which — if `isEffectiveAi()` and `useNewAi()`
+(`:1906-1910`) — calls **`newServerAiStep()`**. `Mob::newServerAiStep`
+(`Mob.cpp:496`) is the real AI pump, in this fixed order (`:500-527`):
+
+```
+checkDespawn() → sensing->tick() → targetSelector.tick()
+  → goalSelector.tick() → navigation->tick() → serverAiMobStep()
+  → moveControl->tick() → lookControl->tick() → jumpControl->tick()
+```
+
+The two `GoalSelector::tick()` calls are where all behaviour is decided — traced
+end-to-end in [AI & Goals](/slop-docs/world/ai-goals/#worked-trace-one-goalselector-tick).
+`useNewAi()` returning `false` is exactly why `ArmorStand` (no goal selectors)
+never enters this pump.
+
+## Worked trace: a mob from spawn to despawn
+
+Following one zombie through its whole server-side existence:
+
+**1 — Natural spawn.** `ServerLevel::tick` calls `mobSpawner->tick(this, ...)`
+(`ServerLevel.cpp:245`). `MobSpawner::tick` (`MobSpawner.cpp:42`) picks a category
+and a mob type under the `MobCategory` hard caps, constructs the entity via
+`EntityIO::newByEnumType(mobClass, level)` (`MobSpawner.cpp:303`) — the factory
+lookup from the [numeric-ID table](#numeric-id-map) — checks `mob->canSpawn()`
+(`:347`), and on success calls `level->addEntity(mob)` (`:357`) then
+`mob->finalizeMobSpawn(groupData)` (`:358`) to roll baby-chance/equipment/variant.
+
+**2 — Registration + first sync.** `Level::addEntity` (`Level.cpp:1704`) files the
+entity into `entities` and its chunk, and fires `entityAdded`. On the server that
+reaches `ServerLevelListener` → `level->getTracker()->addEntity(entity)`
+(`ServerLevelListener.cpp:40`), registering it with the `EntityTracker` so nearby
+players get an add-entity packet.
+
+**3 — Living (tick + AI + sync).** Every tick the entity flows through the pipeline
+above: `tickEntities` → `Level::tick(e)` → `Mob::tick` → `newServerAiStep` →
+goal/target selectors decide movement and targeting. Separately, once per tick
+`EntityTracker::tick` (`EntityTracker.cpp:129`) runs `TrackedEntity::tick`
+(`TrackedEntity.cpp:57`) for each tracked entity: it diffs position/rotation and
+emits a `MoveEntityPacket`/`MoveEntityPacketSmall` (`:186`), periodically forcing a
+full teleport (`:152-158`), and pushes changed synched-data with
+`SetEntityDataPacket` (`:101`). Equipment changes are broadcast inline from
+`LivingEntity::tick` via `getTracker()->broadcast(..., SetEquippedItemPacket)`
+(`LivingEntity.cpp:1760`).
+
+**4 — Despawn (distance).** First thing each `newServerAiStep` does is
+`checkDespawn()` (`Mob.cpp:502`). A mob with `removeWhenFarAway()` true (`Mob.h:129`)
+and no `isPersistenceRequired()` (`Mob.h:198`) that is far from every player is
+`remove()`d — the natural cleanup that keeps mob counts under the caps.
+
+**5 — Death (damage → drops → removal).** If instead the mob is killed,
+`LivingEntity::die(source)` (`LivingEntity.cpp:964`) awards the kill score (`:968`)
+and calls `dropDeathLoot(wasKilledByPlayer, playerBonus)` (`:999`) for the item
+drops. Death is *not* instant: `tickDeath()` (`LivingEntity.cpp:312`) increments
+`deathTime` each tick, and at `deathTime == 20` (`:315`) — the death animation
+length — drops XP (`popExperience`, gated on `doMobLoot`, `:318-320`) and removes
+the entity. On the next `tickEntities` pass the `removed` flag causes the entity to
+be erased from `entities` and its chunk (`Level.cpp:2333-2353`), and the tracker
+sends a remove-entity packet. The `ItemEntity`/`ExperienceOrb` drops it left behind
+are themselves entities, re-entering this pipeline at step 2.
+
 ## neoLegacy entity work
 
 ### Armor Stand
