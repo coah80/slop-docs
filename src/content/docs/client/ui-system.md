@@ -26,11 +26,22 @@ There are two implementations of the same scenes in the tree:
 | Stack | Location | Status |
 |-------|----------|--------|
 | **UIScene** (Iggy) | `Common/UI/UIScene_*` | Canonical live front-end. All neoLegacy work is here. |
-| **XUI** (Xbox-360 era) | `Common/XUI/XUI_*` | Legacy sibling. Older XUI reimplementation (`XUI_MainMenu`, `XUI_PauseMenu`, `XUI_SkinSelect`, `XUI_SettingsAll`, `XUI_HelpControls`, `XUI_Scene_Inventory`, …) plus `XUI_Ctrl_*` controls. |
+| **XUI** (Xbox-360 era) | `Common/XUI/XUI_*` | **Xbox-360-only.** Older XUI reimplementation (`XUI_MainMenu`, `XUI_PauseMenu`, `XUI_SkinSelect`, `XUI_SettingsAll`, `XUI_HelpControls`, `XUI_Scene_Inventory`, …) plus `XUI_Ctrl_*` controls. |
 
 The `IUIScene_*` files in `Common/UI/` are pure-virtual interfaces (container menus
 mostly) that the concrete `UIScene_*` classes satisfy. Treat `Common/UI/` as
 canonical and `Common/XUI/` as the historical implementation it superseded.
+
+> **Hard verdict — XUI does not compile on Windows64.** "Superseded" is too soft:
+> all of `Common/XUI/*` (85 cpp / 91 h) is listed **only** in
+> `Minecraft.Client/cmake/sources/Xbox360.cmake` (234 XUI entries) and appears in
+> **zero** of `Common.cmake`. Every use site is gated behind `#ifdef _XBOX` — the
+> `#include "XUI/…"` lines in `Consoles_App.cpp` (`:57-66`) and the
+> `CXuiSceneBase::SetPlayerBaseScenePosition` call (`:3242-3245`) are inside `_XBOX`;
+> the Windows64 `#else` branch pulls in `UI/UI.h` + `UI/UIScene_PauseMenu.h` instead.
+> On the shipping PC build XUI neither compiles nor runs. It is documented here for
+> inventory completeness only. Full per-file classification is in the
+> [UI Code Map](/slop-docs/client/ui-code-map/#xui-remnant--commonxui-85-cpp--91-h--console-only-xbox-360).
 
 ## Anatomy of a UIScene
 
@@ -106,6 +117,59 @@ before calling `app.FatalLoadError()` (`UIScene.cpp:358-381`).
 > movies, which are forced 1080 to avoid "inaccuracies + crashes" noted in the source.
 > This ties the [controller-icon slider](#neolegacy-controller-icon-slider) directly to
 > which movie assets are shown.
+
+## The platform layer — `ConsoleUIController` and the per-platform pump
+
+The global UI object the whole game touches is `ConsoleUIController ui` — a
+**per-platform subclass** of `UIController`. On the PC build it is
+`class ConsoleUIController : public UIController` (`Windows64_UIController.h:5`),
+defined once in `Windows64_UIController.cpp:10` (`ConsoleUIController ui;`) and
+declared `extern` where the game reaches it (`Minecraft.cpp:101`,
+`LocalPlayer.cpp:60`). Each platform ships its own subclass with the same name:
+
+| Platform | Subclass declaration | Base |
+|----------|----------------------|------|
+| **Windows64** | `Windows64_UIController.h:5` | `UIController` |
+| Orbis (PS4) | `Orbis_UIController.h:5` | `UIController` |
+| Durango (Xbox One) | `Durango_UIController.h:5` | `UIController` |
+| PS3 | `PS3_UIController.h:5` | `UIController` |
+| PS Vita | `PSVita_UIController.h:5` | `UIController` |
+| Xbox 360 | `Xbox_UIController.h:5` | `IUIController` (the XUI-era controller — not `UIController`) |
+
+What each subclass adds is the **platform graphics glue** that the
+cross-platform `UIController` can't own: `ConsoleUIController` (Windows64) carries
+the D3D11 render-target/depth-stencil views (`Windows64_UIController.h:8-9`), and its
+`init(...)` / `render()` (`Windows64_UIController.cpp:12/71`) bring up Iggy + GDraw
+and drive `gdraw_D3D11_SetTileOrigin → renderScenes()` around the shared
+`UIController` logic. The Xbox-360 variant is the odd one out — it derives from
+`IUIController` directly and wraps the XUI stack rather than the Iggy `UIScene` stack.
+
+### The per-platform frame pump
+
+`Minecraft.cpp` **never** calls `ui.tick()`/`ui.render()` itself (a grep for either
+in `Common/Minecraft.cpp` returns nothing). It only calls higher-level hooks —
+`ui.HandleGameTick()` (`Minecraft.cpp:1946`, feeds live player state into the HUD)
+and the classic `gui->render(...)`. The actual per-frame pump lives in each
+**platform** main loop, as an adjacent `ui.tick(); ui.render();` pair after the
+`RenderManager` frame:
+
+| Platform | Pump site |
+|----------|-----------|
+| **Windows64** | `Windows64_Minecraft.cpp:1999-2000` (the shipping PC path) |
+| Orbis (PS4) | `Orbis_Minecraft.cpp:1304-1305` |
+| Durango (Xbox One) | `Durango_Minecraft.cpp:834-835` |
+
+There is a second class of pump site: **blocking network ops**. To avoid a frozen
+UI while a socket call blocks, the net managers pump the UI inside their wait loops —
+`GameNetworkManager.cpp:2153-2154` (cross-platform, inside a
+`do { … } while(result == WAIT_TIMEOUT)`) and, Xbox-One-specific,
+`DQRNetworkManager.cpp:2840-2841`. That is the mechanism behind the "no infinite
+spinner" behaviour: the `eUIScene_ConnectingProgress` movie raised just before the
+blocking join (`DQRNetworkManager.cpp:2830`) keeps ticking and rendering — and stays
+cancellable — because the wait loop itself drives `ui.tick()/ui.render()`.
+
+The full caller→callee walk of the pump and both HUD paths is on the
+[UI Code Map](/slop-docs/client/ui-code-map/#1-entry-points--where-the-ui-is-pumped).
 
 ## UIController — the scene manager
 
@@ -444,6 +508,8 @@ history: *fix: multilist menu selection*.
 
 ## See also
 
+- [UI Code Map](/slop-docs/client/ui-code-map/) — the complete UI call graph, the
+  per-platform pump sites, and a Windows64 reachability verdict for every UI file.
 - [Client overview](/slop-docs/client/overview/) — the two GUI stacks in context.
 - [Settings & Options](/slop-docs/client/settings/) — the `eGameSetting` per-pad store
   the UI scenes read and write.

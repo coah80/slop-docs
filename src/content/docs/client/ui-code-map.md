@@ -459,6 +459,9 @@ Header-only companions (`XUI_Controls.h`, `XUI_CustomMessages.h`, `XUI_Helper.h`
   and the live `Gui` HUD (including "who draws the HUD").
 - [Iggy: the UI Runtime](/slop-docs/modding/iggy-overview/) — the C API every scene
   outbound edge terminates in.
+- [Custom GUI: New SWFs & New Scenes](/slop-docs/modding/iggy-custom-gui/) — the five
+  registration edits that make a scene reachable (the map's orphan
+  `IUIScene_CommandBlockMenu` is the negative example).
 - [Input](/slop-docs/client/input/) — how pad/mouse input reaches
   `UIController::tickInput`.
 - [Settings & Options](/slop-docs/client/settings/) — the `eGameSetting` per-pad

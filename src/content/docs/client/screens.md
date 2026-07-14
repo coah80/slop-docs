@@ -58,6 +58,30 @@ in`", `Minecraft.cpp:2287`). In practice the console game shows XUI scenes, not
 these `Screen`s. They are kept compiling because renderers, `Gui`, `Font`,
 `Button`, and `EditBox` still reference the classic types.
 
+### Reachability, per family
+
+The [UI Code Map](/slop-docs/client/ui-code-map/) traces every UI file
+caller-to-callee and assigns a Windows64 reachability verdict. Its findings for this
+stack draw a sharp line between the **28** compiled-but-unreachable `*Screen.cpp`
+classes and the handful of classic primitives that stayed live:
+
+| Family | Verdict | Why |
+|--------|---------|-----|
+| All 28 root `*Screen.cpp` (`TitleScreen`, `OptionsScreen`, `InventoryScreen`, the `AbstractContainerScreen` chain, …) | **VESTIGIAL-COMPILED** | In `Common.cmake`, so they compile into the exe, but the console front-end routes through `ui` (`UIController`/`UILayer`), never `Minecraft::setScreen`. |
+| `Button` / `SmallButton` / `SlideButton`, `EditBox`, `ScrolledSelectionList` | **VESTIGIAL** | Classic widgets; the live equivalents are `UIControl_*` (`UIControl_Slider`, `UIControl_MultiList`, `UIControl_SaveList`, …). |
+| `GuiParticle` / `GuiParticles` | **VESTIGIAL** | Classic menu backdrop; `Screen::particles` inits to `nullptr`. Console uses `UIComponent_Panorama`. |
+| `Gui`, `GuiComponent`, `GuiMessage` | **LIVE** | `Gui::render` runs every frame from `GameRenderer.cpp:1291`; `GuiComponent` is its drawing base; `GuiMessage` holds chat state. |
+| `AchievementPopup` | **LIVE** | Toast popups, `Minecraft.cpp:170/745/2088`. |
+| `Font`, `StringTable`, `WstringLookup` | **LIVE** | Shared text/localisation used by **both** stacks. |
+| `ScreenSizeCalculator` | **LIVE** | UI-size math. |
+
+So the split inside "the classic stack" is not screens-vs-widgets but
+**live primitives vs everything else**: `Gui`/`Font`/`StringTable`/`AchievementPopup`/`ScreenSizeCalculator`
+are load-bearing, while the `Screen` subclasses and their classic widgets are dead
+weight kept in the build only because those live primitives still reference the base
+types. The full per-file classification — all 28 `*Screen.cpp` names included — is in
+the [Code Map coverage appendix](/slop-docs/client/ui-code-map/#classic-root-stack--live--vestigial).
+
 ### The classic screens
 
 Direct `Screen` subclasses (grep `public Screen` across the `*.h`):
@@ -257,6 +281,8 @@ counterparts are the `UIControl_SaveList` / `UIControl_*List` classes.
 
 ## Related
 
+- [UI Code Map](/slop-docs/client/ui-code-map/) — the complete UI call graph and a
+  Windows64 reachability verdict for every file in this stack.
 - [Client overview](/slop-docs/client/overview/#read-this-first-two-gui-stacks) — the two-GUI-stacks split and the live XUI/`UIScene_*` front-end.
 - [Input](/slop-docs/client/input/) — how menu input reaches `UIScene::handleInput` rather than these `Screen`s.
 - [Particles](/slop-docs/client/particles/#gui-particles-menu-background) — `GuiParticles`, the classic menu backdrop.

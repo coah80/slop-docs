@@ -295,6 +295,28 @@ Then navigate to it: `ui.NavigateToScene(iPad, eUIScene_MyMenu, initData)` from
 wherever your feature opens (a menu action, a game setting — the classic-crafting
 commit gated its scene behind a `GAMESETTING_*` bitmask flag).
 
+> **Aside — the `IUIScene_CommandBlockMenu` orphan (an accidental template).** The
+> tree already contains a half-wired scene that shows exactly which of these five
+> steps are missing when a scene *isn't* reachable. `Common/UI/IUIScene_CommandBlockMenu.cpp`/`.h`
+> exist and are even listed in `Common.cmake` (`:290-291`), so the file **compiles** —
+> but `grep CommandBlock` returns **zero** hits in `UIEnums.h` and **zero** in
+> `UILayer.cpp`. It has:
+>
+> - **no `eUIScene_*` enum entry** (step 5.1 missing),
+> - **no `UILayer::NavigateToScene` factory case** (step 5.2 missing), and
+> - it isn't even a `UIScene` subclass — `class IUIScene_CommandBlockMenu`
+>   (`IUIScene_CommandBlockMenu.h:4`) is a bare `Initialise(CommandBlockEntity*)` /
+>   `ConfirmButtonClicked()` / `GetCommand()`/`SetCommand()`/`GetPad()` skeleton with
+>   no base class and no implementer.
+>
+> With no enum id and no factory case, nothing can ever `new` it — it is
+> **VESTIGIAL-COMPILED**, an unshipped command-block editor left as dead code. It's
+> useful two ways: as a curiosity (someone started TU-era command-block UI and
+> stopped), and as a **negative template** — read it as the exact checklist above with
+> steps 1, 2, and the base-class choice all left blank. The
+> [UI Code Map](/slop-docs/client/ui-code-map/#scene-interfaces--iuiscene_-21-cpp--data-driven-live-except-as-noted)
+> classifies it alongside the live `IUIScene_*` interfaces.
+
 ## Resolution-variant obligations
 
 This is where new UI most often ships broken. The loader appends a suffix, so a
